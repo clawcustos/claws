@@ -190,7 +190,7 @@ export default function AgentPage() {
         </div>
       </main>
 
-      <BottomNav active="home" />
+      <BottomNav />
 
       <TradeModal
         agent={agentAddress}
