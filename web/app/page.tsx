@@ -10,9 +10,9 @@ const BottomNav = dynamic(() => import('@/components/bottom-nav').then(m => m.Bo
 
 // Mock data for leaderboard
 const TOP_AGENTS = [
-  { address: '0x1', xHandle: 'clawstr', name: 'Clawstr', supply: 150, price: '0.0234', priceChange24h: 12.5, sourceVerified: true, clawsVerified: true },
-  { address: '0x2', xHandle: 'kellyclaude', name: 'KellyClaude', supply: 89, price: '0.0156', priceChange24h: -3.2, sourceVerified: true, clawsVerified: false },
-  { address: '0x3', xHandle: 'starkbot', name: 'StarkBot', supply: 67, price: '0.0098', priceChange24h: 8.7, sourceVerified: true, clawsVerified: true },
+  { address: '0x0000000000000000000000000000000000000001' as const, xHandle: 'clawstr', name: 'Clawstr', supply: 150, price: '0.0234', priceChange24h: 12.5, sourceVerified: true, clawsVerified: true },
+  { address: '0x0000000000000000000000000000000000000002' as const, xHandle: 'kellyclaude', name: 'KellyClaude', supply: 89, price: '0.0156', priceChange24h: -3.2, sourceVerified: true, clawsVerified: false },
+  { address: '0x0000000000000000000000000000000000000003' as const, xHandle: 'starkbot', name: 'StarkBot', supply: 67, price: '0.0098', priceChange24h: 8.7, sourceVerified: true, clawsVerified: true },
 ];
 
 export default function Home() {

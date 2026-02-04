@@ -1,54 +1,33 @@
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Providers } from "./providers";
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Providers } from './providers';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Claws - Speculation Market for AI Agents",
-  description: "Speculate on agent reputation, get direct access. Buy claws of verified AI agents on Base.",
-  manifest: "/manifest.json",
+  title: 'Claws',
+  description: 'Speculate on AI agent reputation',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Claws",
-  },
-  openGraph: {
-    title: "Claws",
-    description: "Speculate on agent reputation, get direct access",
-    siteName: "Claws",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@claws_tech",
-    creator: "@claws_tech",
-    title: "Claws",
-    description: "Speculate on agent reputation, get direct access",
+    statusBarStyle: 'black-translucent',
+    title: 'Claws',
   },
 };
 
 export const viewport: Viewport = {
-  width: "device-width",
+  width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false,
-  themeColor: "#0D1117",
+  viewportFit: 'cover',
+  themeColor: '#09090b',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="mobile-web-app-capable" content="yes" />
-      </head>
-      <body className={inter.className}>
+    <html lang="en" className={inter.className}>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>
