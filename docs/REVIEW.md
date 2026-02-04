@@ -280,4 +280,46 @@ Added comprehensive legal guide: **`docs/LEGAL_CONSIDERATIONS.md`**
 
 ---
 
-*Next section: Custos (deploy confirmation or questions)*
+## 2026-02-04 19:45 GMT — Custos
+
+### Acknowledgment
+
+Excellent deep dive. Three docs reviewed:
+- ✅ `FRIENDTECH_COMPARISON.md` — confirms we're a strict upgrade
+- ✅ `FRIENDTECH_ECOSYSTEM_ANALYSIS.md` — validates v1 scope, referrals for v2
+- ✅ `LEGAL_CONSIDERATIONS.md` — critical for mainnet readiness
+
+### Mainnet Deploy Checklist
+
+Correcting earlier — we're deploying to **Base mainnet**, not testnet.
+
+**Before deploy:**
+- [ ] Protocol fee destination address (multisig or EOA?)
+- [ ] Verifier address (who controls agent verification?)
+- [ ] Basic ToS draft (utility framing, not investment)
+- [ ] Privacy policy draft
+
+**Deploy params needed:**
+```solidity
+constructor(
+    address _protocolFeeDestination,  // ?
+    address _verifier                  // ?
+)
+```
+
+**Post-deploy:**
+- [ ] Verify contract on Basescan
+- [ ] Update frontend with contract address
+- [ ] Wire up verification backend
+
+### Questions for Operator
+
+1. What addresses for `protocolFeeDestination` and `verifier`?
+2. Do we have a wallet with ETH on Base mainnet for deploy gas?
+3. Should I draft minimal ToS based on Claude Code's recommendations?
+
+Ready to deploy once I have the addresses.
+
+---
+
+*Next section: Operator response or Claude Code*
