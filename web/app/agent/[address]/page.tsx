@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Address, formatEther } from 'viem';
+import { Address } from 'viem';
 import { useAccount } from 'wagmi';
-import { Hero } from '@/components/hero';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Header } from '@/components/header';
+import { BottomNav } from '@/components/bottom-nav';
 import { TradeModal } from '@/components/trade-modal';
 import { 
   useAgentStatus, 
@@ -13,11 +16,24 @@ import {
   formatPrice 
 } from '@/lib/hooks';
 
+// Mock agent data - will be replaced with DB lookup
+const MOCK_AGENTS: Record<string, { name: string; xHandle: string; avatar?: string }> = {
+  '0x1234567890123456789012345678901234567890': {
+    name: 'Clawstr',
+    xHandle: 'clawstr',
+  },
+  '0x2345678901234567890123456789012345678901': {
+    name: 'KellyClaude',
+    xHandle: 'kellyclaude',
+  },
+};
+
 export default function AgentPage() {
   const params = useParams();
   const agentAddress = params.address as Address;
   const { address: userAddress } = useAccount();
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
 
   const { data: status } = useAgentStatus(agentAddress);
   const { data: userBalance } = useClawsBalance(agentAddress, userAddress);
@@ -25,165 +41,160 @@ export default function AgentPage() {
 
   const [sourceVerified, clawsVerified, reservedClawClaimed, pendingFees, supply] = status || [];
 
-  // Mock data - replace with real data from indexer
-  const agent = {
-    address: agentAddress,
-    name: 'Agent',
-    xHandle: 'agent',
-    avatar: '🤖',
-    earnings: pendingFees ? formatPrice(pendingFees) : '0',
+  // Get agent data from mock or use defaults
+  const mockAgent = MOCK_AGENTS[agentAddress.toLowerCase()] || {
+    name: `Agent ${agentAddress.slice(0, 6)}`,
+    xHandle: agentAddress.slice(2, 10).toLowerCase(),
+  };
+
+  const openTrade = (mode: 'buy' | 'sell') => {
+    setTradeMode(mode);
+    setIsTradeModalOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#0D1117]">
-      <Hero />
+    <div className="page-wrapper">
+      <Header />
       
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Agent Header */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="flex items-start gap-6">
-                <div className="relative">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-4xl">
-                    {agent.avatar}
-                  </div>
-                  {clawsVerified && (
-                    <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1">
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-white">{agent.name}</h1>
-                    {sourceVerified && (
-                      <span className="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded">
-                        moltbook verified
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-500">@{agent.xHandle}</p>
-                  <p className="text-sm text-gray-600 mt-2 font-mono">
-                    {agentAddress.slice(0, 6)}...{agentAddress.slice(-4)}
-                  </p>
-                </div>
+      <main className="main-content" style={{ paddingBottom: '80px' }}>
+        {/* Breadcrumb */}
+        <nav className="breadcrumb">
+          <Link href="/">Home</Link>
+          <span className="breadcrumb-sep">→</span>
+          <span>Agent</span>
+        </nav>
 
-                <button
-                  onClick={() => setIsTradeModalOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                >
-                  Trade
-                </button>
-              </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-800">
-                <div>
-                  <div className="text-2xl font-bold text-white">{supply?.toString() || '0'}</div>
-                  <div className="text-sm text-gray-500">Supply</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">{formatPrice(buyPrice)} ETH</div>
-                  <div className="text-sm text-gray-500">Price</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">-</div>
-                  <div className="text-sm text-gray-500">Holders</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">{agent.earnings} ETH</div>
-                  <div className="text-sm text-gray-500">Earnings</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Price Chart Placeholder */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Price History</h2>
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                Chart coming soon
-              </div>
-            </div>
-
-            {/* Recent Trades */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Recent Trades</h2>
-              <div className="text-gray-500 text-center py-8">
-                No trades yet
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Your Position */}
-            {userAddress && (
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Your Position</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Claws Held</span>
-                    <span className="text-white font-medium">{userBalance?.toString() || '0'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Value</span>
-                    <span className="text-white font-medium">-</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  <button
-                    onClick={() => setIsTradeModalOpen(true)}
-                    className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium transition"
-                  >
-                    Buy
-                  </button>
-                  <button
-                    onClick={() => setIsTradeModalOpen(true)}
-                    className="bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition"
-                    disabled={!userBalance || userBalance === 0n}
-                  >
-                    Sell
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Holders */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Top Holders</h3>
-              <div className="text-gray-500 text-center py-4">
-                No holders yet
-              </div>
-            </div>
-
-            {/* XMTP Access */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-2">XMTP Access</h3>
-              <p className="text-sm text-gray-400 mb-4">
-                Hold claws to unlock direct messaging with this agent.
-              </p>
-              {userBalance && userBalance > 0n ? (
-                <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition">
-                  Open Chat
-                </button>
+        {/* Agent Profile Header */}
+        <div className="agent-profile">
+          <div className="agent-profile-header">
+            <div className="agent-profile-avatar-section">
+              {mockAgent.xHandle ? (
+                <Image
+                  src={`https://unavatar.io/twitter/${mockAgent.xHandle}`}
+                  alt={mockAgent.name}
+                  width={100}
+                  height={100}
+                  className="agent-profile-avatar"
+                  unoptimized
+                />
               ) : (
-                <div className="text-center text-gray-500 text-sm">
-                  Buy claws to unlock
+                <div className="agent-profile-avatar-placeholder">
+                  {mockAgent.name[0]}
                 </div>
               )}
+              {clawsVerified && (
+                <span className="verified-badge">✓ Verified</span>
+              )}
+            </div>
+            
+            <div className="agent-profile-info">
+              <h1 className="agent-profile-name">{mockAgent.name}</h1>
+              <div className="agent-profile-meta">
+                <a 
+                  href={`https://x.com/${mockAgent.xHandle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="agent-x-link"
+                >
+                  @{mockAgent.xHandle}
+                </a>
+                {sourceVerified && (
+                  <span className="source-badge">Source Verified</span>
+                )}
+              </div>
+              <p className="agent-address">
+                {agentAddress.slice(0, 6)}...{agentAddress.slice(-4)}
+              </p>
             </div>
           </div>
+
+          {/* Stats Grid */}
+          <div className="agent-stats-grid">
+            <div className="stat-card">
+              <span className="stat-value">{formatPrice(buyPrice)}</span>
+              <span className="stat-label">Price (ETH)</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{supply?.toString() || '0'}</span>
+              <span className="stat-label">Supply</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">-</span>
+              <span className="stat-label">Holders</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{formatPrice(pendingFees)}</span>
+              <span className="stat-label">Fees (ETH)</span>
+            </div>
+          </div>
+
+          {/* Trade Actions */}
+          <div className="trade-actions">
+            <button onClick={() => openTrade('buy')} className="trade-btn trade-btn-buy">
+              Buy Claw
+            </button>
+            <button 
+              onClick={() => openTrade('sell')} 
+              className="trade-btn trade-btn-sell"
+              disabled={!userBalance || userBalance === 0n}
+            >
+              Sell Claw
+            </button>
+          </div>
+
+          {/* Your Position */}
+          {userAddress && (
+            <section className="agent-section">
+              <h2>Your Position</h2>
+              <div className="position-card">
+                <div className="position-row">
+                  <span className="position-label">Claws Held</span>
+                  <span className="position-value">{userBalance?.toString() || '0'}</span>
+                </div>
+                <div className="position-row">
+                  <span className="position-label">Value</span>
+                  <span className="position-value">-</span>
+                </div>
+                {userBalance && userBalance > 0n && (
+                  <div className="position-access">
+                    <span className="access-badge">✓ XMTP Access Unlocked</span>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Price History */}
+          <section className="agent-section">
+            <h2>Price History</h2>
+            <div className="chart-placeholder">
+              <span>Chart coming soon</span>
+            </div>
+          </section>
+
+          {/* Recent Activity */}
+          <section className="agent-section">
+            <h2>Recent Activity</h2>
+            <div className="activity-empty">
+              <span>No trades yet</span>
+            </div>
+          </section>
+
+          {/* Top Holders */}
+          <section className="agent-section">
+            <h2>Top Holders</h2>
+            <div className="holders-empty">
+              <span>No holders yet</span>
+            </div>
+          </section>
         </div>
       </main>
 
+      <BottomNav active="home" />
+
       <TradeModal
         agent={agentAddress}
-        agentName={agent.name}
+        agentName={mockAgent.name}
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
       />

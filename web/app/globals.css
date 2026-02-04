@@ -1085,3 +1085,324 @@ button:focus-visible {
 .text-red { color: var(--color-red); }
 .bg-surface { background: var(--color-surface); }
 .border-default { border-color: var(--color-border); }
+
+/* ============================================
+   BREADCRUMB
+   ============================================ */
+
+.breadcrumb {
+  font-family: var(--font-headline);
+  font-size: 0.875rem;
+  color: var(--color-secondary);
+  margin-bottom: 2rem;
+}
+
+.breadcrumb a {
+  color: var(--color-secondary);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.breadcrumb-sep {
+  margin: 0 0.5rem;
+  color: var(--color-border);
+}
+
+/* ============================================
+   AGENT PROFILE PAGE
+   ============================================ */
+
+.agent-profile {
+  max-width: var(--max-content-width);
+}
+
+.agent-profile-header {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.agent-profile-avatar-section {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.agent-profile-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--color-border);
+}
+
+.agent-profile-avatar-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 3px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-headline);
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+}
+
+.verified-badge {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-accent);
+  color: white;
+  font-family: var(--font-headline);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.agent-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-profile-name {
+  font-family: var(--font-headline);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 0.25rem;
+}
+
+.agent-profile-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.agent-x-link {
+  font-family: var(--font-headline);
+  font-size: 1rem;
+  color: var(--color-secondary);
+  text-decoration: none;
+}
+
+.agent-x-link:hover {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.source-badge {
+  font-family: var(--font-headline);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-green);
+  background: rgba(34, 197, 94, 0.15);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.agent-address {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-secondary);
+}
+
+.agent-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .agent-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat-card {
+  text-align: center;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.stat-card .stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  display: block;
+}
+
+.stat-card .stat-label {
+  font-family: var(--font-headline);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.trade-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.trade-btn {
+  font-family: var(--font-headline);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trade-btn-buy {
+  background: var(--color-green);
+  color: white;
+}
+
+.trade-btn-buy:hover {
+  background: #16a34a;
+}
+
+.trade-btn-sell {
+  background: var(--color-red);
+  color: white;
+}
+
+.trade-btn-sell:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.trade-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-section {
+  margin-bottom: 2rem;
+}
+
+.agent-section h2 {
+  font-family: var(--font-headline);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.position-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.position-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.position-row:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.position-label {
+  font-family: var(--font-headline);
+  font-size: 0.875rem;
+  color: var(--color-secondary);
+}
+
+.position-value {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.position-access {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.access-badge {
+  font-family: var(--font-headline);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-green);
+}
+
+.chart-placeholder,
+.activity-empty,
+.holders-empty {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 3rem;
+  text-align: center;
+  color: var(--color-secondary);
+  font-family: var(--font-headline);
+  font-size: 0.875rem;
+}
+
+.chart-placeholder {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .agent-profile-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .agent-profile-meta {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .agent-profile-name {
+    font-size: 1.5rem;
+  }
+  
+  .agent-profile-avatar,
+  .agent-profile-avatar-placeholder {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .agent-profile-avatar-placeholder {
+    font-size: 2rem;
+  }
+}

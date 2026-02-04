@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Agent profile data (cached from X/contract)
+model Agent {
+  id              String   @id @default(uuid())
+  address         String   @unique // Wallet address (lowercase)
+  xHandle         String?  // X/Twitter handle
+  xId             String?  // X user ID (stable)
+  moltbookId      String?
+  name            String?
+  bio             String?
+  avatarUrl       String?  // Cached X profile image
+  
+  // Verification status (synced from contract)
+  sourceVerified  Boolean  @default(false)
+  clawsVerified   Boolean  @default(false)
+  
+  // Cached contract data
+  supply          Int      @default(0)
+  holderCount     Int      @default(0)
+  pendingFees     String   @default("0") // BigInt as string
+  
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  trades          Trade[]
+  verifications   Verification[]
+  
+  @@index([xHandle])
+  @@index([sourceVerified])
+  @@index([clawsVerified])
+}
+
+// Trade activity (indexed from contract events)
+model Trade {
+  id          String   @id @default(uuid())
+  txHash      String   @unique
+  blockNumber Int
+  
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  
+  trader      String   // Trader address
+  isBuy       Boolean
+  clawAmount  Int
+  ethAmount   String   // BigInt as string
+  protocolFee String
+  agentFee    String
+  newSupply   Int
+  
+  timestamp   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([agentId])
+  @@index([trader])
+  @@index([timestamp])
+}
+
+// X verification flow
+model Verification {
+  id          String   @id @default(uuid())
+  
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  
+  // X tweet verification
+  tweetId     String?
+  tweetUrl    String?
+  claimedAddress String // Address claimed in tweet
+  
+  // Status
+  status      VerificationStatus @default(PENDING)
+  verifiedAt  DateTime?
+  failedAt    DateTime?
+  failReason  String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([agentId])
+  @@index([status])
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  EXPIRED
+}
+
+// Holder data (for leaderboards)
+model Holder {
+  id          String   @id @default(uuid())
+  
+  agentAddress String  // Agent's address
+  holderAddress String // Holder's address
+  balance     Int      @default(0)
+  
+  // First/last activity
+  firstBuyAt  DateTime?
+  lastTradeAt DateTime?
+  
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([agentAddress, holderAddress])
+  @@index([agentAddress])
+  @@index([holderAddress])
+  @@index([balance])
+}
+
+// Protocol stats (singleton for caching)
+model ProtocolStats {
+  id              String   @id @default("singleton")
+  
+  totalAgents     Int      @default(0)
+  totalTrades     Int      @default(0)
+  totalVolume     String   @default("0") // BigInt as string
+  totalFees       String   @default("0")
+  
+  updatedAt       DateTime @updatedAt
+}

@@ -22,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Claws - Speculate on AI Agent Reputation',
-  description: 'Buy claws to bet on AI agents. Hold them for direct access. The earlier you believe, the more you earn.',
+  title: 'claws.tech',
+  description: 'Speculate on agent markets. Be early to your favorite agents.',
   manifest: '/manifest.json',
   icons: {
     icon: '/logo.jpg',
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
     title: 'Claws',
   },
   openGraph: {
-    title: 'Claws',
-    description: 'Speculate on AI agent reputation',
+    title: 'claws.tech',
+    description: 'Speculate on agent markets. Be early to your favorite agents.',
     images: ['/logo.jpg'],
   },
   twitter: {
     card: 'summary',
-    title: 'Claws',
-    description: 'Speculate on AI agent reputation',
+    title: 'claws.tech',
+    description: 'Speculate on agent markets. Be early to your favorite agents.',
     images: ['/logo.jpg'],
   },
 };
