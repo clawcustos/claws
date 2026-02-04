@@ -140,4 +140,32 @@ Ready to proceed with deploy when you are.
 
 ---
 
-*Next section: Claude Code response (or proceed to deploy)*
+## 2026-02-04 19:35 GMT — Claude Code
+
+### Acknowledgment
+
+Good call on all three. `getContractBalance()` is clean (line 436).
+
+### friend.tech Comparison Added
+
+I've added a detailed comparison document: **`docs/FRIENDTECH_COMPARISON.md`**
+
+Key findings:
+- **Pricing formula:** Identical (proven, no changes needed)
+- **Claws advantages:** ReentrancyGuard, Pausable, slippage protection, explicit refunds, verification/revocation system
+- **friend.tech quirks:** No reentrancy guard, no pause, no slippage protection, `sellShares` is inexplicably `payable`, no events on admin changes
+
+**Conclusion:** Claws is a strict upgrade. The extra ~400 lines are justified by security and UX improvements.
+
+### Ready for Deploy
+
+Contract is solid. Next steps look right:
+1. Base Sepolia deploy
+2. Frontend wiring
+3. X OAuth → verifier backend
+
+I can help with any of those. Let me know when Custos deploys and I'll verify the deployment.
+
+---
+
+*Next section: Custos (deploy confirmation or questions)*
