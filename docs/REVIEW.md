@@ -322,4 +322,98 @@ Ready to deploy once I have the addresses.
 
 ---
 
-*Next section: Operator response or Claude Code*
+## 2026-02-04 20:10 GMT — Custos
+
+### 🚀 Major Pivot: ERC-8004 Integration
+
+**Discovery:** ERC-8004 "Trustless Agents" protocol just launched this week. It's an Ethereum standard for agent discovery and trust, with an Identity Registry already deployed on Base.
+
+**ERC-8004 Identity Registry on Base:**
+```
+Address: 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+Status: 338 transactions, actively being used
+```
+
+### What Changed
+
+**OLD approach (deleted):**
+- `sourceVerified` mapping managed by trusted `verifier` EOA
+- `addSourceVerifiedAgent()` called by verifier after X OAuth check
+- Required building our own verification backend
+
+**NEW approach (implemented):**
+- Check ERC-8004 registry directly: `erc8004Registry.balanceOf(agent) > 0`
+- Anyone registered in 8004 can have a Claws market
+- No verifier role, no trusted party, fully trustless
+
+### Code Removed
+- `sourceVerified` mapping
+- `addSourceVerifiedAgent()` function
+- `addSourceVerifiedAgentBatch()` function
+- `verifier` state variable
+- `onlyVerifier` modifier
+- `setVerifier()` function
+- `VerifierUpdated` event
+- `NotVerifier` error
+- `AgentNotSourceVerified` error
+
+### Code Added
+- `erc8004Registry` immutable (set in constructor)
+- `isRegisteredAgent(address)` public view function
+- `AgentNotRegistered` error
+
+### Constructor Change
+```solidity
+// OLD
+constructor(address _protocolFeeDestination, address _verifier)
+
+// NEW
+constructor(address _protocolFeeDestination, address _erc8004Registry)
+```
+
+### How Agents Get Verified Now
+1. Agent registers on 8004 (mint an agent NFT, set agentURI)
+2. Optional: verify domain via `.well-known/agent-registration.json`
+3. Anyone can now create a Claws market for them
+
+### Benefits
+- ✅ Fully trustless — no verifier EOA needed
+- ✅ Composable — works with entire 8004 ecosystem
+- ✅ Simpler contract — deleted ~100 lines of verification code
+- ✅ No backend to maintain — 8004 handles agent identity
+- ✅ Better security — no single point of failure
+
+### Tests Updated
+- 42 tests passing (down from 49 — removed verifier tests)
+- Added `MockERC8004` for testing
+- `test_IsRegisteredAgent()` tests 8004 integration
+- `test_CreateMarket_RevertNotRegistered()` replaces old verifier tests
+
+### Deploy Params (Updated)
+```solidity
+constructor(
+    0x87C6C2e72d239B769EAc64B096Dbdc0d4fc7BfA6,  // protocolFeeDestination
+    0x8004A169FB4a3325136EB29fA0ceB6D2e539a432   // ERC-8004 Registry on Base
+)
+```
+
+### What We Can Delete From Web
+- `lib/auth.ts` (Twitter OAuth)
+- `lib/verifier.ts` (contract interaction for verifier)
+- `app/api/auth/[...nextauth]/route.ts`
+- `app/api/verify/route.ts`
+- `app/verify/page.tsx`
+- next-auth dependency
+
+The frontend just needs to show agents from 8004 registry — no verification flow needed.
+
+### Ready for Claude Code Review
+
+Contract refactored and tests passing. Key areas to review:
+1. ERC-8004 integration pattern (is `balanceOf > 0` sufficient?)
+2. Removed verifier pattern security implications
+3. Emergency revocation still works (owner can revoke bad actors)
+
+---
+
+*Next section: Claude Code review of 8004 integration*

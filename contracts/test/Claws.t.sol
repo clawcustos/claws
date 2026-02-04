@@ -3,12 +3,37 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Claws} from "../src/Claws.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
+// Mock ERC-8004 Registry
+contract MockERC8004 is IERC721 {
+    mapping(address => uint256) private _balances;
+    
+    function setBalance(address account, uint256 balance) external {
+        _balances[account] = balance;
+    }
+    
+    function balanceOf(address owner) external view override returns (uint256) {
+        return _balances[owner];
+    }
+    
+    // Unused but required by interface
+    function ownerOf(uint256) external pure override returns (address) { return address(0); }
+    function safeTransferFrom(address, address, uint256, bytes calldata) external pure override {}
+    function safeTransferFrom(address, address, uint256) external pure override {}
+    function transferFrom(address, address, uint256) external pure override {}
+    function approve(address, uint256) external pure override {}
+    function setApprovalForAll(address, bool) external pure override {}
+    function getApproved(uint256) external pure override returns (address) { return address(0); }
+    function isApprovedForAll(address, address) external pure override returns (bool) { return false; }
+    function supportsInterface(bytes4) external pure override returns (bool) { return true; }
+}
 
 contract ClawsTest is Test {
     Claws public claws;
+    MockERC8004 public registry;
     
     address public owner = address(1);
-    address public verifier = address(2);
     address public treasury = address(3);
     address public agent1 = address(4);
     address public agent2 = address(5);
@@ -16,8 +41,12 @@ contract ClawsTest is Test {
     address public trader2 = address(7);
     
     function setUp() public {
+        // Deploy mock registry
+        registry = new MockERC8004();
+        
+        // Deploy Claws with registry
         vm.prank(owner);
-        claws = new Claws(treasury, verifier);
+        claws = new Claws(treasury, address(registry));
         
         // Fund accounts
         vm.deal(agent1, 10 ether);
@@ -30,73 +59,36 @@ contract ClawsTest is Test {
     
     function test_Deployment() public view {
         assertEq(claws.owner(), owner);
-        assertEq(claws.verifier(), verifier);
         assertEq(claws.protocolFeeDestination(), treasury);
         assertEq(claws.protocolFeePercent(), 50000000000000000); // 5%
         assertEq(claws.agentFeePercent(), 50000000000000000); // 5%
+        assertEq(address(claws.erc8004Registry()), address(registry));
     }
     
-    // ============ Source Verification ============
+    // ============ 8004 Registration ============
     
-    function test_AddSourceVerifiedAgent() public {
-        vm.prank(verifier);
-        claws.addSourceVerifiedAgent(agent1, "agent1_x", "moltbook_123");
+    function test_IsRegisteredAgent() public {
+        assertFalse(claws.isRegisteredAgent(agent1));
         
-        assertTrue(claws.sourceVerified(agent1));
-        assertEq(claws.agentXHandle(agent1), "agent1_x");
-        assertEq(claws.agentMoltbookId(agent1), "moltbook_123");
-    }
-    
-    function test_AddSourceVerifiedAgent_ByOwner() public {
-        vm.prank(owner);
-        claws.addSourceVerifiedAgent(agent1, "agent1_x", "");
-        
-        assertTrue(claws.sourceVerified(agent1));
-    }
-    
-    function test_AddSourceVerifiedAgent_RevertNotVerifier() public {
-        vm.prank(trader1);
-        vm.expectRevert(Claws.NotVerifier.selector);
-        claws.addSourceVerifiedAgent(agent1, "agent1_x", "");
-    }
-    
-    function test_AddSourceVerifiedAgentBatch() public {
-        address[] memory agents = new address[](2);
-        agents[0] = agent1;
-        agents[1] = agent2;
-        
-        string[] memory handles = new string[](2);
-        handles[0] = "agent1_x";
-        handles[1] = "agent2_x";
-        
-        string[] memory moltbookIds = new string[](2);
-        moltbookIds[0] = "molt_1";
-        moltbookIds[1] = "molt_2";
-        
-        vm.prank(verifier);
-        claws.addSourceVerifiedAgentBatch(agents, handles, moltbookIds);
-        
-        assertTrue(claws.sourceVerified(agent1));
-        assertTrue(claws.sourceVerified(agent2));
+        registry.setBalance(agent1, 1);
+        assertTrue(claws.isRegisteredAgent(agent1));
     }
     
     // ============ Revocation ============
     
     function test_RevokeAgent() public {
-        vm.prank(verifier);
-        claws.addSourceVerifiedAgent(agent1, "agent1_x", "");
+        registry.setBalance(agent1, 1);
         
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.revokeAgent(agent1, "compromised account");
         
         assertTrue(claws.revoked(agent1));
     }
     
     function test_RevokeAgent_BlocksMarketCreation() public {
-        vm.prank(verifier);
-        claws.addSourceVerifiedAgent(agent1, "agent1_x", "");
+        registry.setBalance(agent1, 1);
         
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.revokeAgent(agent1, "compromised");
         
         uint256 maxCost = 1 ether;
@@ -108,7 +100,7 @@ contract ClawsTest is Test {
     function test_RevokeAgent_BlocksVerifyAndClaim() public {
         _setupMarket(agent1);
         
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.revokeAgent(agent1, "compromised");
         
         vm.prank(agent1);
@@ -119,7 +111,7 @@ contract ClawsTest is Test {
     function test_RevokeAgent_ExistingMarketsCanStillTrade() public {
         _setupMarket(agent1);
         
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.revokeAgent(agent1, "compromised");
         
         // Can still buy (market already exists)
@@ -131,14 +123,13 @@ contract ClawsTest is Test {
     }
     
     function test_UnrevokeAgent() public {
-        vm.prank(verifier);
-        claws.addSourceVerifiedAgent(agent1, "agent1_x", "");
+        registry.setBalance(agent1, 1);
         
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.revokeAgent(agent1, "suspected compromise");
         assertTrue(claws.revoked(agent1));
         
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.unrevokeAgent(agent1);
         assertFalse(claws.revoked(agent1));
         
@@ -163,7 +154,7 @@ contract ClawsTest is Test {
         claws.verifyAndClaim();
         
         // Now agent gets revoked
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.revokeAgent(agent1, "compromised");
         
         // Agent should still be able to sell their claw to exit
@@ -180,9 +171,8 @@ contract ClawsTest is Test {
     // ============ Market Creation ============
     
     function test_CreateMarket() public {
-        // Add source-verified agent
-        vm.prank(verifier);
-        claws.addSourceVerifiedAgent(agent1, "agent1_x", "");
+        // Register agent in 8004
+        registry.setBalance(agent1, 1);
         
         // Trader creates market by buying first claw
         uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
@@ -195,11 +185,12 @@ contract ClawsTest is Test {
         assertTrue(claws.marketExists(agent1));
     }
     
-    function test_CreateMarket_RevertNotSourceVerified() public {
+    function test_CreateMarket_RevertNotRegistered() public {
+        // agent1 not registered in 8004
         uint256 maxCost = 0.001 ether;
         
         vm.prank(trader1);
-        vm.expectRevert(Claws.AgentNotSourceVerified.selector);
+        vm.expectRevert(Claws.AgentNotRegistered.selector);
         claws.buyClaws{value: maxCost}(agent1, 1, maxCost);
     }
     
@@ -255,7 +246,7 @@ contract ClawsTest is Test {
     function test_SellClaws() public {
         _setupMarket(agent1);
         
-        // Buy more claws first (for agent1)
+        // Buy more claws first
         uint256 buyPrice = claws.getBuyPriceAfterFee(agent1, 2);
         vm.prank(trader1);
         claws.buyClaws{value: buyPrice}(agent1, 2, buyPrice);
@@ -292,8 +283,7 @@ contract ClawsTest is Test {
         vm.prank(trader2);
         claws.buyClaws{value: price2}(agent1, 1, price2);
         
-        // Supply is now 6, trader2 has 1
-        // trader2 tries to sell 2 (more than they have, supply > amount so passes first check)
+        // trader2 tries to sell 2 (more than they have)
         vm.prank(trader2);
         vm.expectRevert(Claws.InsufficientClaws.selector);
         claws.sellClaws(agent1, 2, 0);
@@ -317,14 +307,14 @@ contract ClawsTest is Test {
         
         // Try to sell with unrealistic minProceeds
         uint256 actualProceeds = claws.getSellPriceAfterFee(agent1, 1);
-        uint256 highMinProceeds = actualProceeds + 1 ether; // Way too high
+        uint256 highMinProceeds = actualProceeds + 1 ether;
         
         vm.prank(trader1);
         vm.expectRevert(Claws.SlippageExceeded.selector);
         claws.sellClaws(agent1, 1, highMinProceeds);
     }
     
-    // ============ Agent Verification & Claim ============
+    // ============ Agent Claim ============
     
     function test_VerifyAndClaim() public {
         _setupMarket(agent1);
@@ -404,7 +394,7 @@ contract ClawsTest is Test {
         claws.verifyAndClaim();
         
         // Then gets revoked
-        vm.prank(verifier);
+        vm.prank(owner);
         claws.revokeAgent(agent1, "compromised");
         
         uint256 agentBalanceBefore = agent1.balance;
@@ -448,7 +438,7 @@ contract ClawsTest is Test {
         _setupMarket(agent1);
         
         (
-            bool sourceV,
+            bool isReg,
             bool clawsV,
             bool revokedStatus,
             bool claimed,
@@ -456,7 +446,7 @@ contract ClawsTest is Test {
             uint256 supply
         ) = claws.getAgentStatus(agent1);
         
-        assertTrue(sourceV);
+        assertTrue(isReg);
         assertFalse(clawsV);
         assertFalse(revokedStatus);
         assertFalse(claimed);
@@ -470,19 +460,6 @@ contract ClawsTest is Test {
         _setupMarket(agent1);
         
         vm.prank(owner);
-        claws.pause();
-        
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        
-        vm.prank(trader2);
-        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        claws.buyClaws{value: price}(agent1, 1, price);
-    }
-    
-    function test_Pause_ByVerifier() public {
-        _setupMarket(agent1);
-        
-        vm.prank(verifier);
         claws.pause();
         
         uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
@@ -509,38 +486,13 @@ contract ClawsTest is Test {
         assertEq(claws.clawsBalance(agent1, trader2), 1);
     }
     
-    function test_Unpause_RevertNotOwner() public {
-        vm.prank(owner);
-        claws.pause();
-        
-        // Verifier can pause but not unpause
-        vm.prank(verifier);
-        vm.expectRevert(Claws.NotOwner.selector);
-        claws.unpause();
-    }
-    
-    function test_Pause_RevertNotVerifier() public {
+    function test_Pause_RevertNotOwner() public {
         vm.prank(trader1);
-        vm.expectRevert(Claws.NotVerifier.selector);
+        vm.expectRevert(Claws.NotOwner.selector);
         claws.pause();
     }
     
     // ============ Admin ============
-    
-    function test_SetVerifier() public {
-        address newVerifier = address(99);
-        
-        vm.prank(owner);
-        claws.setVerifier(newVerifier);
-        
-        assertEq(claws.verifier(), newVerifier);
-    }
-    
-    function test_SetVerifier_RevertNotOwner() public {
-        vm.prank(trader1);
-        vm.expectRevert(Claws.NotOwner.selector);
-        claws.setVerifier(address(99));
-    }
     
     function test_TransferOwnership() public {
         address newOwner = address(99);
@@ -714,8 +666,7 @@ contract ClawsTest is Test {
         // Price should always be >= 0
         assertGe(price, 0);
         
-        // If supply > 0 and amount > 0, price should generally be > 0
-        // (except for very small values where rounding to 0 is expected)
+        // If supply > 10 and amount > 0, price should generally be > 0
         if (supply > 10 && amount > 0) {
             assertGt(price, 0);
         }
@@ -738,9 +689,8 @@ contract ClawsTest is Test {
     // ============ Helpers ============
     
     function _setupMarket(address agent) internal {
-        // Add source verification
-        vm.prank(verifier);
-        claws.addSourceVerifiedAgent(agent, "agent_x", "molt_123");
+        // Register agent in 8004
+        registry.setBalance(agent, 1);
         
         // Create market
         uint256 price = claws.getBuyPriceAfterFee(agent, 1);
