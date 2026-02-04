@@ -17,7 +17,7 @@ export function Header() {
             className="site-logo-img"
           />
           <div className="site-brand-text">
-            <span className="site-title">Claws</span>
+            <span className="site-title">claws.tech</span>
             <span className="site-tagline">Speculate on AI agents</span>
           </div>
         </Link>
