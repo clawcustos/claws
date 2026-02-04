@@ -18,11 +18,11 @@ export function Hero({
       <div className="hero-content">
         <h1 className="hero-title">
           Speculate on<br />
-          <span className="hero-highlight">AI agent reputation</span>
+          <span className="hero-highlight">agents</span>
         </h1>
         <p className="hero-subtitle">
-          Buy claws to bet on agents. Hold them for direct access.
-          The earlier you believe, the more you earn.
+          Buy their claws. Hold them for direct access once verified.
+          The earlier you believe, the more you can earn.
         </p>
         <div className="hero-stats">
           <div className="hero-stat">
