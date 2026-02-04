@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title Claws
@@ -14,8 +15,11 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * 3. Trading happens, fees accumulate for agent
  * 4. Agent verifies on claws.tech → claims free reserved claw + accumulated fees
  * 5. Agent earns 5% on all future trades
+ *
+ * Supply cap: ~2.6e8 claws per agent before overflow (sum of cubes formula)
+ * This is practically unreachable but documented for auditors.
  */
-contract Claws is ReentrancyGuard {
+contract Claws is ReentrancyGuard, Pausable {
     // ============ State ============
 
     /// @notice Total claws supply for each agent
@@ -29,6 +33,9 @@ contract Claws is ReentrancyGuard {
 
     /// @notice Agent verified on claws.tech - enables fee claims
     mapping(address => bool) public clawsVerified;
+
+    /// @notice Agent has been revoked (compromised account, etc)
+    mapping(address => bool) public revoked;
 
     /// @notice Agent has claimed their reserved free claw
     mapping(address => bool) public reservedClawClaimed;
@@ -61,6 +68,8 @@ contract Claws is ReentrancyGuard {
 
     event AgentSourceVerified(address indexed agent, string xHandle, string moltbookId);
     event AgentClawsVerified(address indexed agent);
+    event AgentRevoked(address indexed agent, string reason);
+    event AgentUnrevoked(address indexed agent);
     event ReservedClawClaimed(address indexed agent);
     event FeesClaimed(address indexed agent, uint256 amount);
     event MarketCreated(address indexed agent, address indexed creator);
@@ -87,6 +96,7 @@ contract Claws is ReentrancyGuard {
     error NotAgent();
     error AgentNotSourceVerified();
     error AgentNotClawsVerified();
+    error AgentIsRevoked();
     error AlreadyClaimed();
     error NoMarketExists();
     error MarketAlreadyExists();
@@ -97,6 +107,8 @@ contract Claws is ReentrancyGuard {
     error FeesTooHigh();
     error ZeroAddress();
     error NoPendingFees();
+    error SlippageExceeded();
+    error ZeroAmount();
 
     // ============ Modifiers ============
 
@@ -160,14 +172,37 @@ contract Claws is ReentrancyGuard {
         }
     }
 
+    /**
+     * @notice Revoke an agent's verification (compromised account, abuse, etc)
+     * @dev Prevents new market creation and fee claims. Existing markets can still trade.
+     * @param agent The agent's wallet address
+     * @param reason Human-readable reason for revocation
+     */
+    function revokeAgent(address agent, string calldata reason) external onlyVerifier {
+        revoked[agent] = true;
+        emit AgentRevoked(agent, reason);
+    }
+
+    /**
+     * @notice Un-revoke an agent (false positive, issue resolved, etc)
+     * @param agent The agent's wallet address
+     */
+    function unrevokeAgent(address agent) external onlyVerifier {
+        revoked[agent] = false;
+        emit AgentUnrevoked(agent);
+    }
+
     // ============ Agent Verification (Claws.tech) ============
 
     /**
      * @notice Agent verifies on claws.tech to claim reserved claw and enable fees
      * @dev Agent must call this themselves (proves wallet ownership)
      */
-    function verifyAndClaim() external nonReentrant {
+    function verifyAndClaim() external nonReentrant whenNotPaused {
         address agent = msg.sender;
+        
+        // Must not be revoked
+        if (revoked[agent]) revert AgentIsRevoked();
         
         // Must have a market (someone bought claws)
         if (clawsSupply[agent] == 0) revert NoMarketExists();
@@ -201,6 +236,7 @@ contract Claws is ReentrancyGuard {
     /**
      * @notice Calculate price for a given supply and amount
      * @dev Uses sum of squares formula: price = supply² / 16000
+     *      First claw is free (supply=0 returns 0) - intentional, same as friend.tech
      * @param supply Current supply
      * @param amount Amount to buy/sell
      * @return Total price in wei
@@ -268,13 +304,17 @@ contract Claws is ReentrancyGuard {
      * @dev First buy creates the market (agent must be source-verified)
      * @param agent The agent address
      * @param amount Number of claws to buy
+     * @param maxCost Maximum total cost willing to pay (slippage protection)
      */
-    function buyClaws(address agent, uint256 amount) external payable nonReentrant {
+    function buyClaws(address agent, uint256 amount, uint256 maxCost) external payable nonReentrant whenNotPaused {
+        if (amount == 0) revert ZeroAmount();
+        
         uint256 supply = clawsSupply[agent];
 
-        // First buy creates market - requires source verification
+        // First buy creates market - requires source verification and not revoked
         if (supply == 0) {
             if (!sourceVerified[agent]) revert AgentNotSourceVerified();
+            if (revoked[agent]) revert AgentIsRevoked();
             emit MarketCreated(agent, msg.sender);
         }
 
@@ -283,6 +323,8 @@ contract Claws is ReentrancyGuard {
         uint256 agentFee = price * agentFeePercent / 1 ether;
         uint256 totalCost = price + protocolFee + agentFee;
 
+        // Slippage check
+        if (totalCost > maxCost) revert SlippageExceeded();
         if (msg.value < totalCost) revert InsufficientPayment();
 
         // Update state before transfers
@@ -294,8 +336,8 @@ contract Claws is ReentrancyGuard {
         // Transfer protocol fee
         _safeTransfer(protocolFeeDestination, protocolFee);
 
-        // Agent fee: direct if claws-verified, otherwise accumulate
-        if (clawsVerified[agent]) {
+        // Agent fee: direct if claws-verified and not revoked, otherwise accumulate
+        if (clawsVerified[agent] && !revoked[agent]) {
             _safeTransfer(agent, agentFee);
         } else {
             pendingFees[agent] += agentFee;
@@ -312,8 +354,11 @@ contract Claws is ReentrancyGuard {
      * @notice Sell claws of an agent
      * @param agent The agent address
      * @param amount Number of claws to sell
+     * @param minProceeds Minimum proceeds expected (slippage protection)
      */
-    function sellClaws(address agent, uint256 amount) external nonReentrant {
+    function sellClaws(address agent, uint256 amount, uint256 minProceeds) external nonReentrant whenNotPaused {
+        if (amount == 0) revert ZeroAmount();
+        
         uint256 supply = clawsSupply[agent];
 
         // Cannot sell the last claw (prevents complete drain)
@@ -327,6 +372,9 @@ contract Claws is ReentrancyGuard {
         uint256 agentFee = price * agentFeePercent / 1 ether;
         uint256 payout = price - protocolFee - agentFee;
 
+        // Slippage check
+        if (payout < minProceeds) revert SlippageExceeded();
+
         // Update state before transfers
         clawsBalance[agent][msg.sender] = balance - amount;
         clawsSupply[agent] = supply - amount;
@@ -339,8 +387,8 @@ contract Claws is ReentrancyGuard {
         // Transfer protocol fee
         _safeTransfer(protocolFeeDestination, protocolFee);
 
-        // Agent fee: direct if claws-verified, otherwise accumulate
-        if (clawsVerified[agent]) {
+        // Agent fee: direct if claws-verified and not revoked, otherwise accumulate
+        if (clawsVerified[agent] && !revoked[agent]) {
             _safeTransfer(agent, agentFee);
         } else {
             pendingFees[agent] += agentFee;
@@ -373,6 +421,7 @@ contract Claws is ReentrancyGuard {
      * @param agent The agent address
      * @return _sourceVerified Is verified on moltbook/X
      * @return _clawsVerified Has verified on claws.tech
+     * @return _revoked Has been revoked
      * @return _reservedClawClaimed Has claimed free claw
      * @return _pendingFees Unclaimed accumulated fees
      * @return _supply Total claws supply
@@ -380,6 +429,7 @@ contract Claws is ReentrancyGuard {
     function getAgentStatus(address agent) external view returns (
         bool _sourceVerified,
         bool _clawsVerified,
+        bool _revoked,
         bool _reservedClawClaimed,
         uint256 _pendingFees,
         uint256 _supply
@@ -387,6 +437,7 @@ contract Claws is ReentrancyGuard {
         return (
             sourceVerified[agent],
             clawsVerified[agent],
+            revoked[agent],
             reservedClawClaimed[agent],
             pendingFees[agent],
             clawsSupply[agent]
@@ -436,6 +487,22 @@ contract Claws is ReentrancyGuard {
         protocolFeePercent = _protocolFee;
         agentFeePercent = _agentFee;
         emit FeesUpdated(_protocolFee, _agentFee);
+    }
+
+    /**
+     * @notice Pause all trading (emergency stop)
+     * @dev Both owner and verifier can pause for faster emergency response
+     */
+    function pause() external onlyVerifier {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause trading
+     * @dev Only owner can unpause (verifier can pause but not unpause)
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     // ============ Internal ============
