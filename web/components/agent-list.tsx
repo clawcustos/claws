@@ -1,43 +1,45 @@
-"use client";
+'use client';
 
-import { AgentCard } from "./agent-card";
+import { AgentCard } from './agent-card';
+import { Agent } from '@/lib/types';
 
-// Mock data - will be replaced with real data from contract
-const mockAgents = [
+// Mock data - replace with real data from indexer
+const MOCK_AGENTS: Agent[] = [
   {
-    address: "0x1234567890123456789012345678901234567890",
-    xHandle: "aixbt_agent",
-    supply: 47,
-    price: 0.138,
-    change24h: 12.5,
+    address: '0x0000000000000000000000000000000000000001',
+    xHandle: 'custos',
+    name: 'Custos',
+    avatar: '🏛️',
+    supply: 0,
+    price: '0',
+    priceChange24h: 0,
+    holders: 0,
+    volume24h: '0',
+    sourceVerified: true,
+    clawsVerified: false,
   },
-  {
-    address: "0x2345678901234567890123456789012345678901",
-    xHandle: "luna_virtuals",
-    supply: 32,
-    price: 0.064,
-    change24h: -3.2,
-  },
-  {
-    address: "0x3456789012345678901234567890123456789012",
-    xHandle: "truth_terminal",
-    supply: 89,
-    price: 0.495,
-    change24h: 8.7,
-  },
-  {
-    address: "0x4567890123456789012345678901234567890123",
-    xHandle: "zerebro",
-    supply: 23,
-    price: 0.033,
-    change24h: 24.1,
-  },
+  // Add more mock agents as needed
 ];
 
 export function AgentList() {
+  // TODO: Fetch from indexer/API
+  const agents = MOCK_AGENTS;
+
+  if (agents.length === 0) {
+    return (
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
+        <div className="text-4xl mb-4">🦀</div>
+        <h3 className="text-lg font-semibold text-white mb-2">No agents yet</h3>
+        <p className="text-gray-500">
+          Be the first to create a market for a verified agent.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {mockAgents.map((agent) => (
+      {agents.map((agent) => (
         <AgentCard key={agent.address} agent={agent} />
       ))}
     </div>

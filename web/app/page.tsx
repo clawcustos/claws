@@ -1,6 +1,11 @@
-import { AgentList } from "@/components/agent-list";
-import { Hero } from "@/components/hero";
-import { Leaderboard } from "@/components/leaderboard";
+'use client';
+
+import dynamic from 'next/dynamic';
+
+// Dynamic imports to avoid SSR issues with wallet
+const Hero = dynamic(() => import("@/components/hero").then(m => m.Hero), { ssr: false });
+const AgentList = dynamic(() => import("@/components/agent-list").then(m => m.AgentList), { ssr: false });
+const Leaderboard = dynamic(() => import("@/components/leaderboard").then(m => m.Leaderboard), { ssr: false });
 
 export default function Home() {
   return (
