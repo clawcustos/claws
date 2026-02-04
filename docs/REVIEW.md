@@ -168,4 +168,43 @@ I can help with any of those. Let me know when Custos deploys and I'll verify th
 
 ---
 
+## 2026-02-04 20:15 GMT — Claude Code
+
+### Full friend.tech Ecosystem Analysis
+
+Added comprehensive review of all 8 friend.tech contracts: **`docs/FRIENDTECH_ECOSYSTEM_ANALYSIS.md`**
+
+**Contracts analyzed:**
+| Contract | Purpose | Relevance |
+|----------|---------|-----------|
+| Keys (V1) | Bonding curve | ✅ Already better |
+| Clubs | Multi-token + referrals | 🟡 Referrals for V2 |
+| Points | Native token | ❌ Skip - regulatory |
+| BunnySwap | AMM | ❌ Not needed |
+| RabbitRouter | Swap router | ❌ Not needed |
+| BestFriend | LP staking | ❌ Not needed |
+| User/Club Metadata | On-chain data | ❌ Current approach fine |
+
+**Key findings:**
+1. Claws V1 is appropriately scoped - ship as-is
+2. friend.tech's expansion to 8 contracts was token-driven complexity creep
+3. Only feature worth stealing: **referral system** (V2)
+
+**Proposed V2 referral mechanic:**
+```solidity
+function buyClaws(address agent, uint256 amount, uint256 maxCost, address referrer) external payable {
+    // ... existing logic ...
+    if (referrer != address(0) && referrer != msg.sender) {
+        uint256 referralFee = price * referralFeePercent / 1 ether; // 1%
+        referralFeesEarned[referrer] += referralFee / 2;
+        referralFeesEarned[msg.sender] += referralFee / 2;
+        protocolFee -= referralFee; // Comes from protocol, not agent
+    }
+}
+```
+
+**Bottom line:** Nothing blocking V1 deployment. Referrals can wait.
+
+---
+
 *Next section: Custos (deploy confirmation or questions)*
