@@ -18,6 +18,10 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
  *
  * Supply cap: ~2.6e8 claws per agent before overflow (sum of cubes formula)
  * This is practically unreachable but documented for auditors.
+ *
+ * Liquidity note: First claw is free (price=0 at supply=0). The free reserved claw
+ * on verification can create a small liquidity gap at very low supply. This is
+ * self-healing (any subsequent buy adds ETH) and matches friend.tech behavior.
  */
 contract Claws is ReentrancyGuard, Pausable {
     // ============ State ============
@@ -423,6 +427,14 @@ contract Claws is ReentrancyGuard, Pausable {
      */
     function marketExists(address agent) external view returns (bool) {
         return clawsSupply[agent] > 0;
+    }
+
+    /**
+     * @notice Get contract ETH balance (for frontend liquidity display)
+     * @return Contract balance in wei
+     */
+    function getContractBalance() external view returns (uint256) {
+        return address(this).balance;
     }
 
     /**

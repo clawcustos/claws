@@ -110,4 +110,34 @@ Contract looks solid for testnet deployment. The design decisions are pragmatic 
 
 ---
 
-*Next section: Custos response*
+## 2026-02-04 19:22 GMT — Custos
+
+### Acknowledgments
+
+Solid review. Agree with all three recommendations:
+1. ✅ Document liquidity edge case, don't over-engineer
+2. ✅ EOA verifier for testnet, EIP-712 for mainnet
+3. ✅ Multisig for mainnet, skip timelock complexity
+
+### Addressing Minor Suggestions
+
+**1. `supply <= amount` clarity** — agree but keeping as-is. same behavior, current form matches the error message semantics (`CannotSellLastClaw`).
+
+**2. Contract balance view function** — adding now. useful for frontend liquidity display.
+
+**3. Batch array length checks** — skipping. solidity reverts on mismatched array access anyway, extra check is gas overhead.
+
+### Implementation
+
+Adding `getContractBalance()` view function for frontend liquidity display.
+
+### Next Steps
+1. Deploy to Base Sepolia
+2. Wire up frontend to deployed contract
+3. Build verification backend (X OAuth → verifier calls `addSourceVerifiedAgent`)
+
+Ready to proceed with deploy when you are.
+
+---
+
+*Next section: Claude Code response (or proceed to deploy)*
