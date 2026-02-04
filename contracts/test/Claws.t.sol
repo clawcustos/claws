@@ -607,6 +607,101 @@ contract ClawsTest is Test {
         assertGt(claws.pendingFees(agent1), 0);
     }
     
+    // ============ Lifetime Fees ============
+    
+    function test_LifetimeFees_IncrementOnBuy() public {
+        _setupMarket(agent1);
+        
+        uint256 lifetimeBefore = claws.lifetimeFees(agent1);
+        
+        uint256 price = claws.getBuyPriceAfterFee(agent1, 2);
+        uint256 basePrice = claws.getBuyPrice(agent1, 2);
+        uint256 expectedAgentFee = basePrice * claws.agentFeePercent() / 1 ether;
+        
+        vm.prank(trader2);
+        claws.buyClaws{value: price}(agent1, 2, price);
+        
+        assertEq(claws.lifetimeFees(agent1), lifetimeBefore + expectedAgentFee);
+    }
+    
+    function test_LifetimeFees_IncrementOnSell() public {
+        _setupMarket(agent1);
+        
+        // Buy some claws first
+        uint256 buyPrice = claws.getBuyPriceAfterFee(agent1, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyPrice}(agent1, 5, buyPrice);
+        
+        uint256 lifetimeBefore = claws.lifetimeFees(agent1);
+        
+        // Now sell
+        uint256 sellPrice = claws.getSellPrice(agent1, 2);
+        uint256 expectedAgentFee = sellPrice * claws.agentFeePercent() / 1 ether;
+        uint256 minProceeds = claws.getSellPriceAfterFee(agent1, 2);
+        
+        vm.prank(trader1);
+        claws.sellClaws(agent1, 2, minProceeds);
+        
+        assertEq(claws.lifetimeFees(agent1), lifetimeBefore + expectedAgentFee);
+    }
+    
+    function test_LifetimeFees_PersistAfterVerifyAndClaim() public {
+        _setupMarket(agent1);
+        
+        // Generate fees
+        uint256 price = claws.getBuyPriceAfterFee(agent1, 3);
+        vm.prank(trader2);
+        claws.buyClaws{value: price}(agent1, 3, price);
+        
+        uint256 lifetimeBefore = claws.lifetimeFees(agent1);
+        uint256 pendingBefore = claws.pendingFees(agent1);
+        
+        assertGt(lifetimeBefore, 0);
+        assertGt(pendingBefore, 0);
+        
+        // Agent verifies and claims
+        vm.prank(agent1);
+        claws.verifyAndClaim();
+        
+        // Lifetime fees unchanged, pending fees reset
+        assertEq(claws.lifetimeFees(agent1), lifetimeBefore);
+        assertEq(claws.pendingFees(agent1), 0);
+    }
+    
+    function test_LifetimeFees_AccumulateAcrossMultipleTrades() public {
+        _setupMarket(agent1);
+        
+        uint256 totalExpectedFees = 0;
+        
+        // Multiple buys
+        for (uint i = 0; i < 3; i++) {
+            uint256 basePrice = claws.getBuyPrice(agent1, 1);
+            uint256 expectedFee = basePrice * claws.agentFeePercent() / 1 ether;
+            totalExpectedFees += expectedFee;
+            
+            uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
+            vm.prank(trader2);
+            claws.buyClaws{value: price}(agent1, 1, price);
+        }
+        
+        // Verify and claim (resets pending but not lifetime)
+        vm.prank(agent1);
+        claws.verifyAndClaim();
+        
+        // More trades after verification
+        for (uint i = 0; i < 2; i++) {
+            uint256 basePrice = claws.getBuyPrice(agent1, 1);
+            uint256 expectedFee = basePrice * claws.agentFeePercent() / 1 ether;
+            totalExpectedFees += expectedFee;
+            
+            uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
+            vm.prank(trader2);
+            claws.buyClaws{value: price}(agent1, 1, price);
+        }
+        
+        assertEq(claws.lifetimeFees(agent1), totalExpectedFees);
+    }
+    
     // ============ Fuzz Tests ============
     
     function testFuzz_BondingCurvePricing(uint256 supply, uint256 amount) public view {

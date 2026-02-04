@@ -43,6 +43,9 @@ contract Claws is ReentrancyGuard, Pausable {
     /// @notice Accumulated fees before agent verifies on claws.tech
     mapping(address => uint256) public pendingFees;
 
+    /// @notice Total lifetime fees accumulated for agent (never decremented)
+    mapping(address => uint256) public lifetimeFees;
+
     /// @notice Agent's X handle for display
     mapping(address => string) public agentXHandle;
 
@@ -342,6 +345,9 @@ contract Claws is ReentrancyGuard, Pausable {
         } else {
             pendingFees[agent] += agentFee;
         }
+        
+        // Track lifetime fees (append-only, never decremented)
+        lifetimeFees[agent] += agentFee;
 
         // Refund excess
         uint256 excess = msg.value - totalCost;
@@ -393,6 +399,9 @@ contract Claws is ReentrancyGuard, Pausable {
         } else {
             pendingFees[agent] += agentFee;
         }
+        
+        // Track lifetime fees (append-only, never decremented)
+        lifetimeFees[agent] += agentFee;
     }
 
     // ============ Views ============
