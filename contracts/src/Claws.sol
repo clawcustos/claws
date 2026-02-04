@@ -6,7 +6,14 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title Claws
  * @notice Speculation market for AI agent reputation
- * @dev Based on friend.tech bonding curve mechanics
+ * @dev Bonding curve mechanics with speculator-created markets
+ * 
+ * Flow:
+ * 1. Anyone can create market for moltbook/X verified agent
+ * 2. Market creator buys first claw, opens speculation
+ * 3. Trading happens, fees accumulate for agent
+ * 4. Agent verifies on claws.tech → claims free reserved claw + accumulated fees
+ * 5. Agent earns 5% on all future trades
  */
 contract Claws is ReentrancyGuard {
     // ============ State ============
@@ -17,11 +24,23 @@ contract Claws is ReentrancyGuard {
     /// @notice Claw balance for each holder per agent
     mapping(address => mapping(address => uint256)) public clawsBalance;
 
-    /// @notice Verified agents allowed to have claws
-    mapping(address => bool) public verifiedAgents;
+    /// @notice Agent verified on external source (moltbook/X) - allows market creation
+    mapping(address => bool) public sourceVerified;
+
+    /// @notice Agent verified on claws.tech - enables fee claims
+    mapping(address => bool) public clawsVerified;
+
+    /// @notice Agent has claimed their reserved free claw
+    mapping(address => bool) public reservedClawClaimed;
+
+    /// @notice Accumulated fees before agent verifies on claws.tech
+    mapping(address => uint256) public pendingFees;
 
     /// @notice Agent's X handle for display
     mapping(address => string) public agentXHandle;
+
+    /// @notice Agent's moltbook ID for reference
+    mapping(address => string) public agentMoltbookId;
 
     /// @notice Protocol fee percentage (in wei, 5e16 = 5%)
     uint256 public protocolFeePercent = 50000000000000000;
@@ -35,10 +54,17 @@ contract Claws is ReentrancyGuard {
     /// @notice Contract owner
     address public owner;
 
+    /// @notice Verifier role - can add source-verified agents
+    address public verifier;
+
     // ============ Events ============
 
-    event AgentVerified(address indexed agent, string xHandle);
-    event AgentUnverified(address indexed agent);
+    event AgentSourceVerified(address indexed agent, string xHandle, string moltbookId);
+    event AgentClawsVerified(address indexed agent);
+    event ReservedClawClaimed(address indexed agent);
+    event FeesClaimed(address indexed agent, uint256 amount);
+    event MarketCreated(address indexed agent, address indexed creator);
+    event VerifierUpdated(address indexed newVerifier);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event ProtocolFeeDestinationUpdated(address indexed newDestination);
     event FeesUpdated(uint256 protocolFee, uint256 agentFee);
@@ -57,14 +83,20 @@ contract Claws is ReentrancyGuard {
     // ============ Errors ============
 
     error NotOwner();
-    error AgentNotVerified();
-    error AgentMustBuyFirst();
+    error NotVerifier();
+    error NotAgent();
+    error AgentNotSourceVerified();
+    error AgentNotClawsVerified();
+    error AlreadyClaimed();
+    error NoMarketExists();
+    error MarketAlreadyExists();
     error InsufficientPayment();
     error InsufficientClaws();
     error CannotSellLastClaw();
     error TransferFailed();
     error FeesTooHigh();
     error ZeroAddress();
+    error NoPendingFees();
 
     // ============ Modifiers ============
 
@@ -73,35 +105,95 @@ contract Claws is ReentrancyGuard {
         _;
     }
 
+    modifier onlyVerifier() {
+        if (msg.sender != verifier && msg.sender != owner) revert NotVerifier();
+        _;
+    }
+
     // ============ Constructor ============
 
-    constructor(address _protocolFeeDestination) {
+    constructor(address _protocolFeeDestination, address _verifier) {
         if (_protocolFeeDestination == address(0)) revert ZeroAddress();
         owner = msg.sender;
         protocolFeeDestination = _protocolFeeDestination;
+        verifier = _verifier == address(0) ? msg.sender : _verifier;
     }
 
-    // ============ Verification ============
+    // ============ Source Verification (Moltbook/X) ============
 
     /**
-     * @notice Verify an agent to allow them to have claws
+     * @notice Mark an agent as verified on external source (moltbook/X)
+     * @dev Called by verifier after confirming agent identity off-chain
      * @param agent The agent's wallet address
      * @param xHandle The agent's X/Twitter handle
+     * @param moltbookId The agent's moltbook ID (optional)
      */
-    function verifyAgent(address agent, string calldata xHandle) external onlyOwner {
+    function addSourceVerifiedAgent(
+        address agent, 
+        string calldata xHandle,
+        string calldata moltbookId
+    ) external onlyVerifier {
         if (agent == address(0)) revert ZeroAddress();
-        verifiedAgents[agent] = true;
+        sourceVerified[agent] = true;
         agentXHandle[agent] = xHandle;
-        emit AgentVerified(agent, xHandle);
+        agentMoltbookId[agent] = moltbookId;
+        emit AgentSourceVerified(agent, xHandle, moltbookId);
     }
 
     /**
-     * @notice Remove verification from an agent
-     * @param agent The agent's wallet address
+     * @notice Batch add source-verified agents
+     * @param agents Array of agent addresses
+     * @param xHandles Array of X handles
+     * @param moltbookIds Array of moltbook IDs
      */
-    function unverifyAgent(address agent) external onlyOwner {
-        verifiedAgents[agent] = false;
-        emit AgentUnverified(agent);
+    function addSourceVerifiedAgentBatch(
+        address[] calldata agents,
+        string[] calldata xHandles,
+        string[] calldata moltbookIds
+    ) external onlyVerifier {
+        for (uint256 i = 0; i < agents.length; i++) {
+            if (agents[i] == address(0)) revert ZeroAddress();
+            sourceVerified[agents[i]] = true;
+            agentXHandle[agents[i]] = xHandles[i];
+            agentMoltbookId[agents[i]] = moltbookIds[i];
+            emit AgentSourceVerified(agents[i], xHandles[i], moltbookIds[i]);
+        }
+    }
+
+    // ============ Agent Verification (Claws.tech) ============
+
+    /**
+     * @notice Agent verifies on claws.tech to claim reserved claw and enable fees
+     * @dev Agent must call this themselves (proves wallet ownership)
+     */
+    function verifyAndClaim() external nonReentrant {
+        address agent = msg.sender;
+        
+        // Must have a market (someone bought claws)
+        if (clawsSupply[agent] == 0) revert NoMarketExists();
+        
+        // Must not have already verified
+        if (clawsVerified[agent]) revert AlreadyClaimed();
+        
+        // Mark as verified on claws
+        clawsVerified[agent] = true;
+        emit AgentClawsVerified(agent);
+        
+        // Claim reserved claw (free)
+        if (!reservedClawClaimed[agent]) {
+            reservedClawClaimed[agent] = true;
+            clawsBalance[agent][agent] += 1;
+            clawsSupply[agent] += 1;
+            emit ReservedClawClaimed(agent);
+        }
+        
+        // Claim pending fees
+        uint256 pending = pendingFees[agent];
+        if (pending > 0) {
+            pendingFees[agent] = 0;
+            _safeTransfer(agent, pending);
+            emit FeesClaimed(agent, pending);
+        }
     }
 
     // ============ Pricing ============
@@ -139,6 +231,7 @@ contract Claws is ReentrancyGuard {
      * @return Price in wei (before fees)
      */
     function getSellPrice(address agent, uint256 amount) public view returns (uint256) {
+        if (clawsSupply[agent] < amount) return 0;
         return getPrice(clawsSupply[agent] - amount, amount);
     }
 
@@ -172,16 +265,18 @@ contract Claws is ReentrancyGuard {
 
     /**
      * @notice Buy claws of an agent
+     * @dev First buy creates the market (agent must be source-verified)
      * @param agent The agent address
      * @param amount Number of claws to buy
      */
     function buyClaws(address agent, uint256 amount) external payable nonReentrant {
-        if (!verifiedAgents[agent]) revert AgentNotVerified();
-
         uint256 supply = clawsSupply[agent];
 
-        // First claw must be bought by the agent themselves
-        if (supply == 0 && msg.sender != agent) revert AgentMustBuyFirst();
+        // First buy creates market - requires source verification
+        if (supply == 0) {
+            if (!sourceVerified[agent]) revert AgentNotSourceVerified();
+            emit MarketCreated(agent, msg.sender);
+        }
 
         uint256 price = getPrice(supply, amount);
         uint256 protocolFee = price * protocolFeePercent / 1 ether;
@@ -196,9 +291,15 @@ contract Claws is ReentrancyGuard {
 
         emit Trade(msg.sender, agent, true, amount, price, protocolFee, agentFee, supply + amount);
 
-        // Transfer fees
+        // Transfer protocol fee
         _safeTransfer(protocolFeeDestination, protocolFee);
-        _safeTransfer(agent, agentFee);
+
+        // Agent fee: direct if claws-verified, otherwise accumulate
+        if (clawsVerified[agent]) {
+            _safeTransfer(agent, agentFee);
+        } else {
+            pendingFees[agent] += agentFee;
+        }
 
         // Refund excess
         uint256 excess = msg.value - totalCost;
@@ -232,10 +333,18 @@ contract Claws is ReentrancyGuard {
 
         emit Trade(msg.sender, agent, false, amount, price, protocolFee, agentFee, supply - amount);
 
-        // Transfer payout and fees
+        // Transfer payout
         _safeTransfer(msg.sender, payout);
+        
+        // Transfer protocol fee
         _safeTransfer(protocolFeeDestination, protocolFee);
-        _safeTransfer(agent, agentFee);
+
+        // Agent fee: direct if claws-verified, otherwise accumulate
+        if (clawsVerified[agent]) {
+            _safeTransfer(agent, agentFee);
+        } else {
+            pendingFees[agent] += agentFee;
+        }
     }
 
     // ============ Views ============
@@ -251,12 +360,37 @@ contract Claws is ReentrancyGuard {
     }
 
     /**
-     * @notice Check if an agent is verified
+     * @notice Check if market exists for an agent
      * @param agent The agent address
-     * @return True if verified
+     * @return True if market exists
      */
-    function isVerified(address agent) external view returns (bool) {
-        return verifiedAgents[agent];
+    function marketExists(address agent) external view returns (bool) {
+        return clawsSupply[agent] > 0;
+    }
+
+    /**
+     * @notice Get agent status
+     * @param agent The agent address
+     * @return _sourceVerified Is verified on moltbook/X
+     * @return _clawsVerified Has verified on claws.tech
+     * @return _reservedClawClaimed Has claimed free claw
+     * @return _pendingFees Unclaimed accumulated fees
+     * @return _supply Total claws supply
+     */
+    function getAgentStatus(address agent) external view returns (
+        bool _sourceVerified,
+        bool _clawsVerified,
+        bool _reservedClawClaimed,
+        uint256 _pendingFees,
+        uint256 _supply
+    ) {
+        return (
+            sourceVerified[agent],
+            clawsVerified[agent],
+            reservedClawClaimed[agent],
+            pendingFees[agent],
+            clawsSupply[agent]
+        );
     }
 
     // ============ Admin ============
@@ -269,6 +403,16 @@ contract Claws is ReentrancyGuard {
         if (newOwner == address(0)) revert ZeroAddress();
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
+    }
+
+    /**
+     * @notice Update verifier address
+     * @param _verifier The new verifier address
+     */
+    function setVerifier(address _verifier) external onlyOwner {
+        if (_verifier == address(0)) revert ZeroAddress();
+        verifier = _verifier;
+        emit VerifierUpdated(_verifier);
     }
 
     /**
