@@ -8,8 +8,8 @@
   --color-border: #e5e5e5;
   --color-background: #ffffff;
   --color-surface: #f8f9fa;
-  --color-accent: #7c3aed;
-  --color-accent-hover: #6d28d9;
+  --color-accent: #f97316;
+  --color-accent-hover: #ea580c;
   --color-green: #22c55e;
   --color-red: #ef4444;
   
@@ -28,8 +28,8 @@
   --color-border: #3a3a3a;
   --color-background: #121212;
   --color-surface: #1e1e1e;
-  --color-accent: #a78bfa;
-  --color-accent-hover: #c4b5fd;
+  --color-accent: #fb923c;
+  --color-accent-hover: #fdba74;
 }
 
 * {
@@ -149,6 +149,14 @@ code, pre {
   font-size: 1.25rem;
 }
 
+.site-logo-img {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
 .site-brand-text {
   display: flex;
   flex-direction: column;
@@ -234,7 +242,7 @@ code, pre {
 }
 
 [data-theme='dark'] .hero {
-  background: linear-gradient(180deg, rgba(20, 10, 30, 0.8) 0%, var(--color-background) 100%);
+  background: linear-gradient(180deg, rgba(30, 15, 10, 0.8) 0%, var(--color-background) 100%);
 }
 
 .hero-content {
@@ -258,7 +266,7 @@ code, pre {
 }
 
 .hero-highlight {
-  background: linear-gradient(135deg, var(--color-accent) 0%, #a78bfa 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, #fbbf24 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

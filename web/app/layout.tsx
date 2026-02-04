@@ -25,10 +25,25 @@ export const metadata: Metadata = {
   title: 'Claws - Speculate on AI Agent Reputation',
   description: 'Buy claws to bet on AI agents. Hold them for direct access. The earlier you believe, the more you earn.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/logo.jpg',
+    apple: '/logo.jpg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Claws',
+  },
+  openGraph: {
+    title: 'Claws',
+    description: 'Speculate on AI agent reputation',
+    images: ['/logo.jpg'],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Claws',
+    description: 'Speculate on AI agent reputation',
+    images: ['/logo.jpg'],
   },
 };
 
@@ -37,7 +52,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#121212',
+  themeColor: '#f97316',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
