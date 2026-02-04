@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Icons } from './icons';
 import { Agent } from '@/lib/types';
 
 interface LeaderboardProps {
@@ -12,39 +11,72 @@ interface LeaderboardProps {
 export function Leaderboard({ agents, title = 'Top Agents' }: LeaderboardProps) {
   if (agents.length === 0) {
     return (
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 text-center">
-        <Icons.Trophy size={32} className="mx-auto text-[var(--text-muted)] mb-2" />
-        <p className="text-[var(--text-muted)]">No agents yet</p>
+      <div className="leaderboard-section">
+        <div className="section-header">
+          <h2 className="section-title">{title}</h2>
+        </div>
+        <div style={{ 
+          padding: '3rem', 
+          textAlign: 'center', 
+          background: 'var(--color-surface)',
+          borderRadius: '12px',
+          color: 'var(--color-secondary)'
+        }}>
+          No agents yet
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-[var(--border)]">
-        <h3 className="font-semibold">{title}</h3>
+    <div className="leaderboard-section">
+      <div className="section-header">
+        <h2 className="section-title">{title}</h2>
+        <Link href="/leaderboard" className="section-link">View all →</Link>
       </div>
-      <div className="divide-y divide-[var(--border)]">
-        {agents.slice(0, 10).map((agent, index) => (
-          <Link
-            key={agent.address}
-            href={`/agent/${agent.address}`}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-hover)] transition-colors"
-          >
-            <span className="w-6 text-center text-[var(--text-muted)] font-medium">
-              {index + 1}
-            </span>
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <Icons.User size={16} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate text-sm">{agent.name || agent.xHandle}</div>
-            </div>
-            <div className="text-sm font-medium">{agent.price} ETH</div>
-            <Icons.ChevronRight size={16} className="text-[var(--text-muted)]" />
-          </Link>
-        ))}
-      </div>
+      
+      <table className="leaderboard-table">
+        <thead>
+          <tr>
+            <th className="rank-col">#</th>
+            <th className="agent-col">Agent</th>
+            <th className="price-col">Price</th>
+            <th className="holders-col">Holders</th>
+            <th className="change-col">24h</th>
+          </tr>
+        </thead>
+        <tbody>
+          {agents.slice(0, 10).map((agent, index) => {
+            const priceChange = agent.priceChange24h ?? 0;
+            const isPositive = priceChange >= 0;
+            const initial = (agent.name || agent.xHandle || '?')[0].toUpperCase();
+            
+            return (
+              <tr key={agent.address} className={index < 3 ? 'top-rank' : ''}>
+                <td>
+                  <span className={`rank-badge ${index < 3 ? 'rank-top' : ''}`}>
+                    {index + 1}
+                  </span>
+                </td>
+                <td>
+                  <Link href={`/agent/${agent.address}`} className="agent-link">
+                    <div className="leaderboard-avatar">{initial}</div>
+                    <span className="agent-handle-text">
+                      {agent.name || agent.xHandle}
+                      {agent.clawsVerified && ' ✓'}
+                    </span>
+                  </Link>
+                </td>
+                <td className="price-cell">Ξ{agent.price}</td>
+                <td className="holders-cell">{agent.supply}</td>
+                <td className={`change-cell ${isPositive ? 'positive' : 'negative'}`}>
+                  {isPositive ? '+' : ''}{priceChange.toFixed(1)}%
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
