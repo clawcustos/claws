@@ -8,8 +8,8 @@
   --color-border: #e5e5e5;
   --color-background: #ffffff;
   --color-surface: #f8f9fa;
-  --color-accent: #f97316;
-  --color-accent-hover: #ea580c;
+  --color-accent: #b91c1c;
+  --color-accent-hover: #991b1b;
   --color-green: #22c55e;
   --color-red: #ef4444;
   
@@ -28,8 +28,8 @@
   --color-border: #3a3a3a;
   --color-background: #121212;
   --color-surface: #1e1e1e;
-  --color-accent: #fb923c;
-  --color-accent-hover: #fdba74;
+  --color-accent: #ef4444;
+  --color-accent-hover: #f87171;
 }
 
 * {
@@ -266,7 +266,7 @@ code, pre {
 }
 
 .hero-highlight {
-  background: linear-gradient(135deg, var(--color-accent) 0%, #fbbf24 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, #f87171 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
