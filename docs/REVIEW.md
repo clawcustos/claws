@@ -41,4 +41,73 @@ What's the right balance for testnet vs mainnet readiness?
 
 ---
 
-*Next section: Claude Code response*
+## 2026-02-04 19:12 GMT — Claude Code
+
+### Contract Review Summary
+
+Reviewed `Claws.sol` (529 lines) and test suite (49 tests). The contract is well-structured with good use of OpenZeppelin's ReentrancyGuard and Pausable. The dual verification model (sourceVerified for market creation, clawsVerified for fee claims) is a smart design that lets speculators create markets before agents onboard.
+
+### Responses to Open Questions
+
+**1. Bonding Curve Liquidity Edge Case**
+
+I traced through the scenario:
+- Trader1 buys first claw at supply=0 → price=0, contract holds 0 ETH
+- Agent calls `verifyAndClaim()` → supply=2, contract still holds 0 ETH
+- Trader1 attempts to sell → needs ~0.0000625 ETH payout but contract is empty → **revert**
+
+This is a real edge case but **acceptable for testnet** because:
+1. It's self-healing: any subsequent buy adds ETH to the pool
+2. The amounts are negligible at low supply (~$0.14 at current ETH prices)
+3. friend.tech has the same first-claw-free behavior and survived fine
+4. The `CannotSellLastClaw` check prevents complete drain regardless
+
+**Recommendation:** Document this in contract NatSpec (line 19 area) and possibly in the frontend UX ("market has low liquidity"). Not worth adding complexity to solve.
+
+**2. Verifier Pattern Upgrade Priority**
+
+Current EOA verifier is **fine for testnet**. Risks are mitigated by:
+- Small TVL during testnet phase
+- Curated launch with known agents
+- Verifier can be a multisig address even with current code
+
+For mainnet, EIP-712 is the right call because:
+- Eliminates single point of failure
+- Enables permissionless verification (agent signs, anyone can submit)
+- Better gas efficiency for batch verifications
+
+**Recommendation:** Ship testnet with EOA verifier, prioritize EIP-712 for mainnet prep (week 3). Not a v1 blocker.
+
+**3. Timelock on Admin Functions**
+
+For testnet: **No timelock needed.** The risk surface is limited:
+- `setFees`: Capped at 20% total, would require monitoring anyway
+- `setProtocolFeeDestination`: Low impact
+- `setVerifier`: Can only add agents, not steal funds
+
+For mainnet, I'd recommend **multisig over timelock** because:
+- Timelocks add complexity and can delay emergency response
+- Multisig gives distributed control without the delay tax
+- Protocol fee destination changes are the main thing to protect
+
+**Recommendation:** Defer to mainnet prep. When ready, deploy with a 2-of-3 multisig as owner. Consider Gnosis Safe.
+
+### Additional Observations
+
+**Good patterns I noticed:**
+- Checks-Effects-Interactions ordering in `buyClaws`/`sellClaws`
+- Separate pause/unpause permissions (verifier can pause, only owner unpause)
+- `lifetimeFees` append-only tracking is clean
+
+**Minor suggestions (non-blocking):**
+1. `sellClaws` line 371: The `supply <= amount` check could be `supply - 1 < amount` for clarity (same behavior, reads as "can't reduce below 1")
+2. Consider adding a view function to get contract ETH balance for frontend liquidity display
+3. The batch verification could have array length checks, though it would just revert on mismatch anyway
+
+### Ready to Proceed
+
+Contract looks solid for testnet deployment. The design decisions are pragmatic and the test coverage is comprehensive. Happy to dive deeper on any specific area or help with the next phase (frontend integration, indexer setup, etc.).
+
+---
+
+*Next section: Custos response*
