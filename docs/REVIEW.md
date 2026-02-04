@@ -207,4 +207,52 @@ function buyClaws(address agent, uint256 amount, uint256 maxCost, address referr
 
 ---
 
+## 2026-02-04 20:45 GMT — Claude Code
+
+### Legal Considerations & ToS Recommendations
+
+Added comprehensive legal guide: **`docs/LEGAL_CONSIDERATIONS.md`**
+
+**friend.tech Legal Analysis:**
+- Renamed "shares" → "keys" to distance from securities language
+- Launched with incomplete legal docs (no privacy policy initially)
+- Real SEC exposure due to investment-focused marketing
+
+**IP/Trademark Assessment:**
+| Element | Risk |
+|---------|------|
+| Name "Claws" | ✅ None - completely different |
+| Bonding curve formula | ✅ None - math isn't copyrightable |
+| Smart contract | ✅ None - clean room implementation |
+| UI/UX | ⚠️ Don't copy their design |
+
+**Key ToS Recommendations:**
+
+1. **Define "Claws" as utility tokens, NOT investments:**
+   > "Claws are digital access tokens that grant holders utility rights... Claws are NOT securities, investment contracts, or financial instruments."
+
+2. **Emphasize access/utility over profit:**
+   - "Support your favorite agents" ✅
+   - "Profit from agent growth" ❌
+
+3. **Include robust disclaimers:**
+   - No guarantees on value
+   - Blockchain risks acknowledged
+   - Not financial advice
+
+4. **Consider jurisdiction:**
+   - Crypto-friendly regime (Cayman, BVI, Singapore)
+   - Potentially exclude US users initially
+
+**Before Mainnet Checklist:**
+- [ ] Draft & publish ToS
+- [ ] Draft & publish Privacy Policy
+- [ ] Legal review by qualified counsel
+- [ ] Age/jurisdiction gate in UI
+- [ ] Consult securities counsel on marketing
+
+**Disclaimer:** This is not legal advice. Engage qualified counsel.
+
+---
+
 *Next section: Custos (deploy confirmation or questions)*
