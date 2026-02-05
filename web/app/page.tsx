@@ -15,6 +15,7 @@ import {
   type AgentListItem
 } from '@/lib/agents';
 import { TradeModal } from '@/components/trade-modal';
+import { AgentCard } from '@/components/agent-card';
 
 // Fallback avatar for broken images
 const FALLBACK_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/><text x="50" y="60" text-anchor="middle" fill="%23666" font-size="40">?</text></svg>';
@@ -243,103 +244,6 @@ function getInitialsAvatar(name: string): string {
   const colorIndex = name.charCodeAt(0) % colors.length;
   const bg = colors[colorIndex];
   return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23${bg}" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="white" font-family="system-ui" font-weight="600" font-size="36">${initials}</text></svg>`;
-}
-
-// Agent Card with image fallback
-function AgentCard({ agent, onTrade, onConnect }: { 
-  agent: AgentListItem & { holders?: number };
-  onTrade: (handle: string, mode: 'buy' | 'sell') => void;
-  onConnect: () => void;
-}) {
-  const { isConnected } = useAccount();
-  const isUp = agent.priceChange24h >= 0;
-  const [imgError, setImgError] = useState(false);
-  
-  // Get holder count from AGENTS data
-  const agentData = AGENTS[agent.xHandle.toLowerCase()] || 
-    Object.values(AGENTS).find(a => a.xHandle.toLowerCase() === agent.xHandle.toLowerCase());
-  const holders = agentData?.holders || 0;
-  
-  const handleBuy = () => {
-    if (isConnected) {
-      onTrade(agent.xHandle, 'buy');
-    } else {
-      onConnect();
-    }
-  };
-  
-  const handleSell = () => {
-    if (isConnected) {
-      onTrade(agent.xHandle, 'sell');
-    } else {
-      onConnect();
-    }
-  };
-  
-  return (
-    <div className={`agent-card ${agent.clawsVerified ? 'verified' : ''}`}>
-      <div className="agent-header">
-        <div className="agent-avatar">
-          <img 
-            src={imgError ? getInitialsAvatar(agent.name) : agent.xProfileImage} 
-            alt={agent.name}
-            width={48}
-            height={48}
-            onError={() => setImgError(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        </div>
-        <div className="agent-info">
-          <div className="agent-name">
-            {agent.name}
-            {agent.clawsVerified && <span className="verified-badge">✓</span>}
-          </div>
-          <a 
-            href={`https://x.com/${agent.xHandle}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="agent-handle"
-          >
-            @{agent.xHandle}
-          </a>
-        </div>
-      </div>
-      
-      <div className="agent-price">
-        <div className="agent-price-eth">{formatETH(agent.priceETH)} ETH</div>
-        <div className="agent-price-usd">{agent.priceUSD}</div>
-        <div className={`agent-price-change ${isUp ? 'up' : 'down'}`}>
-          {isUp ? '↑' : '↓'} {Math.abs(agent.priceChange24h).toFixed(1)}%
-        </div>
-      </div>
-      
-      <div className="agent-stats">
-        <div className="agent-stat">
-          <div className="agent-stat-value">{agent.supply}</div>
-          <div className="agent-stat-label">Supply</div>
-        </div>
-        <div className="agent-stat">
-          <div className="agent-stat-value">{holders}</div>
-          <div className="agent-stat-label">Holders</div>
-        </div>
-      </div>
-      
-      <div className="agent-actions">
-        <button 
-          className="agent-action buy"
-          onClick={handleBuy}
-        >
-          BUY
-        </button>
-        <button 
-          className="agent-action sell"
-          onClick={handleSell}
-        >
-          SELL
-        </button>
-      </div>
-    </div>
-  );
 }
 
 // Agents Section with Search
