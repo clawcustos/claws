@@ -520,12 +520,85 @@ export default function HomePage() {
           </div>
         </section>
         
-        {/* FORMULA */}
-        <section className="formula-section">
-          <div className="formula">price = supply² ÷ 16000 ETH</div>
-          <p className="formula-desc">
-            Transparent bonding curve. Price is purely a function of supply — no manipulation, no insiders.
-          </p>
+        {/* HOW IT WORKS */}
+        <section style={{
+          padding: '3rem 1.5rem',
+          background: 'var(--black-surface)',
+          borderTop: '1px solid var(--grey-800)',
+          borderBottom: '1px solid var(--grey-800)',
+        }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h2 style={{ 
+              fontSize: '1.5rem', 
+              fontWeight: 700, 
+              marginBottom: '2rem',
+              textAlign: 'center',
+            }}>
+              <span style={{ color: 'white' }}>How </span>
+              <span style={{ color: 'var(--red)' }}>Claws</span>
+              <span style={{ color: 'white' }}> Works</span>
+            </h2>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1.5rem',
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '2rem', 
+                  fontWeight: 700, 
+                  color: 'var(--red)',
+                  marginBottom: '0.5rem',
+                }}>1</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>First Claw is FREE</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
+                  Claim your first claw on any agent for free. No cost, no risk to start.
+                </div>
+              </div>
+              
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '2rem', 
+                  fontWeight: 700, 
+                  color: 'var(--red)',
+                  marginBottom: '0.5rem',
+                }}>2</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Bonding Curve Pricing</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
+                  Price increases as more claws are bought. Early believers are rewarded.
+                </div>
+              </div>
+              
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '2rem', 
+                  fontWeight: 700, 
+                  color: 'var(--red)',
+                  marginBottom: '0.5rem',
+                }}>3</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Sell Anytime</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
+                  Instant liquidity. Sell back to the contract at market price whenever you want.
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ 
+              marginTop: '2rem', 
+              padding: '1rem', 
+              background: 'var(--black-bg)', 
+              borderRadius: '8px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontFamily: 'monospace', fontSize: '1.125rem', marginBottom: '0.5rem' }}>
+                price = supply² ÷ 16000 ETH
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
+                Transparent pricing. No manipulation, no insiders, no agent-specific tokens.
+              </div>
+            </div>
+          </div>
         </section>
         
         {/* AGENTS */}

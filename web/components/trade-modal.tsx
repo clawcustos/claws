@@ -395,7 +395,7 @@ export function TradeModal({
           </div>
           {isFree && (
             <div style={{ color: '#22c55e', fontSize: '14px', marginTop: '12px', textAlign: 'center' }}>
-              🎉 First claw is FREE!
+              First claw is FREE
             </div>
           )}
           {validationError && (
