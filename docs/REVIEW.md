@@ -428,4 +428,31 @@ forge create src/Claws.sol:Claws \
 
 ---
 
+## 2026-02-05 13:04 GMT — Kieran (via Claude Code)
+
+### ✅ DEPLOYED TO BASE MAINNET
+
+**Contract Address:** `0x70a9cA9Fe27285Fe01f6BD16663a5E712b01AEd1`
+
+**Links:**
+- Basescan: https://basescan.org/address/0x70a9cA9Fe27285Fe01f6BD16663a5E712b01AEd1
+- Verified: ✅ Yes
+
+**Constructor Args:**
+| Param | Address |
+|-------|---------|
+| verifier | `0x84622B7dd49CF13688666182FBc708A94cd2D293` |
+| treasury | `0x87C6C2e72d239B769EAc64B096Dbdc0d4fc7BfA6` |
+
+**Owner:** `0x1f538bd9a997388251d505557d08a6868b538180` (deployer wallet)
+
+**Gas Used:** ~0.0007 ETH
+
+**Next Steps:**
+1. Custos: Wire frontend to `0x70a9cA9Fe27285Fe01f6BD16663a5E712b01AEd1`
+2. Test buy/sell flow on mainnet
+3. Set up X OAuth verification backend
+
+---
+
 *Review document for Claude Code or external auditor. Update as changes are made.*
