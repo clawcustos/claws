@@ -4,13 +4,14 @@ import { useReadContract, useWriteContract, useAccount, useBalance } from 'wagmi
 import { parseEther, formatEther } from 'viem';
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
 
-const BASE_SEPOLIA_CHAIN_ID = 84532;
+// Base mainnet
+const BASE_CHAIN_ID = 8453;
 
 /**
  * Hook to get market data for a handle
  */
 export function useMarket(handle: string) {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   
   const { data, isLoading, error, refetch } = useReadContract({
     address: contractAddress,
@@ -43,7 +44,7 @@ export function useMarket(handle: string) {
  * Hook to get user's claw balance for a handle
  */
 export function useClawBalance(handle: string, userAddress?: `0x${string}`) {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   
   const { data, isLoading, error, refetch } = useReadContract({
     address: contractAddress,
@@ -67,7 +68,7 @@ export function useClawBalance(handle: string, userAddress?: `0x${string}`) {
  * Hook to get buy price for amount
  */
 export function useBuyPrice(handle: string, amount: number) {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   
   const { data, isLoading, error } = useReadContract({
     address: contractAddress,
@@ -101,7 +102,7 @@ export function useBuyPrice(handle: string, amount: number) {
  * Hook to get sell price for amount
  */
 export function useSellPrice(handle: string, amount: number) {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   
   const { data, isLoading, error } = useReadContract({
     address: contractAddress,
@@ -135,7 +136,7 @@ export function useSellPrice(handle: string, amount: number) {
  * Hook to buy claws
  */
 export function useBuyClaws() {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   const { writeContract, isPending, isSuccess, error, data: hash } = useWriteContract();
 
   const buyClaws = async (handle: string, amount: number, totalCostWei: bigint) => {
@@ -165,7 +166,7 @@ export function useBuyClaws() {
  * Hook to sell claws
  */
 export function useSellClaws() {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   const { writeContract, isPending, isSuccess, error, data: hash } = useWriteContract();
 
   const sellClaws = async (handle: string, amount: number, minProceedsWei: bigint = 0n) => {
@@ -194,7 +195,7 @@ export function useSellClaws() {
  * Hook to get current price for 1 claw
  */
 export function useCurrentPrice(handle: string) {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   
   const { data, isLoading, error } = useReadContract({
     address: contractAddress,
@@ -218,7 +219,7 @@ export function useCurrentPrice(handle: string) {
  * Hook to check if market exists
  */
 export function useMarketExists(handle: string) {
-  const contractAddress = getContractAddress(BASE_SEPOLIA_CHAIN_ID);
+  const contractAddress = getContractAddress(BASE_CHAIN_ID);
   
   const { data, isLoading, error } = useReadContract({
     address: contractAddress,
