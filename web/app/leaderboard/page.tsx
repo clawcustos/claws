@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
-import { getAgentList, getAgentEmoji, AGENTS } from '@/lib/agents';
+import { getAgentList, getAgentEmoji, AGENTS, formatETH } from '@/lib/agents';
 
 type SortMetric = 'price' | 'volume' | 'holders' | 'supply';
 
@@ -17,7 +17,7 @@ export default function LeaderboardPage() {
       const fullAgent = AGENTS[agent.xHandle.toLowerCase()];
       return {
         ...agent,
-        lifetimeVolume: fullAgent?.lifetimeVolume || '$0',
+        lifetimeVolumeETH: fullAgent?.lifetimeVolumeETH || 0,
         holders: fullAgent?.holders || 0,
       };
     });
@@ -28,9 +28,9 @@ export default function LeaderboardPage() {
     return [...allAgents].sort((a, b) => {
       switch (metric) {
         case 'price':
-          return parseFloat(b.price) - parseFloat(a.price);
+          return b.priceETH - a.priceETH;
         case 'volume':
-          return parseFloat(b.lifetimeVolume.replace(/[$K]/g, '')) - parseFloat(a.lifetimeVolume.replace(/[$K]/g, ''));
+          return b.lifetimeVolumeETH - a.lifetimeVolumeETH;
         case 'holders':
           return b.holders - a.holders;
         case 'supply':
@@ -43,11 +43,7 @@ export default function LeaderboardPage() {
 
   // Calculate totals
   const totals = useMemo(() => {
-    const totalVolume = allAgents.reduce((acc, a) => {
-      const vol = parseFloat(a.lifetimeVolume.replace(/[$K]/g, '')) || 0;
-      return acc + vol;
-    }, 0);
-    
+    const totalVolume = allAgents.reduce((acc, a) => acc + a.lifetimeVolumeETH, 0);
     const totalHolders = allAgents.reduce((acc, a) => acc + a.holders, 0);
     const totalSupply = allAgents.reduce((acc, a) => acc + a.supply, 0);
     const verifiedCount = allAgents.filter(a => a.clawsVerified).length;
@@ -169,9 +165,9 @@ export default function LeaderboardPage() {
                   </div>
                 </div>
                 
-                <div className="leaderboard-price">${agent.price}</div>
+                <div className="leaderboard-price">{formatETH(agent.priceETH)} Ξ</div>
                 <div className="leaderboard-supply">{agent.supply}</div>
-                <div className="leaderboard-volume">{agent.lifetimeVolume}</div>
+                <div className="leaderboard-volume">{formatETH(agent.lifetimeVolumeETH)} Ξ</div>
               </Link>
             );
           })}
@@ -189,7 +185,7 @@ export default function LeaderboardPage() {
           <div className="card glow-hover">
             <div className="card-body" style={{ textAlign: 'center' }}>
               <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--brand)' }}>
-                ${totals.totalVolume.toFixed(1)}K
+                {formatETH(totals.totalVolume)} Ξ
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
                 Total Volume
@@ -211,7 +207,7 @@ export default function LeaderboardPage() {
           <div className="card glow-hover">
             <div className="card-body" style={{ textAlign: 'center' }}>
               <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                {totals.totalSupply.toLocaleString()}
+                {totals.totalSupply}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
                 Total Supply

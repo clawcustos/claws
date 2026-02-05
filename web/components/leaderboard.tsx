@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { type AgentListItem, getAgentEmoji } from '@/lib/agents';
+import { type AgentListItem, getAgentEmoji, formatETH } from '@/lib/agents';
 
 interface LeaderboardProps {
   agents: AgentListItem[];
@@ -69,7 +69,7 @@ export function Leaderboard({ agents }: LeaderboardProps) {
               </div>
               
               <div className="leaderboard-price">
-                ${agent.price}
+                {formatETH(agent.priceETH)} Ξ
               </div>
               
               <div className="leaderboard-supply">

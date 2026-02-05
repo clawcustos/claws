@@ -37,7 +37,7 @@ export default function ExplorePage() {
       .sort((a, b) => {
         switch (sortBy) {
           case 'price':
-            return parseFloat(b.price) - parseFloat(a.price);
+            return b.priceETH - a.priceETH;
           case 'supply':
             return b.supply - a.supply;
           case 'volume':

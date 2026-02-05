@@ -7,7 +7,18 @@ import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
 import { TradeModal } from '@/components/trade-modal';
 import { PriceChart } from '@/components/price-chart';
-import { getAgent, getAgentEmoji } from '@/lib/agents';
+import { getAgent, getAgentEmoji, formatETH, calculateCurrentPrice } from '@/lib/agents';
+
+// ETH price for USD estimates
+const ETH_PRICE_USD = 3000;
+
+function formatUSD(eth: number): string {
+  const usd = eth * ETH_PRICE_USD;
+  if (usd < 0.01) return '<$0.01';
+  if (usd < 1) return `$${usd.toFixed(2)}`;
+  if (usd < 1000) return `$${usd.toFixed(0)}`;
+  return `$${(usd / 1000).toFixed(1)}K`;
+}
 
 export default function AgentPage() {
   const params = useParams();
@@ -35,6 +46,8 @@ export default function AgentPage() {
       </div>
     );
   }
+
+  const priceETH = agent.priceETH;
 
   return (
     <div className="page-wrapper">
@@ -97,7 +110,7 @@ export default function AgentPage() {
         {/* Stats */}
         <div className="profile-stats">
           <div className="profile-stat">
-            <div className="profile-stat-value mono">${agent.price}</div>
+            <div className="profile-stat-value mono">{formatETH(priceETH)} Ξ</div>
             <div className="profile-stat-label">Price</div>
           </div>
           <div className="profile-stat">
@@ -109,8 +122,8 @@ export default function AgentPage() {
             <div className="profile-stat-label">Holders</div>
           </div>
           <div className="profile-stat">
-            <div className="profile-stat-value mono">{agent.volume24h}</div>
-            <div className="profile-stat-label">24h Volume</div>
+            <div className="profile-stat-value mono">{formatETH(agent.lifetimeVolumeETH)} Ξ</div>
+            <div className="profile-stat-label">Volume</div>
           </div>
         </div>
         
@@ -138,7 +151,7 @@ export default function AgentPage() {
               <div className="card">
                 <div className="card-body" style={{ padding: 0 }}>
                   <PriceChart 
-                    currentPrice={parseFloat(agent.price)} 
+                    currentPrice={priceETH * ETH_PRICE_USD} 
                     priceChange24h={agent.priceChange24h}
                     height={220}
                   />
@@ -224,10 +237,13 @@ export default function AgentPage() {
                   textAlign: 'center',
                 }}>
                   <div className="mono" style={{ fontWeight: 600, fontSize: '1.125rem' }}>
-                    ${agent.price}
+                    {formatETH(priceETH)} Ξ
                   </div>
                   <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                     Price
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                    {formatUSD(priceETH)}
                   </div>
                 </div>
                 <div style={{ 
@@ -278,16 +294,16 @@ export default function AgentPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Lifetime Volume</span>
-                    <span className="mono">{agent.lifetimeVolume}</span>
+                    <span className="mono">{formatETH(agent.lifetimeVolumeETH)} Ξ</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Lifetime Fees</span>
-                    <span className="mono">{agent.lifetimeFees}</span>
+                    <span className="mono">{formatETH(agent.lifetimeFeesETH)} Ξ</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Pending Fees</span>
-                    <span className="mono" style={{ color: agent.pendingFees !== '$0.00' ? 'var(--positive)' : 'inherit' }}>
-                      {agent.pendingFees}
+                    <span className="mono" style={{ color: agent.pendingFeesETH > 0 ? 'var(--positive)' : 'inherit' }}>
+                      {formatETH(agent.pendingFeesETH)} Ξ
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
@@ -310,7 +326,7 @@ export default function AgentPage() {
         onClose={() => setIsTradeModalOpen(false)}
         agentName={agent.name}
         agentHandle={agent.xHandle}
-        currentPrice={agent.price}
+        currentPriceETH={priceETH}
         supply={agent.supply}
       />
     </div>

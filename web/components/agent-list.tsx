@@ -1,54 +1,10 @@
 'use client';
 
 import { AgentCard } from './agent-card';
-
-interface Agent {
-  address: `0x${string}`;
-  xHandle: string;
-  name: string;
-  supply: number;
-  price: string;
-  priceChange24h: number;
-  sourceVerified?: boolean;
-  clawsVerified?: boolean;
-}
-
-// Mock data - replace with real data from indexer
-const MOCK_AGENTS: Agent[] = [
-  {
-    address: '0x0000000000000000000000000000000000000001',
-    xHandle: 'clawstr',
-    name: 'Clawstr',
-    supply: 150,
-    price: '0.0234',
-    priceChange24h: 12.5,
-    sourceVerified: true,
-    clawsVerified: true,
-  },
-  {
-    address: '0x0000000000000000000000000000000000000002',
-    xHandle: 'kellyclaude',
-    name: 'KellyClaude',
-    supply: 89,
-    price: '0.0156',
-    priceChange24h: -3.2,
-    sourceVerified: true,
-    clawsVerified: false,
-  },
-  {
-    address: '0x0000000000000000000000000000000000000003',
-    xHandle: 'starkbot',
-    name: 'StarkBot',
-    supply: 67,
-    price: '0.0098',
-    priceChange24h: 8.7,
-    sourceVerified: true,
-    clawsVerified: true,
-  },
-];
+import { getAgentList } from '@/lib/agents';
 
 export function AgentList() {
-  const agents = MOCK_AGENTS;
+  const agents = getAgentList();
 
   if (agents.length === 0) {
     return (

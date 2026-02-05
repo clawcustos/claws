@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { formatETH } from '@/lib/agents';
 
 interface Agent {
   address: `0x${string}`;
   xHandle: string;
   name: string;
   supply: number;
-  price: string;
+  priceETH: number;
+  priceUSD: string;
   priceChange24h: number;
   volume24h?: string;
   sourceVerified?: boolean;
@@ -76,10 +78,8 @@ export function AgentCard({ agent }: AgentCardProps) {
         </div>
         
         <div className="agent-price">
-          <div className="agent-price-value">${agent.price}</div>
-          <div className={`agent-price-change ${isPositive ? 'positive' : 'negative'}`}>
-            {isPositive ? '↑' : '↓'} {Math.abs(agent.priceChange24h).toFixed(1)}%
-          </div>
+          <div className="agent-price-value">{formatETH(agent.priceETH)} Ξ</div>
+          <div className="agent-price-usd">{agent.priceUSD}</div>
         </div>
       </div>
       
@@ -93,10 +93,10 @@ export function AgentCard({ agent }: AgentCardProps) {
           <div className="agent-stat-label">24h Vol</div>
         </div>
         <div className="agent-stat">
-          <div className="agent-stat-value">
-            {agent.clawsVerified ? '✓' : '○'}
+          <div className={`agent-stat-value ${isPositive ? 'text-positive' : 'text-negative'}`}>
+            {isPositive ? '↑' : '↓'}{Math.abs(agent.priceChange24h).toFixed(1)}%
           </div>
-          <div className="agent-stat-label">Verified</div>
+          <div className="agent-stat-label">24h</div>
         </div>
       </div>
     </Link>

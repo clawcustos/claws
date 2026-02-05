@@ -1,43 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAccount, useBalance } from 'wagmi';
+import { useState, useEffect, useMemo } from 'react';
+import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { getAgentEmoji } from '@/lib/agents';
+import { getAgentEmoji, calculateBuyPrice, calculateSellPrice, calculateCurrentPrice, formatETH } from '@/lib/agents';
 
 interface TradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   agentName: string;
   agentHandle: string;
-  currentPrice: string;
+  currentPriceETH: number;
   supply: number;
 }
 
-// Bonding curve: price = supply² / 160000 USDC
-function calculateBuyPrice(supply: number, amount: number): number {
-  // Sum of squares formula for bonding curve
-  const endSupply = supply + amount;
-  const sumEnd = (endSupply * (endSupply + 1) * (2 * endSupply + 1)) / 6;
-  const sumStart = (supply * (supply + 1) * (2 * supply + 1)) / 6;
-  const sumSquares = sumEnd - sumStart;
-  return (sumSquares * 1e6) / 160000 / 1e6; // USDC has 6 decimals
-}
+// ETH price for USD estimates (update as needed)
+const ETH_PRICE_USD = 3000;
 
-function calculateSellPrice(supply: number, amount: number): number {
-  if (amount > supply || amount === 0) return 0;
-  const newSupply = supply - amount;
-  const sumEnd = (supply * (supply + 1) * (2 * supply + 1)) / 6;
-  const sumStart = (newSupply * (newSupply + 1) * (2 * newSupply + 1)) / 6;
-  const sumSquares = sumEnd - sumStart;
-  return (sumSquares * 1e6) / 160000 / 1e6;
-}
-
-function formatUSD(value: number): string {
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(2)}K`;
-  }
-  return `$${value.toFixed(2)}`;
+function formatUSD(eth: number): string {
+  const usd = eth * ETH_PRICE_USD;
+  if (usd < 0.01) return '<$0.01';
+  if (usd < 1) return `$${usd.toFixed(2)}`;
+  if (usd < 1000) return `$${usd.toFixed(0)}`;
+  return `$${(usd / 1000).toFixed(2)}K`;
 }
 
 export function TradeModal({ 
@@ -45,7 +30,7 @@ export function TradeModal({
   onClose, 
   agentName, 
   agentHandle,
-  currentPrice,
+  currentPriceETH,
   supply 
 }: TradeModalProps) {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
@@ -56,10 +41,13 @@ export function TradeModal({
   const amountNum = parseInt(amount) || 0;
   const emoji = getAgentEmoji(agentHandle);
   
-  // Calculate prices
-  const basePrice = mode === 'buy' 
-    ? calculateBuyPrice(supply, amountNum)
-    : calculateSellPrice(supply, amountNum);
+  // Calculate prices using bonding curve
+  const basePrice = useMemo(() => {
+    if (amountNum === 0) return 0;
+    return mode === 'buy' 
+      ? calculateBuyPrice(supply, amountNum)
+      : calculateSellPrice(supply, amountNum);
+  }, [mode, supply, amountNum]);
   
   const protocolFee = basePrice * 0.05;
   const agentFee = basePrice * 0.05;
@@ -68,11 +56,9 @@ export function TradeModal({
     ? basePrice + protocolFee + agentFee
     : basePrice - protocolFee - agentFee;
 
-  // Preview new supply after trade
-  const newSupply = mode === 'buy' ? supply + amountNum : supply - amountNum;
-  const newPrice = mode === 'buy'
-    ? calculateBuyPrice(newSupply, 1)
-    : calculateBuyPrice(Math.max(0, newSupply), 1);
+  // Preview new supply and price after trade
+  const newSupply = mode === 'buy' ? supply + amountNum : Math.max(0, supply - amountNum);
+  const newPrice = calculateCurrentPrice(newSupply);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -97,17 +83,17 @@ export function TradeModal({
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');
     const num = parseInt(value) || 0;
-    // Limit to available supply for sells
-    if (mode === 'sell' && num > supply) {
-      setAmount(supply.toString());
+    // Limit to available supply for sells (minus 1 to prevent selling last claw)
+    if (mode === 'sell' && num >= supply) {
+      setAmount(Math.max(0, supply - 1).toString());
     } else {
       setAmount(value || '0');
     }
   };
 
   const setQuickAmount = (val: number) => {
-    if (mode === 'sell' && val > supply) {
-      setAmount(supply.toString());
+    if (mode === 'sell' && val >= supply) {
+      setAmount(Math.max(0, supply - 1).toString());
     } else {
       setAmount(val.toString());
     }
@@ -149,6 +135,27 @@ export function TradeModal({
           </button>
         </div>
         
+        {/* Current Price Display */}
+        <div 
+          style={{ 
+            background: 'var(--bg-elevated)', 
+            borderRadius: 'var(--radius-md)',
+            padding: '1rem',
+            marginBottom: '1rem',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+            Current Price (1 claw)
+          </div>
+          <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+            {formatETH(currentPriceETH)} Ξ
+          </div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+            ≈ {formatUSD(currentPriceETH)}
+          </div>
+        </div>
+        
         {/* Tabs */}
         <div className="trade-tabs">
           <button 
@@ -188,9 +195,8 @@ export function TradeModal({
             <button className="trade-amount-btn" onClick={() => setQuickAmount(1)}>1</button>
             <button className="trade-amount-btn" onClick={() => setQuickAmount(5)}>5</button>
             <button className="trade-amount-btn" onClick={() => setQuickAmount(10)}>10</button>
-            <button className="trade-amount-btn" onClick={() => setQuickAmount(25)}>25</button>
-            {mode === 'sell' && (
-              <button className="trade-amount-btn max" onClick={() => setQuickAmount(supply)}>MAX</button>
+            {mode === 'sell' && supply > 1 && (
+              <button className="trade-amount-btn max" onClick={() => setQuickAmount(supply - 1)}>MAX</button>
             )}
           </div>
         </div>
@@ -198,22 +204,18 @@ export function TradeModal({
         {/* Price Summary */}
         <div className="trade-summary">
           <div className="trade-summary-row">
-            <span className="trade-summary-label">Current price</span>
-            <span className="trade-summary-value mono">${currentPrice}</span>
-          </div>
-          <div className="trade-summary-row">
             <span className="trade-summary-label">
               {mode === 'buy' ? 'Cost' : 'Value'} ({amountNum} claw{amountNum !== 1 ? 's' : ''})
             </span>
-            <span className="trade-summary-value mono">{formatUSD(basePrice)}</span>
+            <span className="trade-summary-value mono">{formatETH(basePrice)} Ξ</span>
           </div>
           <div className="trade-summary-row muted">
             <span className="trade-summary-label">Protocol fee (5%)</span>
-            <span className="trade-summary-value mono">{formatUSD(protocolFee)}</span>
+            <span className="trade-summary-value mono">{formatETH(protocolFee)} Ξ</span>
           </div>
           <div className="trade-summary-row muted">
             <span className="trade-summary-label">Agent fee (5%)</span>
-            <span className="trade-summary-value mono">{formatUSD(agentFee)}</span>
+            <span className="trade-summary-value mono">{formatETH(agentFee)} Ξ</span>
           </div>
           <div className="trade-summary-divider" />
           <div className="trade-summary-row total">
@@ -221,6 +223,14 @@ export function TradeModal({
               {mode === 'buy' ? 'Total cost' : 'You receive'}
             </span>
             <span className={`trade-summary-value mono ${mode === 'sell' ? 'positive' : ''}`}>
+              {formatETH(Math.abs(totalCost))} Ξ
+            </span>
+          </div>
+          <div className="trade-summary-row" style={{ marginTop: '0.5rem' }}>
+            <span className="trade-summary-label" style={{ color: 'var(--text-muted)' }}>
+              ≈ USD
+            </span>
+            <span className="trade-summary-value" style={{ color: 'var(--text-muted)' }}>
               {formatUSD(Math.abs(totalCost))}
             </span>
           </div>
@@ -228,7 +238,7 @@ export function TradeModal({
           {/* Price impact preview */}
           <div className="trade-impact">
             <span>New price after trade:</span>
-            <span className="mono">${newPrice.toFixed(2)}</span>
+            <span className="mono">{formatETH(newPrice)} Ξ ({formatUSD(newPrice)})</span>
           </div>
         </div>
         
@@ -255,7 +265,7 @@ export function TradeModal({
                 <span className="spinner" />
               ) : (
                 <>
-                  {mode === 'buy' ? 'Buy' : 'Sell'} {amountNum} Claw{amountNum !== 1 ? 's' : ''}
+                  {mode === 'buy' ? 'Buy' : 'Sell'} {amountNum} Claw{amountNum !== 1 ? 's' : ''} for {formatETH(Math.abs(totalCost))} Ξ
                 </>
               )}
             </button>
@@ -265,8 +275,8 @@ export function TradeModal({
         {/* Info */}
         <p className="trade-info">
           {mode === 'buy' 
-            ? '💡 Price increases with each purchase. Early is better.'
-            : '⚠️ You can only sell claws you own.'
+            ? '💡 Price increases with each purchase. Early = cheaper.'
+            : '⚠️ Cannot sell the last claw (market integrity).'
           }
         </p>
       </div>

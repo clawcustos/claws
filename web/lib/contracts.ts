@@ -1,28 +1,21 @@
-// Contract addresses and ABIs
-import { type Address } from 'viem';
+// Contract configuration
+// Using friend.tech formula: price = supply² / 16000 ETH
 
-// Deployed contract addresses (update after deployment)
 export const CONTRACTS = {
-  // Base Sepolia testnet
   baseSepolia: {
-    clawsUSDC: '0x0000000000000000000000000000000000000000' as Address, // TODO: Deploy
-    usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as Address, // Base Sepolia USDC
+    claws: '0x0000000000000000000000000000000000000000' as `0x${string}`,
   },
-  // Base mainnet
   base: {
-    clawsUSDC: '0x0000000000000000000000000000000000000000' as Address, // TODO: Deploy
-    usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address, // Base USDC
+    claws: '0x0000000000000000000000000000000000000000' as `0x${string}`,
   },
 } as const;
 
-// ClawsUSDC ABI (only functions needed for frontend)
-export const CLAWS_USDC_ABI = [
+// Claws contract ABI (ETH-based bonding curve)
+export const CLAWS_ABI = [
   // Read functions
   {
-    name: 'getMarket',
-    type: 'function',
-    stateMutability: 'view',
     inputs: [{ name: 'handle', type: 'string' }],
+    name: 'getMarket',
     outputs: [
       { name: 'supply', type: 'uint256' },
       { name: 'pendingFees', type: 'uint256' },
@@ -33,88 +26,116 @@ export const CLAWS_USDC_ABI = [
       { name: 'createdAt', type: 'uint256' },
       { name: 'currentPrice', type: 'uint256' },
     ],
+    stateMutability: 'view',
+    type: 'function',
   },
   {
+    inputs: [{ name: 'handle', type: 'string' }, { name: 'user', type: 'address' }],
     name: 'getBalance',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'handle', type: 'string' },
-      { name: 'user', type: 'address' },
-    ],
     outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    name: 'getBuyCostBreakdown',
-    type: 'function',
+    inputs: [{ name: 'handle', type: 'string' }, { name: 'amount', type: 'uint256' }],
+    name: 'getBuyPriceByHandle',
+    outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
-    inputs: [
-      { name: 'handle', type: 'string' },
-      { name: 'amount', type: 'uint256' },
-    ],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'handle', type: 'string' }, { name: 'amount', type: 'uint256' }],
+    name: 'getSellPriceByHandle',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'handle', type: 'string' }],
+    name: 'getCurrentPrice',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'handle', type: 'string' }, { name: 'amount', type: 'uint256' }],
+    name: 'getBuyCostBreakdown',
     outputs: [
       { name: 'price', type: 'uint256' },
       { name: 'protocolFee', type: 'uint256' },
       { name: 'agentFee', type: 'uint256' },
       { name: 'totalCost', type: 'uint256' },
     ],
+    stateMutability: 'view',
+    type: 'function',
   },
   {
+    inputs: [{ name: 'handle', type: 'string' }, { name: 'amount', type: 'uint256' }],
     name: 'getSellProceedsBreakdown',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'handle', type: 'string' },
-      { name: 'amount', type: 'uint256' },
-    ],
     outputs: [
       { name: 'price', type: 'uint256' },
       { name: 'protocolFee', type: 'uint256' },
       { name: 'agentFee', type: 'uint256' },
       { name: 'proceeds', type: 'uint256' },
     ],
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    name: 'marketExists',
-    type: 'function',
-    stateMutability: 'view',
     inputs: [{ name: 'handle', type: 'string' }],
+    name: 'marketExists',
     outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'PRICE_DIVISOR',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'PROTOCOL_FEE_BPS',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'AGENT_FEE_BPS',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
   },
   // Write functions
   {
-    name: 'createMarket',
-    type: 'function',
-    stateMutability: 'nonpayable',
     inputs: [{ name: 'handle', type: 'string' }],
+    name: 'createMarket',
     outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
+    inputs: [{ name: 'handle', type: 'string' }, { name: 'amount', type: 'uint256' }],
     name: 'buyClaws',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'handle', type: 'string' },
-      { name: 'amount', type: 'uint256' },
-      { name: 'maxCost', type: 'uint256' },
-    ],
     outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
   },
   {
-    name: 'sellClaws',
-    type: 'function',
-    stateMutability: 'nonpayable',
     inputs: [
       { name: 'handle', type: 'string' },
       { name: 'amount', type: 'uint256' },
       { name: 'minProceeds', type: 'uint256' },
     ],
+    name: 'sellClaws',
     outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    name: 'verifyAndClaim',
-    type: 'function',
-    stateMutability: 'nonpayable',
     inputs: [
       { name: 'handle', type: 'string' },
       { name: 'wallet', type: 'address' },
@@ -122,84 +143,74 @@ export const CLAWS_USDC_ABI = [
       { name: 'nonce', type: 'uint256' },
       { name: 'signature', type: 'bytes' },
     ],
+    name: 'verifyAndClaim',
     outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    name: 'claimFees',
-    type: 'function',
-    stateMutability: 'nonpayable',
     inputs: [{ name: 'handle', type: 'string' }],
+    name: 'claimFees',
     outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   // Events
   {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'handleHash', type: 'bytes32' },
+      { indexed: false, name: 'handle', type: 'string' },
+      { indexed: false, name: 'creator', type: 'address' },
+    ],
     name: 'MarketCreated',
     type: 'event',
-    inputs: [
-      { name: 'handleHash', type: 'bytes32', indexed: true },
-      { name: 'handle', type: 'string', indexed: false },
-      { name: 'creator', type: 'address', indexed: false },
-    ],
   },
   {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'handleHash', type: 'bytes32' },
+      { indexed: true, name: 'trader', type: 'address' },
+      { indexed: false, name: 'isBuy', type: 'bool' },
+      { indexed: false, name: 'amount', type: 'uint256' },
+      { indexed: false, name: 'price', type: 'uint256' },
+      { indexed: false, name: 'protocolFee', type: 'uint256' },
+      { indexed: false, name: 'agentFee', type: 'uint256' },
+      { indexed: false, name: 'newSupply', type: 'uint256' },
+    ],
     name: 'Trade',
     type: 'event',
-    inputs: [
-      { name: 'handleHash', type: 'bytes32', indexed: true },
-      { name: 'trader', type: 'address', indexed: true },
-      { name: 'isBuy', type: 'bool', indexed: false },
-      { name: 'amount', type: 'uint256', indexed: false },
-      { name: 'price', type: 'uint256', indexed: false },
-      { name: 'protocolFee', type: 'uint256', indexed: false },
-      { name: 'agentFee', type: 'uint256', indexed: false },
-      { name: 'newSupply', type: 'uint256', indexed: false },
-    ],
   },
   {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'handleHash', type: 'bytes32' },
+      { indexed: false, name: 'handle', type: 'string' },
+      { indexed: false, name: 'wallet', type: 'address' },
+    ],
     name: 'AgentVerified',
     type: 'event',
+  },
+  {
+    anonymous: false,
     inputs: [
-      { name: 'handleHash', type: 'bytes32', indexed: true },
-      { name: 'handle', type: 'string', indexed: false },
-      { name: 'wallet', type: 'address', indexed: false },
+      { indexed: true, name: 'handleHash', type: 'bytes32' },
+      { indexed: false, name: 'wallet', type: 'address' },
+      { indexed: false, name: 'amount', type: 'uint256' },
     ],
+    name: 'FeesClaimed',
+    type: 'event',
   },
 ] as const;
 
-// ERC20 ABI (for USDC approval)
-export const ERC20_ABI = [
-  {
-    name: 'approve',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'allowance',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-  {
-    name: 'balanceOf',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-  {
-    name: 'decimals',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8' }],
-  },
-] as const;
+// Helper to get contract address for chain
+export function getContractAddress(chainId: number): `0x${string}` {
+  switch (chainId) {
+    case 84532: // Base Sepolia
+      return CONTRACTS.baseSepolia.claws;
+    case 8453: // Base
+      return CONTRACTS.base.claws;
+    default:
+      return CONTRACTS.baseSepolia.claws;
+  }
+}

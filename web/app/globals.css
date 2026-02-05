@@ -620,6 +620,12 @@ a:hover { color: var(--brand-hover); }
   color: var(--text-primary);
 }
 
+.agent-price-usd {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
 .agent-price-change {
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -627,6 +633,9 @@ a:hover { color: var(--brand-hover); }
 
 .agent-price-change.positive { color: var(--positive); }
 .agent-price-change.negative { color: var(--negative); }
+
+.text-positive { color: var(--positive); }
+.text-negative { color: var(--negative); }
 
 .agent-card-stats {
   display: grid;

@@ -1,487 +1,526 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
  * @title Claws
- * @notice Speculation market for AI agent reputation
- * @dev Bonding curve mechanics integrated with ERC-8004 agent registry
+ * @notice Bonding curve speculation market for AI agents
+ * @dev Handle-based markets using friend.tech pricing formula
  * 
- * Flow:
- * 1. Agent registers on ERC-8004 (trustless, permissionless)
- * 2. Anyone can create market for any 8004-registered agent
- * 3. Trading happens, fees accumulate for agent
- * 4. Agent calls verifyAndClaim() → claims free reserved claw + accumulated fees
- * 5. Agent earns 5% on all future trades
- *
- * Supply cap: ~2.6e8 claws per agent before overflow (sum of cubes formula)
- * This is practically unreachable but documented for auditors.
- *
- * Liquidity note: First claw is free (price=0 at supply=0). The free reserved claw
- * on verification can create a small liquidity gap at very low supply. This is
- * self-healing (any subsequent buy adds ETH) and matches friend.tech behavior.
+ * Formula: price = supply² / 16000 ETH
+ * - 1st claw: 0.0000625 ETH (~$0.19)
+ * - 10th claw: 0.00625 ETH (~$19)
+ * - 100th claw: 0.625 ETH (~$1,875)
+ * - Gets expensive FAST — creates early buyer advantage
  */
-contract Claws is ReentrancyGuard, Pausable {
+contract Claws is ReentrancyGuard, Ownable {
+    using ECDSA for bytes32;
+    using MessageHashUtils for bytes32;
+
     // ============ Constants ============
-
-    /// @notice ERC-8004 Identity Registry on Base
-    IERC721 public immutable erc8004Registry;
-
+    
+    /// @notice Protocol fee: 5% (500 basis points)
+    uint256 public constant PROTOCOL_FEE_BPS = 500;
+    
+    /// @notice Agent fee: 5% (500 basis points)  
+    uint256 public constant AGENT_FEE_BPS = 500;
+    
+    /// @notice Basis points denominator
+    uint256 public constant BPS_DENOMINATOR = 10000;
+    
+    /// @notice Price curve divisor (friend.tech formula)
+    /// Formula: price = supply² / PRICE_DIVISOR
+    uint256 public constant PRICE_DIVISOR = 16000;
+    
     // ============ State ============
-
-    /// @notice Total claws supply for each agent
-    mapping(address => uint256) public clawsSupply;
-
-    /// @notice Claw balance for each holder per agent
-    mapping(address => mapping(address => uint256)) public clawsBalance;
-
-    /// @notice Agent has verified on claws.tech - enables fee claims
-    mapping(address => bool) public clawsVerified;
-
-    /// @notice Agent has been revoked (compromised account, abuse, etc)
-    mapping(address => bool) public revoked;
-
-    /// @notice Agent has claimed their reserved free claw
-    mapping(address => bool) public reservedClawClaimed;
-
-    /// @notice Accumulated fees before agent verifies on claws.tech
-    mapping(address => uint256) public pendingFees;
-
-    /// @notice Total lifetime fees accumulated for agent (never decremented)
-    mapping(address => uint256) public lifetimeFees;
-
-    /// @notice Protocol fee percentage (in wei, 5e16 = 5%)
-    uint256 public protocolFeePercent = 50000000000000000;
-
-    /// @notice Agent fee percentage (in wei, 5e16 = 5%)
-    uint256 public agentFeePercent = 50000000000000000;
-
-    /// @notice Protocol fee destination
-    address public protocolFeeDestination;
-
-    /// @notice Contract owner
-    address public owner;
-
+    
+    /// @notice Market data for each X handle (hashed)
+    struct Market {
+        uint256 supply;           // Total claws in circulation
+        uint256 pendingFees;      // Unclaimed agent fees (ETH)
+        uint256 lifetimeFees;     // Total fees earned (ETH)
+        uint256 lifetimeVolume;   // Total trade volume (ETH)
+        address verifiedWallet;   // Bound wallet (zero until verified)
+        bool isVerified;          // Whether agent has verified
+        uint256 createdAt;        // Block timestamp of market creation
+    }
+    
+    /// @notice Markets indexed by keccak256(handle)
+    mapping(bytes32 => Market) public markets;
+    
+    /// @notice Claw balances: handleHash => holder => balance
+    mapping(bytes32 => mapping(address => uint256)) public clawsBalance;
+    
+    /// @notice Handle string storage (for frontend)
+    mapping(bytes32 => string) public handleStrings;
+    
+    /// @notice Trusted verifier address (signs verification proofs)
+    address public verifier;
+    
+    /// @notice Protocol treasury
+    address public treasury;
+    
+    /// @notice Used nonces for verification (prevent replay)
+    mapping(bytes32 => bool) public usedNonces;
+    
     // ============ Events ============
-
-    event AgentClawsVerified(address indexed agent);
-    event AgentRevoked(address indexed agent, string reason);
-    event AgentUnrevoked(address indexed agent);
-    event ReservedClawClaimed(address indexed agent);
-    event FeesClaimed(address indexed agent, uint256 amount);
-    event MarketCreated(address indexed agent, address indexed creator);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event ProtocolFeeDestinationUpdated(address indexed newDestination);
-    event FeesUpdated(uint256 protocolFee, uint256 agentFee);
-
+    
+    event MarketCreated(bytes32 indexed handleHash, string handle, address creator);
     event Trade(
+        bytes32 indexed handleHash,
         address indexed trader,
-        address indexed agent,
         bool isBuy,
-        uint256 clawAmount,
-        uint256 ethAmount,
+        uint256 amount,
+        uint256 price,
         uint256 protocolFee,
         uint256 agentFee,
         uint256 newSupply
     );
-
+    event AgentVerified(bytes32 indexed handleHash, string handle, address wallet);
+    event FeesClaimed(bytes32 indexed handleHash, address wallet, uint256 amount);
+    event VerifierUpdated(address oldVerifier, address newVerifier);
+    event TreasuryUpdated(address oldTreasury, address newTreasury);
+    
     // ============ Errors ============
-
-    error NotOwner();
-    error AgentNotRegistered();
-    error AgentIsRevoked();
-    error AlreadyClaimed();
-    error NoMarketExists();
+    
+    error MarketAlreadyExists();
+    error MarketDoesNotExist();
+    error InvalidAmount();
+    error InsufficientBalance();
     error InsufficientPayment();
-    error InsufficientClaws();
-    error CannotSellLastClaw();
-    error TransferFailed();
-    error FeesTooHigh();
-    error ZeroAddress();
     error SlippageExceeded();
-    error ZeroAmount();
-
-    // ============ Modifiers ============
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
-        _;
-    }
-
+    error AlreadyVerified();
+    error InvalidSignature();
+    error NonceAlreadyUsed();
+    error NotVerified();
+    error NoFeesPending();
+    error TransferFailed();
+    error InvalidHandle();
+    error ZeroAddress();
+    error CannotSellLastClaw();
+    
     // ============ Constructor ============
-
-    /**
-     * @param _protocolFeeDestination Address to receive protocol fees
-     * @param _erc8004Registry ERC-8004 Identity Registry address (0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 on Base)
-     */
-    constructor(address _protocolFeeDestination, address _erc8004Registry) {
-        if (_protocolFeeDestination == address(0)) revert ZeroAddress();
-        if (_erc8004Registry == address(0)) revert ZeroAddress();
-        owner = msg.sender;
-        protocolFeeDestination = _protocolFeeDestination;
-        erc8004Registry = IERC721(_erc8004Registry);
+    
+    constructor(
+        address _verifier,
+        address _treasury
+    ) Ownable(msg.sender) {
+        if (_verifier == address(0) || _treasury == address(0)) {
+            revert ZeroAddress();
+        }
+        verifier = _verifier;
+        treasury = _treasury;
     }
-
-    // ============ 8004 Integration ============
-
+    
+    // ============ Market Creation ============
+    
     /**
-     * @notice Check if an agent is registered in ERC-8004
-     * @param agent The agent's wallet address
-     * @return True if agent owns at least one 8004 agent NFT
+     * @notice Create a market for an X handle (permissionless)
+     * @param handle The X handle (without @)
      */
-    function isRegisteredAgent(address agent) public view returns (bool) {
-        return erc8004Registry.balanceOf(agent) > 0;
-    }
-
-    // ============ Revocation (Emergency) ============
-
-    /**
-     * @notice Revoke an agent (compromised account, abuse, etc)
-     * @dev Prevents new market creation and fee claims. Existing markets can still trade.
-     * @param agent The agent's wallet address
-     * @param reason Human-readable reason for revocation
-     */
-    function revokeAgent(address agent, string calldata reason) external onlyOwner {
-        revoked[agent] = true;
-        emit AgentRevoked(agent, reason);
-    }
-
-    /**
-     * @notice Un-revoke an agent (false positive, issue resolved, etc)
-     * @param agent The agent's wallet address
-     */
-    function unrevokeAgent(address agent) external onlyOwner {
-        revoked[agent] = false;
-        emit AgentUnrevoked(agent);
-    }
-
-    // ============ Agent Claim ============
-
-    /**
-     * @notice Agent claims reserved claw and accumulated fees
-     * @dev Agent must call this themselves (proves wallet ownership)
-     */
-    function verifyAndClaim() external nonReentrant whenNotPaused {
-        address agent = msg.sender;
-        
-        // Must not be revoked
-        if (revoked[agent]) revert AgentIsRevoked();
-        
-        // Must have a market (someone bought claws)
-        if (clawsSupply[agent] == 0) revert NoMarketExists();
-        
-        // Must not have already claimed
-        if (clawsVerified[agent]) revert AlreadyClaimed();
-        
-        // Mark as verified on claws
-        clawsVerified[agent] = true;
-        emit AgentClawsVerified(agent);
-        
-        // Claim reserved claw (free)
-        if (!reservedClawClaimed[agent]) {
-            reservedClawClaimed[agent] = true;
-            clawsBalance[agent][agent] += 1;
-            clawsSupply[agent] += 1;
-            emit ReservedClawClaimed(agent);
+    function createMarket(string calldata handle) external {
+        if (bytes(handle).length == 0 || bytes(handle).length > 32) {
+            revert InvalidHandle();
         }
         
-        // Claim pending fees
-        uint256 pending = pendingFees[agent];
-        if (pending > 0) {
-            pendingFees[agent] = 0;
-            _safeTransfer(agent, pending);
-            emit FeesClaimed(agent, pending);
+        bytes32 handleHash = _hashHandle(handle);
+        
+        if (markets[handleHash].createdAt != 0) {
+            revert MarketAlreadyExists();
         }
+        
+        markets[handleHash] = Market({
+            supply: 0,
+            pendingFees: 0,
+            lifetimeFees: 0,
+            lifetimeVolume: 0,
+            verifiedWallet: address(0),
+            isVerified: false,
+            createdAt: block.timestamp
+        });
+        
+        handleStrings[handleHash] = handle;
+        
+        emit MarketCreated(handleHash, handle, msg.sender);
     }
-
-    // ============ Pricing ============
-
-    /**
-     * @notice Calculate price for a given supply and amount
-     * @dev Uses sum of squares formula: price = supply² / 16000
-     *      First claw is free (supply=0 returns 0) - intentional, same as friend.tech
-     * @param supply Current supply
-     * @param amount Amount to buy/sell
-     * @return Total price in wei
-     */
-    function getPrice(uint256 supply, uint256 amount) public pure returns (uint256) {
-        uint256 sum1 = supply == 0 ? 0 : (supply - 1) * supply * (2 * (supply - 1) + 1) / 6;
-        uint256 sum2 = supply == 0 && amount == 1
-            ? 0
-            : (supply + amount - 1) * (supply + amount) * (2 * (supply + amount - 1) + 1) / 6;
-        uint256 summation = sum2 - sum1;
-        return summation * 1 ether / 16000;
-    }
-
-    /**
-     * @notice Get buy price for an agent's claws
-     * @param agent The agent address
-     * @param amount Number of claws to buy
-     * @return Price in wei (before fees)
-     */
-    function getBuyPrice(address agent, uint256 amount) public view returns (uint256) {
-        return getPrice(clawsSupply[agent], amount);
-    }
-
-    /**
-     * @notice Get sell price for an agent's claws
-     * @param agent The agent address
-     * @param amount Number of claws to sell
-     * @return Price in wei (before fees)
-     */
-    function getSellPrice(address agent, uint256 amount) public view returns (uint256) {
-        if (clawsSupply[agent] < amount) return 0;
-        return getPrice(clawsSupply[agent] - amount, amount);
-    }
-
-    /**
-     * @notice Get buy price including fees
-     * @param agent The agent address
-     * @param amount Number of claws to buy
-     * @return Total price including fees
-     */
-    function getBuyPriceAfterFee(address agent, uint256 amount) public view returns (uint256) {
-        uint256 price = getBuyPrice(agent, amount);
-        uint256 protocolFee = price * protocolFeePercent / 1 ether;
-        uint256 agentFee = price * agentFeePercent / 1 ether;
-        return price + protocolFee + agentFee;
-    }
-
-    /**
-     * @notice Get sell price after fees are deducted
-     * @param agent The agent address
-     * @param amount Number of claws to sell
-     * @return Payout after fees
-     */
-    function getSellPriceAfterFee(address agent, uint256 amount) public view returns (uint256) {
-        uint256 price = getSellPrice(agent, amount);
-        uint256 protocolFee = price * protocolFeePercent / 1 ether;
-        uint256 agentFee = price * agentFeePercent / 1 ether;
-        return price - protocolFee - agentFee;
-    }
-
+    
     // ============ Trading ============
-
+    
     /**
-     * @notice Buy claws of an agent
-     * @dev First buy creates the market (agent must be registered in ERC-8004)
-     * @param agent The agent address
+     * @notice Buy claws for a handle
+     * @param handle The X handle
      * @param amount Number of claws to buy
-     * @param maxCost Maximum total cost willing to pay (slippage protection)
      */
-    function buyClaws(address agent, uint256 amount, uint256 maxCost) external payable nonReentrant whenNotPaused {
-        if (amount == 0) revert ZeroAmount();
+    function buyClaws(
+        string calldata handle,
+        uint256 amount
+    ) external payable nonReentrant {
+        if (amount == 0) revert InvalidAmount();
         
-        uint256 supply = clawsSupply[agent];
-
-        // First buy creates market - requires 8004 registration and not revoked
-        if (supply == 0) {
-            if (!isRegisteredAgent(agent)) revert AgentNotRegistered();
-            if (revoked[agent]) revert AgentIsRevoked();
-            emit MarketCreated(agent, msg.sender);
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+        
+        // Auto-create market if doesn't exist
+        if (market.createdAt == 0) {
+            market.createdAt = block.timestamp;
+            handleStrings[handleHash] = handle;
+            emit MarketCreated(handleHash, handle, msg.sender);
         }
-
-        uint256 price = getPrice(supply, amount);
-        uint256 protocolFee = price * protocolFeePercent / 1 ether;
-        uint256 agentFee = price * agentFeePercent / 1 ether;
+        
+        uint256 price = getBuyPrice(handleHash, amount);
+        uint256 protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
         uint256 totalCost = price + protocolFee + agentFee;
-
-        // Slippage check
-        if (totalCost > maxCost) revert SlippageExceeded();
+        
         if (msg.value < totalCost) revert InsufficientPayment();
-
-        // Update state before transfers
-        clawsBalance[agent][msg.sender] += amount;
-        clawsSupply[agent] = supply + amount;
-
-        emit Trade(msg.sender, agent, true, amount, price, protocolFee, agentFee, supply + amount);
-
-        // Transfer protocol fee
-        _safeTransfer(protocolFeeDestination, protocolFee);
-
-        // Agent fee: direct if claws-verified and not revoked, otherwise accumulate
-        if (clawsVerified[agent] && !revoked[agent]) {
-            _safeTransfer(agent, agentFee);
-        } else {
-            pendingFees[agent] += agentFee;
+        
+        // Send protocol fee to treasury
+        (bool sent, ) = treasury.call{value: protocolFee}("");
+        if (!sent) revert TransferFailed();
+        
+        // Accumulate agent fee (claimable after verification)
+        market.pendingFees += agentFee;
+        market.lifetimeFees += agentFee;
+        market.lifetimeVolume += price;
+        
+        // Update balances
+        market.supply += amount;
+        clawsBalance[handleHash][msg.sender] += amount;
+        
+        // Refund excess ETH
+        if (msg.value > totalCost) {
+            (bool refunded, ) = msg.sender.call{value: msg.value - totalCost}("");
+            if (!refunded) revert TransferFailed();
         }
         
-        // Track lifetime fees (append-only, never decremented)
-        lifetimeFees[agent] += agentFee;
-
-        // Refund excess
-        uint256 excess = msg.value - totalCost;
-        if (excess > 0) {
-            _safeTransfer(msg.sender, excess);
-        }
-    }
-
-    /**
-     * @notice Sell claws of an agent
-     * @param agent The agent address
-     * @param amount Number of claws to sell
-     * @param minProceeds Minimum proceeds expected (slippage protection)
-     */
-    function sellClaws(address agent, uint256 amount, uint256 minProceeds) external nonReentrant whenNotPaused {
-        if (amount == 0) revert ZeroAmount();
-        
-        uint256 supply = clawsSupply[agent];
-
-        // Cannot sell the last claw (prevents complete drain)
-        if (supply <= amount) revert CannotSellLastClaw();
-
-        uint256 balance = clawsBalance[agent][msg.sender];
-        if (balance < amount) revert InsufficientClaws();
-
-        uint256 price = getPrice(supply - amount, amount);
-        uint256 protocolFee = price * protocolFeePercent / 1 ether;
-        uint256 agentFee = price * agentFeePercent / 1 ether;
-        uint256 payout = price - protocolFee - agentFee;
-
-        // Slippage check
-        if (payout < minProceeds) revert SlippageExceeded();
-
-        // Update state before transfers
-        clawsBalance[agent][msg.sender] = balance - amount;
-        clawsSupply[agent] = supply - amount;
-
-        emit Trade(msg.sender, agent, false, amount, price, protocolFee, agentFee, supply - amount);
-
-        // Transfer payout
-        _safeTransfer(msg.sender, payout);
-        
-        // Transfer protocol fee
-        _safeTransfer(protocolFeeDestination, protocolFee);
-
-        // Agent fee: direct if claws-verified and not revoked, otherwise accumulate
-        if (clawsVerified[agent] && !revoked[agent]) {
-            _safeTransfer(agent, agentFee);
-        } else {
-            pendingFees[agent] += agentFee;
-        }
-        
-        // Track lifetime fees (append-only, never decremented)
-        lifetimeFees[agent] += agentFee;
-    }
-
-    // ============ Views ============
-
-    /**
-     * @notice Get claw balance for a holder
-     * @param agent The agent address
-     * @param holder The holder address
-     * @return Number of claws held
-     */
-    function getClawsBalance(address agent, address holder) external view returns (uint256) {
-        return clawsBalance[agent][holder];
-    }
-
-    /**
-     * @notice Check if market exists for an agent
-     * @param agent The agent address
-     * @return True if market exists
-     */
-    function marketExists(address agent) external view returns (bool) {
-        return clawsSupply[agent] > 0;
-    }
-
-    /**
-     * @notice Get contract ETH balance (for frontend liquidity display)
-     * @return Contract balance in wei
-     */
-    function getContractBalance() external view returns (uint256) {
-        return address(this).balance;
-    }
-
-    /**
-     * @notice Get agent status
-     * @param agent The agent address
-     * @return _isRegistered Is registered in ERC-8004
-     * @return _clawsVerified Has claimed on claws.tech
-     * @return _revoked Has been revoked
-     * @return _reservedClawClaimed Has claimed free claw
-     * @return _pendingFees Unclaimed accumulated fees
-     * @return _supply Total claws supply
-     */
-    function getAgentStatus(address agent) external view returns (
-        bool _isRegistered,
-        bool _clawsVerified,
-        bool _revoked,
-        bool _reservedClawClaimed,
-        uint256 _pendingFees,
-        uint256 _supply
-    ) {
-        return (
-            isRegisteredAgent(agent),
-            clawsVerified[agent],
-            revoked[agent],
-            reservedClawClaimed[agent],
-            pendingFees[agent],
-            clawsSupply[agent]
+        emit Trade(
+            handleHash,
+            msg.sender,
+            true,
+            amount,
+            price,
+            protocolFee,
+            agentFee,
+            market.supply
         );
     }
-
-    // ============ Admin ============
-
+    
     /**
-     * @notice Transfer ownership
-     * @param newOwner The new owner address
+     * @notice Sell claws for a handle
+     * @param handle The X handle
+     * @param amount Number of claws to sell
+     * @param minProceeds Minimum ETH to receive (slippage protection)
      */
-    function transferOwnership(address newOwner) external onlyOwner {
-        if (newOwner == address(0)) revert ZeroAddress();
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
+    function sellClaws(
+        string calldata handle,
+        uint256 amount,
+        uint256 minProceeds
+    ) external nonReentrant {
+        if (amount == 0) revert InvalidAmount();
+        
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+        
+        if (market.createdAt == 0) revert MarketDoesNotExist();
+        if (clawsBalance[handleHash][msg.sender] < amount) revert InsufficientBalance();
+        
+        // Cannot sell if it would leave supply at 0 (market integrity)
+        if (market.supply == amount) revert CannotSellLastClaw();
+        
+        uint256 price = getSellPrice(handleHash, amount);
+        uint256 protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 proceeds = price - protocolFee - agentFee;
+        
+        if (proceeds < minProceeds) revert SlippageExceeded();
+        
+        // Update balances first (CEI pattern)
+        market.supply -= amount;
+        clawsBalance[handleHash][msg.sender] -= amount;
+        
+        // Accumulate fees
+        market.pendingFees += agentFee;
+        market.lifetimeFees += agentFee;
+        market.lifetimeVolume += price;
+        
+        // Transfer fees and proceeds
+        (bool feeSent, ) = treasury.call{value: protocolFee}("");
+        if (!feeSent) revert TransferFailed();
+        
+        (bool proceedsSent, ) = msg.sender.call{value: proceeds}("");
+        if (!proceedsSent) revert TransferFailed();
+        
+        emit Trade(
+            handleHash,
+            msg.sender,
+            false,
+            amount,
+            price,
+            protocolFee,
+            agentFee,
+            market.supply
+        );
     }
-
+    
+    // ============ Verification ============
+    
     /**
-     * @notice Update protocol fee destination
-     * @param _destination The new destination address
+     * @notice Verify ownership and bind wallet to handle
+     * @param handle The X handle being verified
+     * @param wallet The wallet to bind
+     * @param timestamp Signature timestamp
+     * @param nonce Unique nonce to prevent replay
+     * @param signature Verifier's signature
      */
-    function setProtocolFeeDestination(address _destination) external onlyOwner {
-        if (_destination == address(0)) revert ZeroAddress();
-        protocolFeeDestination = _destination;
-        emit ProtocolFeeDestinationUpdated(_destination);
+    function verifyAndClaim(
+        string calldata handle,
+        address wallet,
+        uint256 timestamp,
+        uint256 nonce,
+        bytes calldata signature
+    ) external nonReentrant {
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+        
+        if (market.createdAt == 0) revert MarketDoesNotExist();
+        if (market.isVerified) revert AlreadyVerified();
+        
+        // Verify signature from trusted verifier
+        bytes32 nonceHash = keccak256(abi.encodePacked(handle, wallet, timestamp, nonce));
+        if (usedNonces[nonceHash]) revert NonceAlreadyUsed();
+        
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(handle, wallet, timestamp, nonce)
+        );
+        bytes32 ethSignedHash = messageHash.toEthSignedMessageHash();
+        
+        if (ethSignedHash.recover(signature) != verifier) {
+            revert InvalidSignature();
+        }
+        
+        // Mark nonce as used
+        usedNonces[nonceHash] = true;
+        
+        // Bind wallet and mark verified
+        market.verifiedWallet = wallet;
+        market.isVerified = true;
+        
+        emit AgentVerified(handleHash, handle, wallet);
+        
+        // Auto-claim any pending fees
+        if (market.pendingFees > 0) {
+            uint256 fees = market.pendingFees;
+            market.pendingFees = 0;
+            (bool sent, ) = wallet.call{value: fees}("");
+            if (!sent) revert TransferFailed();
+            emit FeesClaimed(handleHash, wallet, fees);
+        }
     }
-
+    
     /**
-     * @notice Update fee percentages
-     * @param _protocolFee Protocol fee (in wei, 5e16 = 5%)
-     * @param _agentFee Agent fee (in wei, 5e16 = 5%)
+     * @notice Claim accumulated fees (verified agents only)
+     * @param handle The X handle
      */
-    function setFees(uint256 _protocolFee, uint256 _agentFee) external onlyOwner {
-        // Max 20% total fees
-        if (_protocolFee + _agentFee > 200000000000000000) revert FeesTooHigh();
-        protocolFeePercent = _protocolFee;
-        agentFeePercent = _agentFee;
-        emit FeesUpdated(_protocolFee, _agentFee);
+    function claimFees(string calldata handle) external nonReentrant {
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+        
+        if (!market.isVerified) revert NotVerified();
+        if (msg.sender != market.verifiedWallet) revert NotVerified();
+        if (market.pendingFees == 0) revert NoFeesPending();
+        
+        uint256 fees = market.pendingFees;
+        market.pendingFees = 0;
+        
+        (bool sent, ) = msg.sender.call{value: fees}("");
+        if (!sent) revert TransferFailed();
+        
+        emit FeesClaimed(handleHash, msg.sender, fees);
     }
-
+    
+    // ============ Price Calculations ============
+    
     /**
-     * @notice Pause all trading (emergency stop)
+     * @notice Get the price to buy `amount` claws
+     * @param handleHash The handle hash
+     * @param amount Number of claws
+     * @return Total price in ETH (wei)
      */
-    function pause() external onlyOwner {
-        _pause();
+    function getBuyPrice(bytes32 handleHash, uint256 amount) public view returns (uint256) {
+        uint256 supply = markets[handleHash].supply;
+        return _getPrice(supply, amount);
     }
-
+    
     /**
-     * @notice Unpause trading
+     * @notice Get the price to buy `amount` claws (by handle string)
      */
-    function unpause() external onlyOwner {
-        _unpause();
+    function getBuyPriceByHandle(string calldata handle, uint256 amount) external view returns (uint256) {
+        return getBuyPrice(_hashHandle(handle), amount);
     }
-
+    
+    /**
+     * @notice Get the proceeds from selling `amount` claws
+     * @param handleHash The handle hash
+     * @param amount Number of claws
+     * @return Total proceeds in ETH (wei)
+     */
+    function getSellPrice(bytes32 handleHash, uint256 amount) public view returns (uint256) {
+        uint256 supply = markets[handleHash].supply;
+        if (amount > supply) revert InsufficientBalance();
+        return _getPrice(supply - amount, amount);
+    }
+    
+    /**
+     * @notice Get the proceeds from selling `amount` claws (by handle string)
+     */
+    function getSellPriceByHandle(string calldata handle, uint256 amount) external view returns (uint256) {
+        return getSellPrice(_hashHandle(handle), amount);
+    }
+    
+    /**
+     * @notice Calculate price using bonding curve (friend.tech formula)
+     * @dev Price = sum of (supply + i)² / PRICE_DIVISOR for i = 1 to amount
+     *      Using sum of squares formula for gas efficiency
+     */
+    function _getPrice(uint256 supply, uint256 amount) internal pure returns (uint256) {
+        // Sum of squares formula: n(n+1)(2n+1)/6
+        // We want sum from (supply+1)² to (supply+amount)²
+        
+        uint256 endSupply = supply + amount;
+        
+        uint256 sumEnd = (endSupply * (endSupply + 1) * (2 * endSupply + 1)) / 6;
+        uint256 sumStart = (supply * (supply + 1) * (2 * supply + 1)) / 6;
+        
+        uint256 sumSquares = sumEnd - sumStart;
+        
+        // Convert to ETH (multiply by 1 ether, divide by price divisor)
+        return (sumSquares * 1 ether) / PRICE_DIVISOR;
+    }
+    
+    /**
+     * @notice Get current price for 1 claw (next buy price)
+     */
+    function getCurrentPrice(string calldata handle) external view returns (uint256) {
+        bytes32 handleHash = _hashHandle(handle);
+        uint256 supply = markets[handleHash].supply;
+        // Price of the next claw = (supply+1)² / PRICE_DIVISOR
+        return ((supply + 1) * (supply + 1) * 1 ether) / PRICE_DIVISOR;
+    }
+    
+    /**
+     * @notice Get cost breakdown for buying
+     */
+    function getBuyCostBreakdown(
+        string calldata handle,
+        uint256 amount
+    ) external view returns (
+        uint256 price,
+        uint256 protocolFee,
+        uint256 agentFee,
+        uint256 totalCost
+    ) {
+        bytes32 handleHash = _hashHandle(handle);
+        price = getBuyPrice(handleHash, amount);
+        protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
+        agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
+        totalCost = price + protocolFee + agentFee;
+    }
+    
+    /**
+     * @notice Get proceeds breakdown for selling
+     */
+    function getSellProceedsBreakdown(
+        string calldata handle,
+        uint256 amount
+    ) external view returns (
+        uint256 price,
+        uint256 protocolFee,
+        uint256 agentFee,
+        uint256 proceeds
+    ) {
+        bytes32 handleHash = _hashHandle(handle);
+        price = getSellPrice(handleHash, amount);
+        protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
+        agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
+        proceeds = price - protocolFee - agentFee;
+    }
+    
+    // ============ View Functions ============
+    
+    /**
+     * @notice Get market data for a handle
+     */
+    function getMarket(string calldata handle) external view returns (
+        uint256 supply,
+        uint256 pendingFees,
+        uint256 lifetimeFees,
+        uint256 lifetimeVolume,
+        address verifiedWallet,
+        bool isVerified,
+        uint256 createdAt,
+        uint256 currentPrice
+    ) {
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+        
+        supply = market.supply;
+        pendingFees = market.pendingFees;
+        lifetimeFees = market.lifetimeFees;
+        lifetimeVolume = market.lifetimeVolume;
+        verifiedWallet = market.verifiedWallet;
+        isVerified = market.isVerified;
+        createdAt = market.createdAt;
+        
+        // Current price to buy 1 claw
+        currentPrice = ((supply + 1) * (supply + 1) * 1 ether) / PRICE_DIVISOR;
+    }
+    
+    /**
+     * @notice Get user's claw balance for a handle
+     */
+    function getBalance(string calldata handle, address user) external view returns (uint256) {
+        return clawsBalance[_hashHandle(handle)][user];
+    }
+    
+    /**
+     * @notice Check if a market exists
+     */
+    function marketExists(string calldata handle) external view returns (bool) {
+        return markets[_hashHandle(handle)].createdAt != 0;
+    }
+    
+    // ============ Admin Functions ============
+    
+    function setVerifier(address _verifier) external onlyOwner {
+        if (_verifier == address(0)) revert ZeroAddress();
+        emit VerifierUpdated(verifier, _verifier);
+        verifier = _verifier;
+    }
+    
+    function setTreasury(address _treasury) external onlyOwner {
+        if (_treasury == address(0)) revert ZeroAddress();
+        emit TreasuryUpdated(treasury, _treasury);
+        treasury = _treasury;
+    }
+    
     // ============ Internal ============
-
-    /**
-     * @notice Safe ETH transfer
-     * @param to Recipient address
-     * @param amount Amount to transfer
-     */
-    function _safeTransfer(address to, uint256 amount) internal {
-        (bool success,) = to.call{value: amount}("");
-        if (!success) revert TransferFailed();
+    
+    function _hashHandle(string memory handle) internal pure returns (bytes32) {
+        // Normalize to lowercase for consistent hashing
+        bytes memory handleBytes = bytes(handle);
+        for (uint256 i = 0; i < handleBytes.length; i++) {
+            if (handleBytes[i] >= 0x41 && handleBytes[i] <= 0x5A) {
+                handleBytes[i] = bytes1(uint8(handleBytes[i]) + 32);
+            }
+        }
+        return keccak256(handleBytes);
     }
+    
+    // ============ Receive ============
+    
+    receive() external payable {}
 }
