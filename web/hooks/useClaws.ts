@@ -23,17 +23,22 @@ export function useMarket(handle: string) {
     },
   });
 
+  // Contract returns tuple: [supply, pendingFees, lifetimeFees, lifetimeVolume, verifiedWallet, isVerified, createdAt, currentPrice]
+  const tuple = data as readonly [bigint, bigint, bigint, bigint, `0x${string}`, boolean, bigint, bigint] | undefined;
+  
+  const market = tuple ? {
+    supply: tuple[0],
+    pendingFees: tuple[1],
+    lifetimeFees: tuple[2],
+    lifetimeVolume: tuple[3],
+    verifiedWallet: tuple[4],
+    isVerified: tuple[5],
+    createdAt: tuple[6],
+    currentPrice: tuple[7],
+  } : undefined;
+
   return {
-    market: data as {
-      supply: bigint;
-      pendingFees: bigint;
-      lifetimeFees: bigint;
-      lifetimeVolume: bigint;
-      verifiedWallet: `0x${string}`;
-      isVerified: boolean;
-      createdAt: bigint;
-      currentPrice: bigint;
-    } | undefined,
+    market,
     isLoading,
     error,
     refetch,
@@ -80,19 +85,15 @@ export function useBuyPrice(handle: string, amount: number) {
     },
   });
 
-  const breakdown = data as {
-    price: bigint;
-    protocolFee: bigint;
-    agentFee: bigint;
-    totalCost: bigint;
-  } | undefined;
+  // Contract returns tuple: [price, protocolFee, agentFee, totalCost]
+  const tuple = data as readonly [bigint, bigint, bigint, bigint] | undefined;
 
   return {
-    price: breakdown?.price,
-    protocolFee: breakdown?.protocolFee,
-    agentFee: breakdown?.agentFee,
-    totalCost: breakdown?.totalCost,
-    totalCostETH: breakdown?.totalCost ? parseFloat(formatEther(breakdown.totalCost)) : 0,
+    price: tuple?.[0],
+    protocolFee: tuple?.[1],
+    agentFee: tuple?.[2],
+    totalCost: tuple?.[3],
+    totalCostETH: tuple?.[3] ? parseFloat(formatEther(tuple[3])) : 0,
     isLoading,
     error,
   };
@@ -114,19 +115,15 @@ export function useSellPrice(handle: string, amount: number) {
     },
   });
 
-  const breakdown = data as {
-    price: bigint;
-    protocolFee: bigint;
-    agentFee: bigint;
-    proceeds: bigint;
-  } | undefined;
+  // Contract returns tuple: [price, protocolFee, agentFee, proceeds]
+  const tuple = data as readonly [bigint, bigint, bigint, bigint] | undefined;
 
   return {
-    price: breakdown?.price,
-    protocolFee: breakdown?.protocolFee,
-    agentFee: breakdown?.agentFee,
-    proceeds: breakdown?.proceeds,
-    proceedsETH: breakdown?.proceeds ? parseFloat(formatEther(breakdown.proceeds)) : 0,
+    price: tuple?.[0],
+    protocolFee: tuple?.[1],
+    agentFee: tuple?.[2],
+    proceeds: tuple?.[3],
+    proceedsETH: tuple?.[3] ? parseFloat(formatEther(tuple[3])) : 0,
     isLoading,
     error,
   };
