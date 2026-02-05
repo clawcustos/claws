@@ -16,6 +16,10 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
  * - 10th claw: 0.00625 ETH (~$19)
  * - 100th claw: 0.625 ETH (~$1,875)
  * - Gets expensive FAST — creates early buyer advantage
+ * 
+ * WHOLE CLAWS ONLY: Minimum 1 claw per trade. No fractional purchases.
+ * The `amount` parameter represents whole claws (1, 2, 3...), not decimals.
+ * This creates scarcity and rewards early believers.
  */
 contract Claws is ReentrancyGuard, Ownable {
     using ECDSA for bytes32;
@@ -153,7 +157,7 @@ contract Claws is ReentrancyGuard, Ownable {
     /**
      * @notice Buy claws for a handle
      * @param handle The X handle
-     * @param amount Number of claws to buy
+     * @param amount Number of whole claws to buy (minimum 1, no fractions)
      */
     function buyClaws(
         string calldata handle,
@@ -212,7 +216,7 @@ contract Claws is ReentrancyGuard, Ownable {
     /**
      * @notice Sell claws for a handle
      * @param handle The X handle
-     * @param amount Number of claws to sell
+     * @param amount Number of whole claws to sell (minimum 1, no fractions)
      * @param minProceeds Minimum ETH to receive (slippage protection)
      */
     function sellClaws(

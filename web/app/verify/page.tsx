@@ -27,8 +27,28 @@ export default function VerifyPage() {
       {/* Header */}
       <header className="header">
         <div className="header-inner">
-          <Link href="/" className="logo">
-            <span className="logo-text">CLAWS</span>
+          <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <img 
+              src="/logo.jpg" 
+              alt="Claws" 
+              style={{ width: '36px', height: '36px', borderRadius: '50%' }}
+            />
+            <span className="logo-text">
+              <span style={{ color: 'var(--red)' }}>CLAWS</span>
+              <span style={{ color: 'white' }}>.TECH</span>
+            </span>
+            <span style={{
+              padding: '0.2rem 0.5rem',
+              background: 'rgba(220, 38, 38, 0.2)',
+              border: '1px solid var(--red)',
+              borderRadius: '4px',
+              color: 'var(--red)',
+              fontSize: '0.625rem',
+              fontWeight: 600,
+              letterSpacing: '0.05em',
+            }}>
+              BETA v0.0.1
+            </span>
           </Link>
           
           <ConnectButton.Custom>

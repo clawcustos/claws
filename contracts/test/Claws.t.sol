@@ -3,698 +3,479 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Claws} from "../src/Claws.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
-// Mock ERC-8004 Registry
-contract MockERC8004 is IERC721 {
-    mapping(address => uint256) private _balances;
-    
-    function setBalance(address account, uint256 balance) external {
-        _balances[account] = balance;
-    }
-    
-    function balanceOf(address owner) external view override returns (uint256) {
-        return _balances[owner];
-    }
-    
-    // Unused but required by interface
-    function ownerOf(uint256) external pure override returns (address) { return address(0); }
-    function safeTransferFrom(address, address, uint256, bytes calldata) external pure override {}
-    function safeTransferFrom(address, address, uint256) external pure override {}
-    function transferFrom(address, address, uint256) external pure override {}
-    function approve(address, uint256) external pure override {}
-    function setApprovalForAll(address, bool) external pure override {}
-    function getApproved(uint256) external pure override returns (address) { return address(0); }
-    function isApprovedForAll(address, address) external pure override returns (bool) { return false; }
-    function supportsInterface(bytes4) external pure override returns (bool) { return true; }
-}
 
 contract ClawsTest is Test {
     Claws public claws;
-    MockERC8004 public registry;
     
     address public owner = address(1);
+    address public verifier = address(2);
     address public treasury = address(3);
-    address public agent1 = address(4);
-    address public agent2 = address(5);
-    address public trader1 = address(6);
-    address public trader2 = address(7);
+    address public trader1 = address(4);
+    address public trader2 = address(5);
+    address public agentWallet = address(6);
+    
+    uint256 public verifierPk = 0xA11CE;
+    
+    string public constant HANDLE = "testhandle";
+    string public constant HANDLE2 = "anotherhandle";
     
     function setUp() public {
-        // Deploy mock registry
-        registry = new MockERC8004();
+        verifier = vm.addr(verifierPk);
         
-        // Deploy Claws with registry
         vm.prank(owner);
-        claws = new Claws(treasury, address(registry));
+        claws = new Claws(verifier, treasury);
         
-        // Fund accounts
-        vm.deal(agent1, 10 ether);
-        vm.deal(agent2, 10 ether);
-        vm.deal(trader1, 10 ether);
-        vm.deal(trader2, 10 ether);
+        vm.deal(trader1, 100 ether);
+        vm.deal(trader2, 100 ether);
+        vm.deal(agentWallet, 1 ether);
     }
     
     // ============ Deployment ============
     
     function test_Deployment() public view {
         assertEq(claws.owner(), owner);
-        assertEq(claws.protocolFeeDestination(), treasury);
-        assertEq(claws.protocolFeePercent(), 50000000000000000); // 5%
-        assertEq(claws.agentFeePercent(), 50000000000000000); // 5%
-        assertEq(address(claws.erc8004Registry()), address(registry));
+        assertEq(claws.verifier(), verifier);
+        assertEq(claws.treasury(), treasury);
+        assertEq(claws.PROTOCOL_FEE_BPS(), 500);
+        assertEq(claws.AGENT_FEE_BPS(), 500);
+        assertEq(claws.PRICE_DIVISOR(), 16000);
     }
     
-    // ============ 8004 Registration ============
-    
-    function test_IsRegisteredAgent() public {
-        assertFalse(claws.isRegisteredAgent(agent1));
-        
-        registry.setBalance(agent1, 1);
-        assertTrue(claws.isRegisteredAgent(agent1));
+    function test_DeploymentRevertsZeroVerifier() public {
+        vm.expectRevert(Claws.ZeroAddress.selector);
+        new Claws(address(0), treasury);
     }
     
-    // ============ Revocation ============
-    
-    function test_RevokeAgent() public {
-        registry.setBalance(agent1, 1);
-        
-        vm.prank(owner);
-        claws.revokeAgent(agent1, "compromised account");
-        
-        assertTrue(claws.revoked(agent1));
-    }
-    
-    function test_RevokeAgent_BlocksMarketCreation() public {
-        registry.setBalance(agent1, 1);
-        
-        vm.prank(owner);
-        claws.revokeAgent(agent1, "compromised");
-        
-        uint256 maxCost = 1 ether;
-        vm.prank(trader1);
-        vm.expectRevert(Claws.AgentIsRevoked.selector);
-        claws.buyClaws{value: maxCost}(agent1, 1, maxCost);
-    }
-    
-    function test_RevokeAgent_BlocksVerifyAndClaim() public {
-        _setupMarket(agent1);
-        
-        vm.prank(owner);
-        claws.revokeAgent(agent1, "compromised");
-        
-        vm.prank(agent1);
-        vm.expectRevert(Claws.AgentIsRevoked.selector);
-        claws.verifyAndClaim();
-    }
-    
-    function test_RevokeAgent_ExistingMarketsCanStillTrade() public {
-        _setupMarket(agent1);
-        
-        vm.prank(owner);
-        claws.revokeAgent(agent1, "compromised");
-        
-        // Can still buy (market already exists)
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 1, price);
-        
-        assertEq(claws.clawsBalance(agent1, trader2), 1);
-    }
-    
-    function test_UnrevokeAgent() public {
-        registry.setBalance(agent1, 1);
-        
-        vm.prank(owner);
-        claws.revokeAgent(agent1, "suspected compromise");
-        assertTrue(claws.revoked(agent1));
-        
-        vm.prank(owner);
-        claws.unrevokeAgent(agent1);
-        assertFalse(claws.revoked(agent1));
-        
-        // Can now create market again
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        vm.prank(trader1);
-        claws.buyClaws{value: price}(agent1, 1, price);
-        
-        assertEq(claws.clawsSupply(agent1), 1);
-    }
-    
-    function test_RevokedAgent_CanStillSell() public {
-        _setupMarket(agent1);
-        
-        // Buy more claws to build up contract balance
-        uint256 buyPrice = claws.getBuyPriceAfterFee(agent1, 10);
-        vm.prank(trader1);
-        claws.buyClaws{value: buyPrice}(agent1, 10, buyPrice);
-        
-        // Agent verifies and claims their reserved claw
-        vm.prank(agent1);
-        claws.verifyAndClaim();
-        
-        // Now agent gets revoked
-        vm.prank(owner);
-        claws.revokeAgent(agent1, "compromised");
-        
-        // Agent should still be able to sell their claw to exit
-        uint256 agentBalance = claws.clawsBalance(agent1, agent1);
-        assertEq(agentBalance, 1);
-        
-        uint256 minProceeds = claws.getSellPriceAfterFee(agent1, 1);
-        vm.prank(agent1);
-        claws.sellClaws(agent1, 1, minProceeds);
-        
-        assertEq(claws.clawsBalance(agent1, agent1), 0);
+    function test_DeploymentRevertsZeroTreasury() public {
+        vm.expectRevert(Claws.ZeroAddress.selector);
+        new Claws(verifier, address(0));
     }
     
     // ============ Market Creation ============
     
     function test_CreateMarket() public {
-        // Register agent in 8004
-        registry.setBalance(agent1, 1);
+        claws.createMarket(HANDLE);
         
-        // Trader creates market by buying first claw
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
+        assertTrue(claws.marketExists(HANDLE));
         
-        vm.prank(trader1);
-        claws.buyClaws{value: price}(agent1, 1, price);
-        
-        assertEq(claws.clawsSupply(agent1), 1);
-        assertEq(claws.clawsBalance(agent1, trader1), 1);
-        assertTrue(claws.marketExists(agent1));
+        (uint256 supply,,,,,,uint256 createdAt,) = claws.getMarket(HANDLE);
+        assertEq(supply, 0);
+        assertGt(createdAt, 0);
     }
     
-    function test_CreateMarket_RevertNotRegistered() public {
-        // agent1 not registered in 8004
-        uint256 maxCost = 0.001 ether;
+    function test_CreateMarketAutoCreatesOnBuy() public {
+        assertFalse(claws.marketExists(HANDLE));
+        
+        uint256 price = claws.getBuyPriceByHandle(HANDLE, 1);
+        uint256 totalCost = price + (price * 1000 / 10000); // 10% fees
         
         vm.prank(trader1);
-        vm.expectRevert(Claws.AgentNotRegistered.selector);
-        claws.buyClaws{value: maxCost}(agent1, 1, maxCost);
+        claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1);
+        
+        assertTrue(claws.marketExists(HANDLE));
     }
     
-    // ============ Trading ============
+    function test_CreateMarketRevertsEmptyHandle() public {
+        vm.expectRevert(Claws.InvalidHandle.selector);
+        claws.createMarket("");
+    }
+    
+    function test_CreateMarketRevertsLongHandle() public {
+        string memory longHandle = "thishandleiswaytoolongtobevalidxxx";
+        vm.expectRevert(Claws.InvalidHandle.selector);
+        claws.createMarket(longHandle);
+    }
+    
+    function test_CreateMarketRevertsAlreadyExists() public {
+        claws.createMarket(HANDLE);
+        vm.expectRevert(Claws.MarketAlreadyExists.selector);
+        claws.createMarket(HANDLE);
+    }
+    
+    // ============ Buy Claws ============
     
     function test_BuyClaws() public {
-        _setupMarket(agent1);
+        uint256 price = claws.getBuyPriceByHandle(HANDLE, 1);
+        uint256 protocolFee = price * 500 / 10000;
+        uint256 agentFee = price * 500 / 10000;
+        uint256 totalCost = price + protocolFee + agentFee;
         
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 2);
+        uint256 treasuryBefore = treasury.balance;
         
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 2, price);
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1);
         
-        assertEq(claws.clawsBalance(agent1, trader2), 2);
-        assertEq(claws.clawsSupply(agent1), 3); // 1 initial + 2 new
+        assertEq(claws.getBalance(HANDLE, trader1), 1);
+        
+        (uint256 supply, uint256 pendingFees,,,,,, ) = claws.getMarket(HANDLE);
+        assertEq(supply, 1);
+        assertEq(pendingFees, agentFee);
+        assertEq(treasury.balance - treasuryBefore, protocolFee);
     }
     
-    function test_BuyClaws_AccumulatesFees() public {
-        _setupMarket(agent1);
+    function test_BuyMultipleClaws() public {
+        (uint256 price,,,uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         
-        uint256 supplyBefore = claws.clawsSupply(agent1);
-        uint256 price = claws.getPrice(supplyBefore, 1);
-        uint256 agentFee = price * claws.agentFeePercent() / 1 ether;
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 5);
         
-        uint256 totalCost = claws.getBuyPriceAfterFee(agent1, 1);
+        assertEq(claws.getBalance(HANDLE, trader1), 5);
         
-        vm.prank(trader2);
-        claws.buyClaws{value: totalCost}(agent1, 1, totalCost);
-        
-        // Fees should accumulate since agent not claws-verified
-        assertEq(claws.pendingFees(agent1), agentFee);
+        (uint256 supply,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supply, 5);
     }
     
-    function test_BuyClaws_RevertZeroAmount() public {
-        _setupMarket(agent1);
+    function test_BuyClawsRefundsExcess() public {
+        (,,,uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        uint256 excess = 1 ether;
         
-        vm.prank(trader2);
-        vm.expectRevert(Claws.ZeroAmount.selector);
-        claws.buyClaws{value: 1 ether}(agent1, 0, 1 ether);
+        uint256 balanceBefore = trader1.balance;
+        
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost + excess}(HANDLE, 1);
+        
+        assertEq(balanceBefore - trader1.balance, totalCost);
     }
     
-    function test_BuyClaws_RevertSlippageExceeded() public {
-        _setupMarket(agent1);
-        
-        uint256 actualPrice = claws.getBuyPriceAfterFee(agent1, 1);
-        uint256 lowMaxCost = actualPrice - 1; // 1 wei too low
-        
-        vm.prank(trader2);
-        vm.expectRevert(Claws.SlippageExceeded.selector);
-        claws.buyClaws{value: actualPrice}(agent1, 1, lowMaxCost);
+    function test_BuyClawsRevertsZeroAmount() public {
+        vm.prank(trader1);
+        vm.expectRevert(Claws.InvalidAmount.selector);
+        claws.buyClaws{value: 1 ether}(HANDLE, 0);
     }
+    
+    function test_BuyClawsRevertsInsufficientPayment() public {
+        vm.prank(trader1);
+        vm.expectRevert(Claws.InsufficientPayment.selector);
+        claws.buyClaws{value: 0.00001 ether}(HANDLE, 1);
+    }
+    
+    // ============ Sell Claws ============
     
     function test_SellClaws() public {
-        _setupMarket(agent1);
-        
-        // Buy more claws first
-        uint256 buyPrice = claws.getBuyPriceAfterFee(agent1, 2);
+        // First buy some claws
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyPrice}(agent1, 2, buyPrice);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
         
-        // Now trader1 has 3 claws, sell 1
+        // Then sell some
+        (uint256 sellPrice,,, uint256 proceeds) = claws.getSellProceedsBreakdown(HANDLE, 2);
+        
         uint256 balanceBefore = trader1.balance;
-        uint256 minProceeds = claws.getSellPriceAfterFee(agent1, 1);
         
         vm.prank(trader1);
-        claws.sellClaws(agent1, 1, minProceeds);
+        claws.sellClaws(HANDLE, 2, proceeds);
         
-        assertEq(claws.clawsBalance(agent1, trader1), 2);
-        assertGt(trader1.balance, balanceBefore);
+        assertEq(claws.getBalance(HANDLE, trader1), 3);
+        assertEq(trader1.balance - balanceBefore, proceeds);
+        
+        (uint256 supply,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supply, 3);
     }
     
-    function test_SellClaws_RevertCannotSellLastClaw() public {
-        _setupMarket(agent1);
+    function test_SellClawsRevertsInsufficientBalance() public {
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 1);
+        
+        vm.prank(trader1);
+        vm.expectRevert(Claws.InsufficientBalance.selector);
+        claws.sellClaws(HANDLE, 5, 0);
+    }
+    
+    function test_SellClawsRevertsCannotSellLast() public {
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 1);
         
         vm.prank(trader1);
         vm.expectRevert(Claws.CannotSellLastClaw.selector);
-        claws.sellClaws(agent1, 1, 0);
+        claws.sellClaws(HANDLE, 1, 0);
     }
     
-    function test_SellClaws_RevertInsufficientClaws() public {
-        _setupMarket(agent1);
-        
-        // trader1 has 1, buy more with trader1 to increase supply
-        uint256 price1 = claws.getBuyPriceAfterFee(agent1, 4);
+    function test_SellClawsRevertsSlippageExceeded() public {
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: price1}(agent1, 4, price1);
-        
-        // trader2 buys 1
-        uint256 price2 = claws.getBuyPriceAfterFee(agent1, 1);
-        vm.prank(trader2);
-        claws.buyClaws{value: price2}(agent1, 1, price2);
-        
-        // trader2 tries to sell 2 (more than they have)
-        vm.prank(trader2);
-        vm.expectRevert(Claws.InsufficientClaws.selector);
-        claws.sellClaws(agent1, 2, 0);
-    }
-    
-    function test_SellClaws_RevertZeroAmount() public {
-        _setupMarket(agent1);
-        
-        vm.prank(trader1);
-        vm.expectRevert(Claws.ZeroAmount.selector);
-        claws.sellClaws(agent1, 0, 0);
-    }
-    
-    function test_SellClaws_RevertSlippageExceeded() public {
-        _setupMarket(agent1);
-        
-        // Buy more claws first
-        uint256 buyPrice = claws.getBuyPriceAfterFee(agent1, 2);
-        vm.prank(trader1);
-        claws.buyClaws{value: buyPrice}(agent1, 2, buyPrice);
-        
-        // Try to sell with unrealistic minProceeds
-        uint256 actualProceeds = claws.getSellPriceAfterFee(agent1, 1);
-        uint256 highMinProceeds = actualProceeds + 1 ether;
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
         
         vm.prank(trader1);
         vm.expectRevert(Claws.SlippageExceeded.selector);
-        claws.sellClaws(agent1, 1, highMinProceeds);
+        claws.sellClaws(HANDLE, 2, 100 ether); // Unrealistic minProceeds
     }
     
-    // ============ Agent Claim ============
-    
-    function test_VerifyAndClaim() public {
-        _setupMarket(agent1);
-        
-        // Generate some fees
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 2);
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 2, price);
-        
-        uint256 pendingBefore = claws.pendingFees(agent1);
-        assertGt(pendingBefore, 0);
-        
-        uint256 supplyBefore = claws.clawsSupply(agent1);
-        uint256 agentBalanceBefore = agent1.balance;
-        
-        // Agent verifies and claims
-        vm.prank(agent1);
-        claws.verifyAndClaim();
-        
-        // Check verification status
-        assertTrue(claws.clawsVerified(agent1));
-        assertTrue(claws.reservedClawClaimed(agent1));
-        
-        // Check reserved claw was given
-        assertEq(claws.clawsSupply(agent1), supplyBefore + 1);
-        assertEq(claws.clawsBalance(agent1, agent1), 1);
-        
-        // Check fees were paid
-        assertEq(claws.pendingFees(agent1), 0);
-        assertEq(agent1.balance, agentBalanceBefore + pendingBefore);
-    }
-    
-    function test_VerifyAndClaim_RevertNoMarket() public {
-        vm.prank(agent1);
-        vm.expectRevert(Claws.NoMarketExists.selector);
-        claws.verifyAndClaim();
-    }
-    
-    function test_VerifyAndClaim_RevertAlreadyClaimed() public {
-        _setupMarket(agent1);
-        
-        vm.prank(agent1);
-        claws.verifyAndClaim();
-        
-        vm.prank(agent1);
-        vm.expectRevert(Claws.AlreadyClaimed.selector);
-        claws.verifyAndClaim();
-    }
-    
-    function test_DirectFeesAfterVerification() public {
-        _setupMarket(agent1);
-        
-        // Agent verifies
-        vm.prank(agent1);
-        claws.verifyAndClaim();
-        
-        uint256 agentBalanceBefore = agent1.balance;
-        
-        // New trade should send fees directly
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        uint256 basePrice = claws.getBuyPrice(agent1, 1);
-        uint256 expectedAgentFee = basePrice * claws.agentFeePercent() / 1 ether;
-        
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 1, price);
-        
-        // Fees should go directly to agent
-        assertEq(claws.pendingFees(agent1), 0);
-        assertEq(agent1.balance, agentBalanceBefore + expectedAgentFee);
-    }
-    
-    function test_RevokedAgent_FeesAccumulate() public {
-        _setupMarket(agent1);
-        
-        // Agent verifies
-        vm.prank(agent1);
-        claws.verifyAndClaim();
-        
-        // Then gets revoked
-        vm.prank(owner);
-        claws.revokeAgent(agent1, "compromised");
-        
-        uint256 agentBalanceBefore = agent1.balance;
-        
-        // Trade should accumulate fees (not send to revoked agent)
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 1, price);
-        
-        // Fees should accumulate, not go to agent
-        assertGt(claws.pendingFees(agent1), 0);
-        assertEq(agent1.balance, agentBalanceBefore);
-    }
-    
-    // ============ Pricing ============
+    // ============ Price Calculations ============
     
     function test_BondingCurvePricing() public view {
-        // Price for first claw should be 0 (0²/16000)
-        uint256 price0 = claws.getPrice(0, 1);
-        assertEq(price0, 0);
+        // First claw: (1)^2 / 16000 = 0.0000625 ETH
+        uint256 price1 = claws.getBuyPriceByHandle(HANDLE, 1);
+        assertEq(price1, 0.0000625 ether);
         
         // Price increases with supply
-        uint256 price1 = claws.getPrice(1, 1);
-        uint256 price2 = claws.getPrice(2, 1);
-        assertGt(price2, price1);
+        // After buying 10, next price should be higher
     }
     
-    function test_GetBuyPriceAfterFee() public {
-        _setupMarket(agent1);
+    function test_GetCurrentPrice() public {
+        assertEq(claws.getCurrentPrice(HANDLE), 0.0000625 ether); // (0+1)^2/16000
         
-        uint256 basePrice = claws.getBuyPrice(agent1, 1);
-        uint256 priceWithFee = claws.getBuyPriceAfterFee(agent1, 1);
-        
-        // 10% total fees
-        assertEq(priceWithFee, basePrice + (basePrice * 10 / 100));
-    }
-    
-    // ============ Views ============
-    
-    function test_GetAgentStatus() public {
-        _setupMarket(agent1);
-        
-        (
-            bool isReg,
-            bool clawsV,
-            bool revokedStatus,
-            bool claimed,
-            uint256 pending,
-            uint256 supply
-        ) = claws.getAgentStatus(agent1);
-        
-        assertTrue(isReg);
-        assertFalse(clawsV);
-        assertFalse(revokedStatus);
-        assertFalse(claimed);
-        assertEq(pending, 0); // No fees yet from first buy (price is 0)
-        assertEq(supply, 1);
-    }
-    
-    // ============ Pausable ============
-    
-    function test_Pause_ByOwner() public {
-        _setupMarket(agent1);
-        
-        vm.prank(owner);
-        claws.pause();
-        
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        
-        vm.prank(trader2);
-        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        claws.buyClaws{value: price}(agent1, 1, price);
-    }
-    
-    function test_Unpause() public {
-        _setupMarket(agent1);
-        
-        vm.prank(owner);
-        claws.pause();
-        
-        vm.prank(owner);
-        claws.unpause();
-        
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 1, price);
-        
-        assertEq(claws.clawsBalance(agent1, trader2), 1);
-    }
-    
-    function test_Pause_RevertNotOwner() public {
+        // Buy 1 claw
+        (,,,uint256 cost) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
-        vm.expectRevert(Claws.NotOwner.selector);
-        claws.pause();
+        claws.buyClaws{value: cost}(HANDLE, 1);
+        
+        assertEq(claws.getCurrentPrice(HANDLE), 0.00025 ether); // (1+1)^2/16000 = 4/16000
     }
     
-    // ============ Admin ============
-    
-    function test_TransferOwnership() public {
-        address newOwner = address(99);
+    function test_GetBuyCostBreakdown() public view {
+        (uint256 price, uint256 protocolFee, uint256 agentFee, uint256 totalCost) = 
+            claws.getBuyCostBreakdown(HANDLE, 1);
         
-        vm.prank(owner);
-        claws.transferOwnership(newOwner);
-        
-        assertEq(claws.owner(), newOwner);
+        assertEq(protocolFee, price * 500 / 10000);
+        assertEq(agentFee, price * 500 / 10000);
+        assertEq(totalCost, price + protocolFee + agentFee);
     }
     
-    function test_SetProtocolFeeDestination() public {
-        address newDest = address(99);
-        
-        vm.prank(owner);
-        claws.setProtocolFeeDestination(newDest);
-        
-        assertEq(claws.protocolFeeDestination(), newDest);
-    }
-    
-    function test_SetFees() public {
-        vm.prank(owner);
-        claws.setFees(30000000000000000, 70000000000000000); // 3% + 7%
-        
-        assertEq(claws.protocolFeePercent(), 30000000000000000);
-        assertEq(claws.agentFeePercent(), 70000000000000000);
-    }
-    
-    function test_SetFees_RevertFeesTooHigh() public {
-        vm.prank(owner);
-        vm.expectRevert(Claws.FeesTooHigh.selector);
-        claws.setFees(150000000000000000, 100000000000000000); // 15% + 10% = 25% > 20%
-    }
-    
-    // ============ Edge Cases ============
-    
-    function test_RefundExcessPayment() public {
-        _setupMarket(agent1);
-        
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-        uint256 excess = 1 ether;
-        uint256 balanceBefore = trader2.balance;
-        
-        vm.prank(trader2);
-        claws.buyClaws{value: price + excess}(agent1, 1, price + excess);
-        
-        // Should have been refunded the excess
-        assertEq(trader2.balance, balanceBefore - price);
-    }
-    
-    function test_MultipleTrades() public {
-        _setupMarket(agent1);
-        
-        // Multiple buys
-        for (uint i = 0; i < 5; i++) {
-            uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-            vm.prank(trader2);
-            claws.buyClaws{value: price}(agent1, 1, price);
-        }
-        
-        assertEq(claws.clawsBalance(agent1, trader2), 5);
-        assertEq(claws.clawsSupply(agent1), 6); // 1 initial + 5 new
-        
-        // Verify fees accumulated
-        assertGt(claws.pendingFees(agent1), 0);
-    }
-    
-    // ============ Lifetime Fees ============
-    
-    function test_LifetimeFees_IncrementOnBuy() public {
-        _setupMarket(agent1);
-        
-        uint256 lifetimeBefore = claws.lifetimeFees(agent1);
-        
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 2);
-        uint256 basePrice = claws.getBuyPrice(agent1, 2);
-        uint256 expectedAgentFee = basePrice * claws.agentFeePercent() / 1 ether;
-        
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 2, price);
-        
-        assertEq(claws.lifetimeFees(agent1), lifetimeBefore + expectedAgentFee);
-    }
-    
-    function test_LifetimeFees_IncrementOnSell() public {
-        _setupMarket(agent1);
-        
-        // Buy some claws first
-        uint256 buyPrice = claws.getBuyPriceAfterFee(agent1, 5);
+    function test_GetSellProceedsBreakdown() public {
+        // Buy first
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyPrice}(agent1, 5, buyPrice);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
         
-        uint256 lifetimeBefore = claws.lifetimeFees(agent1);
+        (uint256 price, uint256 protocolFee, uint256 agentFee, uint256 proceeds) = 
+            claws.getSellProceedsBreakdown(HANDLE, 2);
         
-        // Now sell
-        uint256 sellPrice = claws.getSellPrice(agent1, 2);
-        uint256 expectedAgentFee = sellPrice * claws.agentFeePercent() / 1 ether;
-        uint256 minProceeds = claws.getSellPriceAfterFee(agent1, 2);
+        assertEq(protocolFee, price * 500 / 10000);
+        assertEq(agentFee, price * 500 / 10000);
+        assertEq(proceeds, price - protocolFee - agentFee);
+    }
+    
+    // ============ Verification ============
+    
+    function test_VerifyAndClaim() public {
+        // Buy some claws first (generates fees)
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 10);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 10);
+        
+        (,uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
+        assertGt(pendingFees, 0);
+        
+        // Create verification signature
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        uint256 walletBefore = agentWallet.balance;
+        
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+        
+        // Check verification state
+        (,uint256 newPendingFees,,,address verifiedWallet, bool isVerified,,) = claws.getMarket(HANDLE);
+        assertTrue(isVerified);
+        assertEq(verifiedWallet, agentWallet);
+        assertEq(newPendingFees, 0);
+        assertEq(agentWallet.balance - walletBefore, pendingFees);
+    }
+    
+    function test_VerifyRevertsInvalidSignature() public {
+        claws.createMarket(HANDLE);
+        
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        
+        // Sign with wrong key
+        uint256 wrongPk = 0xBAD;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.InvalidSignature.selector);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+    }
+    
+    function test_VerifyRevertsAlreadyVerified() public {
+        // First verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 1);
+        
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+        
+        // Try to verify again
+        uint256 newNonce = 99999;
+        messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, newNonce));
+        ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (v, r, s) = vm.sign(verifierPk, ethSignedHash);
+        signature = abi.encodePacked(r, s, v);
+        
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.AlreadyVerified.selector);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, newNonce, signature);
+    }
+    
+    // ============ Claim Fees ============
+    
+    function test_ClaimFees() public {
+        // Buy claws, verify, then buy more to generate new fees
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        
+        // Verify
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+        
+        // Buy more (generates new fees)
+        (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader2);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+        
+        (,uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
+        assertGt(pendingFees, 0);
+        
+        uint256 walletBefore = agentWallet.balance;
+        
+        vm.prank(agentWallet);
+        claws.claimFees(HANDLE);
+        
+        assertEq(agentWallet.balance - walletBefore, pendingFees);
+        
+        (,uint256 newPendingFees,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(newPendingFees, 0);
+    }
+    
+    function test_ClaimFeesRevertsNotVerified() public {
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.NotVerified.selector);
+        claws.claimFees(HANDLE);
+    }
+    
+    function test_ClaimFeesRevertsWrongWallet() public {
+        // Buy and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+        
+        // Buy more
+        (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader2);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+        
+        // Wrong wallet tries to claim
+        vm.prank(trader1);
+        vm.expectRevert(Claws.NotVerified.selector);
+        claws.claimFees(HANDLE);
+    }
+    
+    // ============ Handle Normalization ============
+    
+    function test_HandleNormalization() public {
+        // Create market with uppercase
+        claws.createMarket("TestHandle");
+        
+        // Should be the same market as lowercase
+        vm.expectRevert(Claws.MarketAlreadyExists.selector);
+        claws.createMarket("testhandle");
+    }
+    
+    // ============ Admin Functions ============
+    
+    function test_SetVerifier() public {
+        address newVerifier = address(99);
+        
+        vm.prank(owner);
+        claws.setVerifier(newVerifier);
+        
+        assertEq(claws.verifier(), newVerifier);
+    }
+    
+    function test_SetVerifierRevertsNotOwner() public {
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.setVerifier(address(99));
+    }
+    
+    function test_SetTreasury() public {
+        address newTreasury = address(88);
+        
+        vm.prank(owner);
+        claws.setTreasury(newTreasury);
+        
+        assertEq(claws.treasury(), newTreasury);
+    }
+    
+    function test_SetTreasuryRevertsZeroAddress() public {
+        vm.prank(owner);
+        vm.expectRevert(Claws.ZeroAddress.selector);
+        claws.setTreasury(address(0));
+    }
+    
+    // ============ Volume & Fee Tracking ============
+    
+    function test_LifetimeVolumeTracking() public {
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        
+        (,,uint256 lifetimeFees, uint256 lifetimeVolume,,,,) = claws.getMarket(HANDLE);
+        assertGt(lifetimeFees, 0);
+        assertGt(lifetimeVolume, 0);
+    }
+    
+    // ============ Multiple Markets ============
+    
+    function test_MultipleMarkets() public {
+        (,,,uint256 cost1) = claws.getBuyCostBreakdown(HANDLE, 3);
+        (,,,uint256 cost2) = claws.getBuyCostBreakdown(HANDLE2, 5);
         
         vm.prank(trader1);
-        claws.sellClaws(agent1, 2, minProceeds);
+        claws.buyClaws{value: cost1}(HANDLE, 3);
         
-        assertEq(claws.lifetimeFees(agent1), lifetimeBefore + expectedAgentFee);
-    }
-    
-    function test_LifetimeFees_PersistAfterVerifyAndClaim() public {
-        _setupMarket(agent1);
-        
-        // Generate fees
-        uint256 price = claws.getBuyPriceAfterFee(agent1, 3);
-        vm.prank(trader2);
-        claws.buyClaws{value: price}(agent1, 3, price);
-        
-        uint256 lifetimeBefore = claws.lifetimeFees(agent1);
-        uint256 pendingBefore = claws.pendingFees(agent1);
-        
-        assertGt(lifetimeBefore, 0);
-        assertGt(pendingBefore, 0);
-        
-        // Agent verifies and claims
-        vm.prank(agent1);
-        claws.verifyAndClaim();
-        
-        // Lifetime fees unchanged, pending fees reset
-        assertEq(claws.lifetimeFees(agent1), lifetimeBefore);
-        assertEq(claws.pendingFees(agent1), 0);
-    }
-    
-    function test_LifetimeFees_AccumulateAcrossMultipleTrades() public {
-        _setupMarket(agent1);
-        
-        uint256 totalExpectedFees = 0;
-        
-        // Multiple buys
-        for (uint i = 0; i < 3; i++) {
-            uint256 basePrice = claws.getBuyPrice(agent1, 1);
-            uint256 expectedFee = basePrice * claws.agentFeePercent() / 1 ether;
-            totalExpectedFees += expectedFee;
-            
-            uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-            vm.prank(trader2);
-            claws.buyClaws{value: price}(agent1, 1, price);
-        }
-        
-        // Verify and claim (resets pending but not lifetime)
-        vm.prank(agent1);
-        claws.verifyAndClaim();
-        
-        // More trades after verification
-        for (uint i = 0; i < 2; i++) {
-            uint256 basePrice = claws.getBuyPrice(agent1, 1);
-            uint256 expectedFee = basePrice * claws.agentFeePercent() / 1 ether;
-            totalExpectedFees += expectedFee;
-            
-            uint256 price = claws.getBuyPriceAfterFee(agent1, 1);
-            vm.prank(trader2);
-            claws.buyClaws{value: price}(agent1, 1, price);
-        }
-        
-        assertEq(claws.lifetimeFees(agent1), totalExpectedFees);
-    }
-    
-    // ============ Fuzz Tests ============
-    
-    function testFuzz_BondingCurvePricing(uint256 supply, uint256 amount) public view {
-        // Bound to reasonable values to avoid overflow
-        supply = bound(supply, 0, 10000);
-        amount = bound(amount, 1, 100);
-        
-        uint256 price = claws.getPrice(supply, amount);
-        
-        // Price should always be >= 0
-        assertGe(price, 0);
-        
-        // If supply > 10 and amount > 0, price should generally be > 0
-        if (supply > 10 && amount > 0) {
-            assertGt(price, 0);
-        }
-    }
-    
-    function testFuzz_SlippageProtection(uint256 amount) public {
-        amount = bound(amount, 1, 50);
-        
-        _setupMarket(agent1);
-        
-        uint256 expectedCost = claws.getBuyPriceAfterFee(agent1, amount);
-        
-        // Should succeed with exact cost as maxCost
-        vm.prank(trader2);
-        claws.buyClaws{value: expectedCost}(agent1, amount, expectedCost);
-        
-        assertEq(claws.clawsBalance(agent1, trader2), amount);
-    }
-    
-    // ============ Helpers ============
-    
-    function _setupMarket(address agent) internal {
-        // Register agent in 8004
-        registry.setBalance(agent, 1);
-        
-        // Create market
-        uint256 price = claws.getBuyPriceAfterFee(agent, 1);
         vm.prank(trader1);
-        claws.buyClaws{value: price}(agent, 1, price);
+        claws.buyClaws{value: cost2}(HANDLE2, 5);
+        
+        assertEq(claws.getBalance(HANDLE, trader1), 3);
+        assertEq(claws.getBalance(HANDLE2, trader1), 5);
+        
+        (uint256 supply1,,,,,,,) = claws.getMarket(HANDLE);
+        (uint256 supply2,,,,,,,) = claws.getMarket(HANDLE2);
+        
+        assertEq(supply1, 3);
+        assertEq(supply2, 5);
     }
 }
