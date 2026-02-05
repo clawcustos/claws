@@ -1,123 +1,185 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getAgentEmoji } from '@/lib/agents';
 
-interface Activity {
+interface Trade {
   id: string;
   type: 'buy' | 'sell';
-  user: string;
-  agent: string;
-  agentName: string;
+  agent: {
+    handle: string;
+    name: string;
+  };
+  trader: string;
   amount: number;
   price: string;
   timestamp: Date;
 }
 
-// Mock activity data matching our whitelist
-const MOCK_ACTIVITIES: Omit<Activity, 'id' | 'timestamp'>[] = [
-  { type: 'buy', user: '0x7a3d...f821', agent: 'clawcustos', agentName: 'Custos', amount: 5, price: '2.34' },
-  { type: 'buy', user: '0x2b4e...a903', agent: 'bankrbot', agentName: 'Bankr', amount: 2, price: '12.45' },
-  { type: 'sell', user: '0x9c1f...d456', agent: 'kellyclaudeai', agentName: 'KellyClaude', amount: 3, price: '8.91' },
-  { type: 'buy', user: '0x4d8a...b789', agent: 'moltbook', agentName: 'Moltbook', amount: 10, price: '4.56' },
-  { type: 'buy', user: '0x6e2c...c012', agent: 'clawdbotatg', agentName: 'Clawd ATG', amount: 1, price: '15.23' },
-  { type: 'sell', user: '0x1f3d...e345', agent: 'starkbotai', agentName: 'StarkBot', amount: 4, price: '3.78' },
-  { type: 'buy', user: '0x8b5e...f678', agent: 'clawstr', agentName: 'Clawstr', amount: 7, price: '1.92' },
+// Mock recent trades
+const MOCK_TRADES: Trade[] = [
+  {
+    id: '1',
+    type: 'buy',
+    agent: { handle: 'bankrbot', name: 'Bankr' },
+    trader: '0x742d...3a1b',
+    amount: 5,
+    price: '$287.50',
+    timestamp: new Date(Date.now() - 2 * 60 * 1000),
+  },
+  {
+    id: '2',
+    type: 'sell',
+    agent: { handle: 'moltbook', name: 'Moltbook' },
+    trader: '0x8f21...c4e9',
+    amount: 3,
+    price: '$124.20',
+    timestamp: new Date(Date.now() - 8 * 60 * 1000),
+  },
+  {
+    id: '3',
+    type: 'buy',
+    agent: { handle: 'clawcustos', name: 'Custos' },
+    trader: '0x1a3f...7b2d',
+    amount: 10,
+    price: '$98.40',
+    timestamp: new Date(Date.now() - 15 * 60 * 1000),
+  },
+  {
+    id: '4',
+    type: 'buy',
+    agent: { handle: 'kellyclaudeai', name: 'KellyClaude' },
+    trader: '0x5e6a...9f4c',
+    amount: 2,
+    price: '$38.60',
+    timestamp: new Date(Date.now() - 23 * 60 * 1000),
+  },
+  {
+    id: '5',
+    type: 'sell',
+    agent: { handle: 'starkbotai', name: 'StarkBot' },
+    trader: '0x3c8b...2d1e',
+    amount: 8,
+    price: '$125.80',
+    timestamp: new Date(Date.now() - 31 * 60 * 1000),
+  },
 ];
 
-function formatTimeAgo(date: Date): string {
+function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
 }
 
 export function ActivityFeed() {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLive, setIsLive] = useState(true);
-
-  useEffect(() => {
-    // Initialize with some activities
-    const initial = MOCK_ACTIVITIES.slice(0, 5).map((a, i) => ({
-      ...a,
-      id: `activity-${i}`,
-      timestamp: new Date(Date.now() - i * 45000 - Math.random() * 30000),
-    }));
-    setActivities(initial);
-
-    // Simulate new activities
-    const interval = setInterval(() => {
-      if (!isLive) return;
-      
-      const randomActivity = MOCK_ACTIVITIES[Math.floor(Math.random() * MOCK_ACTIVITIES.length)];
-      const newActivity: Activity = {
-        ...randomActivity,
-        id: `activity-${Date.now()}`,
-        timestamp: new Date(),
-        amount: Math.floor(Math.random() * 10) + 1,
-      };
-      
-      setActivities(prev => [newActivity, ...prev.slice(0, 5)]);
-    }, 6000 + Math.random() * 4000);
-
-    return () => clearInterval(interval);
-  }, [isLive]);
-
   return (
     <section className="section">
       <div className="section-header">
         <h2 className="section-title">
-          <span style={{ 
-            display: 'inline-block',
-            width: '8px',
-            height: '8px',
-            background: isLive ? 'var(--positive)' : 'var(--text-muted)',
-            borderRadius: '50%',
-            marginRight: '8px',
-            animation: isLive ? 'pulse 2s ease-in-out infinite' : 'none',
-          }} />
-          Live Activity
+          <span className="activity-pulse" />
+          Recent Activity
         </h2>
-        <button 
-          onClick={() => setIsLive(!isLive)}
-          className="section-action"
-          style={{ cursor: 'pointer', background: 'none', border: 'none' }}
-        >
-          {isLive ? 'Pause' : 'Resume'}
-        </button>
+        <span className="section-action" style={{ color: 'var(--positive)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          <span style={{ 
+            width: '6px', 
+            height: '6px', 
+            background: 'var(--positive)', 
+            borderRadius: '50%',
+            animation: 'pulse-dot 2s ease-in-out infinite',
+          }} />
+          Live
+        </span>
       </div>
       
       <div className="activity-list">
-        {activities.map((activity) => (
-          <div key={activity.id} className="activity-item">
-            <div className={`activity-icon ${activity.type}`}>
-              {activity.type === 'buy' ? '↑' : '↓'}
-            </div>
-            
-            <div className="activity-content">
-              <div className="activity-text">
-                <strong>{activity.user}</strong>
-                {activity.type === 'buy' ? ' bought ' : ' sold '}
-                <strong>{activity.amount}</strong>
-                {activity.amount === 1 ? ' claw' : ' claws'}
-                {' of '}
-                <strong>{activity.agentName}</strong>
+        {MOCK_TRADES.map((trade) => {
+          const emoji = getAgentEmoji(trade.agent.handle);
+          
+          return (
+            <Link 
+              key={trade.id} 
+              href={`/agent/${trade.agent.handle}`}
+              className="activity-item"
+            >
+              <div className={`activity-icon ${trade.type}`}>
+                {trade.type === 'buy' ? '↑' : '↓'}
               </div>
-              <div className="activity-time">{formatTimeAgo(activity.timestamp)}</div>
-            </div>
-            
-            <div className="activity-amount">
-              ${(parseFloat(activity.price) * activity.amount).toFixed(2)}
-            </div>
-          </div>
-        ))}
+              
+              <div className="activity-avatar">
+                {emoji}
+              </div>
+              
+              <div className="activity-content">
+                <div className="activity-text">
+                  <span className="activity-trader">{trade.trader}</span>
+                  {' '}
+                  <span className={trade.type === 'buy' ? 'text-positive' : 'text-negative'}>
+                    {trade.type === 'buy' ? 'bought' : 'sold'}
+                  </span>
+                  {' '}
+                  <strong>{trade.amount}</strong>
+                  {' '}
+                  <span className="activity-agent">{trade.agent.name}</span>
+                </div>
+                <div className="activity-time">{timeAgo(trade.timestamp)}</div>
+              </div>
+              
+              <div className="activity-amount mono">
+                {trade.price}
+              </div>
+            </Link>
+          );
+        })}
       </div>
       
       <style jsx>{`
-        @keyframes pulse {
+        .activity-pulse {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          background: var(--positive);
+          border-radius: 50%;
+          margin-right: 0.5rem;
+          animation: pulse-dot 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.1); }
+          50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        .activity-avatar {
+          width: 32px;
+          height: 32px;
+          background: var(--bg-elevated);
+          border-radius: var(--radius-sm);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1rem;
+          flex-shrink: 0;
+        }
+        
+        .activity-trader {
+          color: var(--text-muted);
+          font-family: var(--font-mono);
+          font-size: 0.8125rem;
+        }
+        
+        .activity-agent {
+          color: var(--brand);
+          font-weight: 500;
+        }
+        
+        .text-positive {
+          color: var(--positive);
+        }
+        
+        .text-negative {
+          color: var(--negative);
         }
       `}</style>
     </section>

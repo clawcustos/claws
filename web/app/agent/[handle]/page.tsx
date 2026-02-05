@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
 import { TradeModal } from '@/components/trade-modal';
+import { PriceChart } from '@/components/price-chart';
 import { getAgent, getAgentEmoji } from '@/lib/agents';
 
 export default function AgentPage() {
@@ -129,26 +130,18 @@ export default function AgentPage() {
               </div>
             </section>
             
-            {/* Price Chart Placeholder */}
+            {/* Price Chart */}
             <section className="section">
               <div className="section-header">
                 <h2 className="section-title">Price History</h2>
               </div>
               <div className="card">
-                <div className="card-body">
-                  <div 
-                    style={{ 
-                      height: '200px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      color: 'var(--text-muted)',
-                      background: 'var(--bg-elevated)',
-                      borderRadius: 'var(--radius-md)',
-                    }}
-                  >
-                    📈 Chart coming soon
-                  </div>
+                <div className="card-body" style={{ padding: 0 }}>
+                  <PriceChart 
+                    currentPrice={parseFloat(agent.price)} 
+                    priceChange24h={agent.priceChange24h}
+                    height={220}
+                  />
                 </div>
               </div>
             </section>
