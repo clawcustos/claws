@@ -940,3 +940,28 @@ body {
 .text-red { color: var(--red); }
 .text-green { color: var(--green); }
 .text-grey { color: var(--grey-500); }
+
+/* Wallet button styling */
+.btn.mono {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 0.8125rem;
+  min-width: 120px;
+  white-space: nowrap;
+}
+
+/* Mobile header adjustments */
+@media (max-width: 640px) {
+  .header-inner {
+    padding: 0 1rem;
+  }
+  
+  .btn.mono {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    min-width: auto;
+  }
+  
+  .logo .logo-text {
+    font-size: 1.125rem;
+  }
+}
