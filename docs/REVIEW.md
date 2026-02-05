@@ -282,4 +282,115 @@ function marketExists(string handle) external view returns (bool)
 
 ---
 
+## 2026-02-05 11:00 GMT — Claude Code
+
+### Review of Updated Contract
+
+Pulled latest. Significant refactor to handle-based architecture. Good progress overall.
+
+### Answers to Questions
+
+**1. Whole claws enforcement**
+✅ Already enforced at lines 166 and 227:
+```solidity
+if (amount == 0) revert InvalidAmount();
+```
+No additional check needed. `amount >= 1` is implicit since `amount` is `uint256` and 0 reverts.
+
+**2. Handle length limit (32 bytes)**
+✅ Sufficient. X handles are max 15 characters. 32 bytes provides ample headroom.
+
+**3. Treasury/Verifier addresses**
+Deployment decision. Recommend:
+- Treasury: Multisig (2-of-3 minimum)
+- Verifier: Hot wallet controlled by backend (can be rotated via `setVerifier`)
+
+**4. Emergency pause — CRITICAL**
+⚠️ **Pausable was removed from the contract.** The previous version had it; this version doesn't.
+
+**Strong recommendation:** Add Pausable back before mainnet.
+```solidity
+import "@openzeppelin/contracts/utils/Pausable.sol";
+
+contract Claws is ReentrancyGuard, Ownable, Pausable {
+    // Add to buyClaws and sellClaws:
+    function buyClaws(...) external payable nonReentrant whenNotPaused {
+    function sellClaws(...) external nonReentrant whenNotPaused {
+
+    // Admin functions:
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
+}
+```
+
+Without pause, there's no emergency stop if a vulnerability is discovered post-deploy.
+
+---
+
+### Pricing Formula Discrepancy — IMPORTANT
+
+The new `_getPrice()` formula differs from friend.tech:
+
+| Supply | Amount | friend.tech | Claws New | Difference |
+|--------|--------|-------------|-----------|------------|
+| 0 | 1 | **0 ETH (FREE)** | 0.0000625 ETH | +100% |
+| 10 | 1 | 0.00625 ETH | 0.00756 ETH | +21% |
+| 50 | 1 | 0.15625 ETH | 0.16256 ETH | +4% |
+| 100 | 1 | 0.625 ETH | 0.6376 ETH | +2% |
+
+**Key difference:** friend.tech's first claw is FREE. Claws charges ~$0.19.
+
+**friend.tech formula (sums i² from i=0 to i=n-1):**
+```solidity
+sum1 = supply == 0 ? 0 : (supply - 1) * supply * (2 * (supply - 1) + 1) / 6;
+sum2 = supply == 0 && amount == 1 ? 0 : (supply + amount - 1) * (supply + amount) * (2 * (supply + amount - 1) + 1) / 6;
+```
+
+**Claws formula (sums i² from i=1 to i=n):**
+```solidity
+sumEnd = (endSupply * (endSupply + 1) * (2 * endSupply + 1)) / 6;
+sumStart = (supply * (supply + 1) * (2 * supply + 1)) / 6;
+```
+
+**Is this intentional?**
+
+If yes: Document it. Charging for the first claw actually *solves* the liquidity edge case we discussed — there's always ETH in the contract.
+
+If no: Revert to friend.tech formula for exact parity.
+
+**My take:** Charging for the first claw is actually *better* design. Recommend keeping it but documenting the deviation explicitly.
+
+---
+
+### Other Observations
+
+**Good:**
+- ✅ Handle normalization (lowercase) prevents duplicates
+- ✅ Nonce-based replay prevention for verification
+- ✅ Auto-create market on first buy (nice UX)
+- ✅ CEI pattern maintained
+- ✅ Events are comprehensive
+- ✅ `lifetimeVolume` tracking added
+
+**Minor:**
+- Line 236 `CannotSellLastClaw` check uses `==` which means you can't sell if it would leave exactly 0. Consider if `supply <= amount` is clearer (same behavior).
+- `receive() external payable {}` at line 529 — is this needed? Currently no mechanism to withdraw stuck ETH if someone sends directly. Consider adding a sweep function or removing receive.
+
+---
+
+### Deployment Readiness
+
+| Item | Status |
+|------|--------|
+| Core trading logic | ✅ Ready |
+| Fee accumulation | ✅ Ready |
+| Signature verification | ✅ Ready |
+| Slippage protection | ✅ Ready |
+| Pausable | ❌ **Missing — add before mainnet** |
+| Pricing formula | ⚠️ Different from friend.tech — confirm intentional |
+
+**Verdict:** Add Pausable, confirm pricing decision, then ready for mainnet.
+
+---
+
 *Review document for Claude Code or external auditor. Update as changes are made.*
