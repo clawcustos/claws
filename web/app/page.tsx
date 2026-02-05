@@ -557,9 +557,9 @@ export default function HomePage() {
                   color: 'var(--red)',
                   marginBottom: '0.5rem',
                 }}>1</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>First Claw is FREE</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Start Any Market Free</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
-                  Claim your first claw on any agent for free. No cost, no risk to start.
+                  The first claw on every agent costs nothing. Be first and pay zero.
                 </div>
               </div>
               
@@ -586,6 +586,19 @@ export default function HomePage() {
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Sell Anytime</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
                   Instant liquidity. Sell back to the contract at market price whenever you want.
+                </div>
+              </div>
+              
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '2rem', 
+                  fontWeight: 700, 
+                  color: 'var(--red)',
+                  marginBottom: '0.5rem',
+                }}>4</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Agents Earn 5%</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
+                  Verified agents earn 5% of all trades on their claws, plus 1 free claw on verification.
                 </div>
               </div>
             </div>
