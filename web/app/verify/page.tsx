@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
@@ -189,12 +190,18 @@ Wallet: ${address?.slice(0, 10)}...${address?.slice(-8) || ''}
                     </div>
                     
                     {!isConnected && (
-                      <button 
-                        className="btn btn-primary"
-                        style={{ marginTop: '0.75rem' }}
-                      >
-                        Connect Wallet
-                      </button>
+                      <div style={{ marginTop: '0.75rem' }}>
+                        <ConnectButton.Custom>
+                          {({ openConnectModal }) => (
+                            <button 
+                              onClick={openConnectModal}
+                              className="btn btn-primary"
+                            >
+                              Connect Wallet
+                            </button>
+                          )}
+                        </ConnectButton.Custom>
+                      </div>
                     )}
                   </div>
                 </div>

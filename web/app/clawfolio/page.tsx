@@ -1,6 +1,7 @@
 'use client';
 
 import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
@@ -30,9 +31,18 @@ export default function ClawfolioPage() {
             <div className="empty-state-icon">💼</div>
             <h2 className="empty-state-title">Connect Your Wallet</h2>
             <p className="empty-state-desc">Connect your wallet to view your clawfolio</p>
-            <button className="btn btn-primary btn-lg" style={{ marginTop: '1.5rem' }}>
-              Connect Wallet
-            </button>
+            <div style={{ marginTop: '1.5rem' }}>
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button 
+                    onClick={openConnectModal}
+                    className="btn btn-primary btn-lg"
+                  >
+                    Connect Wallet
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            </div>
           </div>
         </main>
         <BottomNav />
