@@ -3,48 +3,36 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+const NAV_ITEMS = [
+  { href: '/', icon: '🏠', label: 'Home' },
+  { href: '/explore', icon: '🔍', label: 'Explore' },
+  { href: '/leaderboard', icon: '🏆', label: 'Ranks' },
+  { href: '/clawfolio', icon: '💼', label: 'Portfolio' },
+];
+
 export function BottomNav() {
   const pathname = usePathname();
   
-  const isActive = (path: string) => {
-    if (path === '/') return pathname === '/';
-    return pathname?.startsWith(path);
-  };
-
   return (
     <nav className="bottom-nav">
-      <div className="bottom-nav-inner">
-        <Link 
-          href="/" 
-          className={`bottom-nav-item ${pathname === '/' ? 'active' : ''}`}
-        >
-          <span className="bottom-nav-icon">🏠</span>
-          <span className="bottom-nav-label">Home</span>
-        </Link>
-        
-        <Link 
-          href="/explore" 
-          className={`bottom-nav-item ${isActive('/explore') ? 'active' : ''}`}
-        >
-          <span className="bottom-nav-icon">🔍</span>
-          <span className="bottom-nav-label">Explore</span>
-        </Link>
-        
-        <Link 
-          href="/leaderboard" 
-          className={`bottom-nav-item ${isActive('/leaderboard') ? 'active' : ''}`}
-        >
-          <span className="bottom-nav-icon">🏆</span>
-          <span className="bottom-nav-label">Leaders</span>
-        </Link>
-        
-        <Link 
-          href="/clawfolio" 
-          className={`bottom-nav-item ${isActive('/clawfolio') ? 'active' : ''}`}
-        >
-          <span className="bottom-nav-icon">💼</span>
-          <span className="bottom-nav-label">Portfolio</span>
-        </Link>
+      <div className="nav-items">
+        {NAV_ITEMS.map((item) => {
+          const isActive = 
+            item.href === '/' 
+              ? pathname === '/'
+              : pathname.startsWith(item.href);
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`nav-item ${isActive ? 'active' : ''}`}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

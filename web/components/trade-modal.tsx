@@ -12,6 +12,7 @@ interface TradeModalProps {
   agentHandle: string;
   currentPriceETH: number;
   supply: number;
+  initialMode?: 'buy' | 'sell';
 }
 
 // ETH price for USD estimates (update as needed)
@@ -31,9 +32,10 @@ export function TradeModal({
   agentName, 
   agentHandle,
   currentPriceETH,
-  supply 
+  supply,
+  initialMode = 'buy'
 }: TradeModalProps) {
-  const [mode, setMode] = useState<'buy' | 'sell'>('buy');
+  const [mode, setMode] = useState<'buy' | 'sell'>(initialMode);
   const [amount, setAmount] = useState('1');
   const [isLoading, setIsLoading] = useState(false);
   const { address, isConnected } = useAccount();
@@ -72,13 +74,13 @@ export function TradeModal({
     };
   }, [isOpen]);
 
-  // Reset on close
+  // Reset on open/close
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setMode(initialMode);
       setAmount('1');
-      setMode('buy');
     }
-  }, [isOpen]);
+  }, [isOpen, initialMode]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');

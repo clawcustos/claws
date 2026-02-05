@@ -1,143 +1,166 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export function Header() {
-  const pathname = usePathname();
-  
-  const isActive = (path: string) => {
-    if (path === '/') return pathname === '/';
-    return pathname?.startsWith(path);
-  };
-
   return (
     <header className="header">
       <div className="header-inner">
         <Link href="/" className="logo">
-          <div className="logo-icon">🦞</div>
-          <span className="logo-text">Claws</span>
+          <div className="logo-mark">🦞</div>
+          <span className="logo-text">CLAWS</span>
+          <span className="logo-badge">Beta</span>
         </Link>
         
-        <nav className="nav">
-          <Link 
-            href="/" 
-            className={`nav-link ${isActive('/') && pathname === '/' ? 'active' : ''}`}
-          >
-            Home
-          </Link>
+        {/* Desktop Navigation */}
+        <nav 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '2rem',
+          }}
+          className="desktop-nav"
+        >
           <Link 
             href="/explore" 
-            className={`nav-link ${isActive('/explore') ? 'active' : ''}`}
+            style={{ 
+              color: 'var(--text-secondary)', 
+              textDecoration: 'none',
+              fontSize: '0.9375rem',
+              fontWeight: 500,
+              transition: 'color var(--transition-fast)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
           >
             Explore
           </Link>
           <Link 
             href="/leaderboard" 
-            className={`nav-link ${isActive('/leaderboard') ? 'active' : ''}`}
+            style={{ 
+              color: 'var(--text-secondary)', 
+              textDecoration: 'none',
+              fontSize: '0.9375rem',
+              fontWeight: 500,
+              transition: 'color var(--transition-fast)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
           >
             Leaderboard
           </Link>
           <Link 
             href="/verify" 
-            className={`nav-link ${isActive('/verify') ? 'active' : ''}`}
+            style={{ 
+              color: 'var(--text-secondary)', 
+              textDecoration: 'none',
+              fontSize: '0.9375rem',
+              fontWeight: 500,
+              transition: 'color var(--transition-fast)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
           >
             Verify
           </Link>
         </nav>
         
-        <div className="header-actions">
-          <ConnectButton.Custom>
-            {({
-              account,
-              chain,
-              openAccountModal,
-              openChainModal,
-              openConnectModal,
-              mounted,
-            }) => {
-              const ready = mounted;
-              const connected = ready && account && chain;
+        {/* Wallet Connection */}
+        <ConnectButton.Custom>
+          {({
+            account,
+            chain,
+            openAccountModal,
+            openChainModal,
+            openConnectModal,
+            mounted,
+          }) => {
+            const ready = mounted;
+            const connected = ready && account && chain;
 
-              return (
-                <div
-                  {...(!ready && {
-                    'aria-hidden': true,
-                    style: {
-                      opacity: 0,
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    },
-                  })}
-                >
-                  {(() => {
-                    if (!connected) {
-                      return (
-                        <button 
-                          onClick={openConnectModal} 
-                          className="btn btn-primary"
-                        >
-                          Connect
-                        </button>
-                      );
-                    }
-
-                    if (chain.unsupported) {
-                      return (
-                        <button 
-                          onClick={openChainModal} 
-                          className="btn btn-negative"
-                        >
-                          Wrong Network
-                        </button>
-                      );
-                    }
-
+            return (
+              <div
+                {...(!ready && {
+                  'aria-hidden': true,
+                  style: {
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                  },
+                })}
+              >
+                {(() => {
+                  if (!connected) {
                     return (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={openChainModal}
-                          className="btn btn-secondary btn-sm"
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
-                        >
-                          {chain.hasIcon && (
-                            <div
-                              style={{
-                                background: chain.iconBackground,
-                                width: 16,
-                                height: 16,
-                                borderRadius: 999,
-                                overflow: 'hidden',
-                              }}
-                            >
-                              {chain.iconUrl && (
-                                <img
-                                  alt={chain.name ?? 'Chain icon'}
-                                  src={chain.iconUrl}
-                                  style={{ width: 16, height: 16 }}
-                                />
-                              )}
-                            </div>
-                          )}
-                          {chain.name}
-                        </button>
-
-                        <button 
-                          onClick={openAccountModal} 
-                          className="btn btn-primary"
-                        >
-                          {account.displayName}
-                        </button>
-                      </div>
+                      <button 
+                        onClick={openConnectModal} 
+                        className="btn btn-primary"
+                      >
+                        Connect
+                      </button>
                     );
-                  })()}
-                </div>
-              );
-            }}
-          </ConnectButton.Custom>
-        </div>
+                  }
+
+                  if (chain.unsupported) {
+                    return (
+                      <button 
+                        onClick={openChainModal}
+                        className="btn btn-ghost"
+                        style={{ color: 'var(--negative)' }}
+                      >
+                        Wrong Network
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button
+                        onClick={openChainModal}
+                        className="btn btn-ghost btn-sm"
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.375rem',
+                          padding: '0.5rem 0.75rem',
+                        }}
+                      >
+                        {chain.hasIcon && chain.iconUrl && (
+                          <img
+                            alt={chain.name ?? 'Chain'}
+                            src={chain.iconUrl}
+                            style={{ width: 18, height: 18 }}
+                          />
+                        )}
+                      </button>
+                      
+                      <button 
+                        onClick={openAccountModal}
+                        className="btn btn-ghost"
+                        style={{ 
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {account.displayName}
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          }}
+        </ConnectButton.Custom>
       </div>
+      
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .desktop-nav {
+            display: none !important;
+          }
+        }
+      `}</style>
     </header>
   );
 }
