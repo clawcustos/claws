@@ -1,37 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { isAddress } from 'viem'
-import { validateVerificationCode } from '@/lib/verification-codes'
-
-const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN
 
 /**
  * POST /api/verify/check
  * 
- * Step 2: Check if verification tweet exists
- * 
- * Body: { walletAddress: string, code: string }
- * Returns: { found: boolean }
+ * Check if user posted the verification tweet
+ * Uses their OAuth access token to fetch their own tweets
  */
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.twitterId || !session?.twitterUsername) {
+    if (!session?.twitterId || !session?.twitterUsername || !session?.accessToken) {
       return NextResponse.json(
-        { error: 'Not authenticated with X' },
+        { error: 'Not authenticated with X. Please sign in again.' },
         { status: 401 }
       )
     }
 
     const body = await req.json()
-    const { walletAddress, code } = body
-
-    if (!walletAddress || !isAddress(walletAddress)) {
-      return NextResponse.json(
-        { error: 'Invalid wallet address' },
-        { status: 400 }
-      )
-    }
+    const { code } = body
 
     if (!code) {
       return NextResponse.json(
@@ -40,24 +28,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Validate code hasn't expired
-    const validCode = validateVerificationCode(
-      session.twitterUsername,
-      walletAddress,
-      code
-    )
-
-    if (!validCode) {
-      return NextResponse.json(
-        { error: 'Invalid or expired verification code. Please start over.' },
-        { status: 400 }
-      )
-    }
-
-    // Search for tweet
+    // Fetch user's recent tweets using their access token
     const tweetFound = await findVerificationTweet(
       session.twitterId,
-      walletAddress,
+      session.accessToken,
       code
     )
 
@@ -67,7 +41,7 @@ export async function POST(req: NextRequest) {
       handle: session.twitterUsername,
       message: tweetFound 
         ? 'Tweet verified! You can now complete verification.'
-        : 'Tweet not found. Make sure you posted with the correct wallet and code.',
+        : 'Tweet not found. Make sure you posted the verification tweet.',
     })
 
   } catch (error) {
@@ -80,49 +54,43 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Search user's recent tweets for verification message
+ * Search user's recent tweets for verification code
  */
 async function findVerificationTweet(
   userId: string,
-  walletAddress: string,
+  accessToken: string,
   code: string
 ): Promise<boolean> {
-  // Development mode bypass
-  if (process.env.NODE_ENV === 'development' && !TWITTER_BEARER_TOKEN) {
-    console.warn('DEV MODE: Skipping tweet verification')
-    return true
-  }
-
-  if (!TWITTER_BEARER_TOKEN) {
-    throw new Error('TWITTER_BEARER_TOKEN not configured')
-  }
-
   try {
+    // Use user's access token to fetch their tweets
     const response = await fetch(
       `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=text`,
       {
         headers: {
-          Authorization: `Bearer ${TWITTER_BEARER_TOKEN}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       }
     )
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Twitter API error:', errorText)
+      console.error('Twitter API error:', response.status, errorText)
+      
+      if (response.status === 401) {
+        throw new Error('X session expired. Please sign in again.')
+      }
       throw new Error(`Twitter API error: ${response.status}`)
     }
 
     const data = await response.json()
     const tweets = data.data || []
 
-    // Check for tweet containing wallet AND code
-    const walletLower = walletAddress.toLowerCase()
+    // Look for tweet containing the verification code
     const codeLower = code.toLowerCase()
     
     for (const tweet of tweets) {
       const text = tweet.text.toLowerCase()
-      if (text.includes(walletLower) && text.includes(codeLower)) {
+      if (text.includes(codeLower) && text.includes('claws')) {
         return true
       }
     }
