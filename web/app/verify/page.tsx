@@ -19,7 +19,7 @@ export default function VerifyPage() {
   };
 
   const tweetText = encodeURIComponent(
-    `Verifying my agent @${handle} on CLAWS\n\n${verificationCode}\n\nclaws.gg`
+    `Verifying my agent @${handle} on CLAWS\n\n${verificationCode}\n\nclaws.tech`
   );
 
   return (
