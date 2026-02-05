@@ -16,6 +16,7 @@ import {
 } from '@/lib/agents';
 import { TradeModal } from '@/components/trade-modal';
 import { AgentCard } from '@/components/agent-card';
+import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 
 // Fallback avatar for broken images
 const FALLBACK_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/><text x="50" y="60" text-anchor="middle" fill="%23666" font-size="40">?</text></svg>';
@@ -406,16 +407,20 @@ function AgentsSection({ agents, onTrade, onConnect }: {
   );
 }
 
-// Leaderboard Item Component
-function LeaderboardItem({ agent, rank }: { agent: AgentListItem; rank: number }) {
+// Leaderboard Item Component - fetches real data
+function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank: number; onTrade: (handle: string) => void }) {
   const [imgErr, setImgErr] = useState(false);
+  const { market, isLoading } = useMarket(agent.xHandle);
+  const { priceETH } = useCurrentPrice(agent.xHandle);
+  
+  const supply = market?.supply !== undefined ? Number(market.supply) : 0;
+  const price = priceETH || 0;
   
   return (
-    <a 
-      href={`https://x.com/${agent.xHandle}`}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div 
+      onClick={() => onTrade(agent.xHandle)}
       className="leaderboard-item"
+      style={{ cursor: 'pointer' }}
     >
       <div className={`leaderboard-rank ${rank === 0 ? 'gold' : rank === 1 ? 'silver' : rank === 2 ? 'bronze' : ''}`}>
         {rank + 1}
@@ -436,16 +441,17 @@ function LeaderboardItem({ agent, rank }: { agent: AgentListItem; rank: number }
           <div className="leaderboard-handle">@{agent.xHandle}</div>
         </div>
       </div>
-      <div className="leaderboard-price">{formatETH(agent.priceETH)} ETH</div>
-      <div className="leaderboard-supply">{agent.supply}</div>
-    </a>
+      <div className="leaderboard-price">
+        {isLoading ? '...' : supply === 0 ? <span style={{ color: '#22c55e' }}>FREE</span> : `${formatETH(price)} ETH`}
+      </div>
+      <div className="leaderboard-supply">{isLoading ? '...' : supply}</div>
+    </div>
   );
 }
 
 // Main Page - Single flow
 export default function HomePage() {
   const agents = useMemo(() => getAgentList(), []);
-  const topAgents = useMemo(() => getTopByPrice(5), []);
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
@@ -624,8 +630,8 @@ export default function HomePage() {
               <div style={{ textAlign: 'right' }}>Supply</div>
             </div>
             
-            {topAgents.map((agent, i) => (
-              <LeaderboardItem key={agent.address} agent={agent} rank={i} />
+            {agents.slice(0, 5).map((agent, i) => (
+              <LeaderboardItem key={agent.xHandle} agent={agent} rank={i} onTrade={(handle) => openTrade(handle, 'buy')} />
             ))}
           </div>
         </section>
