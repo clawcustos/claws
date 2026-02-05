@@ -122,9 +122,31 @@ export function TradeModal({
     }
   };
 
-  const canBuy = mode === 'buy' && amountNum > 0 && (isFree || displayPrice <= ethBalance);
-  const canSell = mode === 'sell' && amountNum > 0 && amountNum <= userClaws && supply > amountNum;
+  // Validation
+  const insufficientETH = mode === 'buy' && !isFree && displayPrice > ethBalance;
+  const insufficientClaws = mode === 'sell' && amountNum > userClaws;
+  const cantSellAll = mode === 'sell' && amountNum >= supply; // Can't sell if it would make supply 0
+  
+  const canBuy = mode === 'buy' && amountNum > 0 && !insufficientETH;
+  const canSell = mode === 'sell' && amountNum > 0 && !insufficientClaws && !cantSellAll;
   const canTrade = mode === 'buy' ? canBuy : canSell;
+  
+  // Human-readable error message
+  const getErrorMessage = () => {
+    if (insufficientETH) {
+      const needed = (displayPrice - ethBalance).toFixed(4);
+      return `Insufficient ETH. You need ${needed} more ETH.`;
+    }
+    if (insufficientClaws) {
+      return `You only have ${userClaws} claw${userClaws !== 1 ? 's' : ''} to sell.`;
+    }
+    if (cantSellAll) {
+      return `Cannot sell all claws. Max: ${supply - 1}`;
+    }
+    return null;
+  };
+  
+  const validationError = getErrorMessage();
 
   if (!isOpen) return null;
 
@@ -376,6 +398,11 @@ export function TradeModal({
               🎉 First claw is FREE!
             </div>
           )}
+          {validationError && (
+            <div style={{ color: '#ef4444', fontSize: '14px', marginTop: '12px', textAlign: 'center', fontWeight: '500' }}>
+              {validationError}
+            </div>
+          )}
         </div>
 
         {/* Trade Button */}
@@ -414,10 +441,24 @@ export function TradeModal({
           </div>
         )}
         
-        {/* Error Display */}
-        {(buyError || sellError) && (
+        {/* Error Display - only show if not a validation error */}
+        {(buyError || sellError) && !validationError && (
           <div style={{ marginTop: '12px', color: '#ef4444', fontSize: '14px', textAlign: 'center' }}>
-            {(buyError || sellError)?.message?.slice(0, 100)}
+            {(() => {
+              const err = (buyError || sellError)?.message || '';
+              // User-friendly error messages
+              if (err.includes('insufficient funds') || err.includes('exceeds balance')) {
+                return 'Insufficient ETH balance for this transaction.';
+              }
+              if (err.includes('user rejected') || err.includes('User rejected')) {
+                return 'Transaction cancelled.';
+              }
+              if (err.includes('Missing or invalid parameters')) {
+                return 'Unable to process. Please try a smaller amount.';
+              }
+              // Fallback - show truncated message
+              return err.slice(0, 80) + (err.length > 80 ? '...' : '');
+            })()}
           </div>
         )}
       </div>
