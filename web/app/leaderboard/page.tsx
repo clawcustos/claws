@@ -1,234 +1,195 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { Header } from '@/components/header';
-import { BottomNav } from '@/components/bottom-nav';
-import { getAgentList, getAgentEmoji, AGENTS, formatETH } from '@/lib/agents';
-
-type SortMetric = 'price' | 'volume' | 'holders' | 'supply';
+import Image from 'next/image';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { getAgentList, AGENTS, formatETH } from '@/lib/agents';
 
 export default function LeaderboardPage() {
-  const [metric, setMetric] = useState<SortMetric>('price');
-  
-  const allAgents = useMemo(() => {
-    // Get list items and enrich with additional data
-    return getAgentList().map(agent => {
-      const fullAgent = AGENTS[agent.xHandle.toLowerCase()];
-      return {
+  const agents = useMemo(() => {
+    return getAgentList()
+      .map(agent => ({
         ...agent,
-        lifetimeVolumeETH: fullAgent?.lifetimeVolumeETH || 0,
-        holders: fullAgent?.holders || 0,
-      };
-    });
+        lifetimeVolumeETH: AGENTS[agent.xHandle.toLowerCase()]?.lifetimeVolumeETH || 0,
+        holders: AGENTS[agent.xHandle.toLowerCase()]?.holders || 0,
+      }))
+      .sort((a, b) => b.priceETH - a.priceETH);
   }, []);
-  
-  // Sort agents by selected metric
-  const sortedAgents = useMemo(() => {
-    return [...allAgents].sort((a, b) => {
-      switch (metric) {
-        case 'price':
-          return b.priceETH - a.priceETH;
-        case 'volume':
-          return b.lifetimeVolumeETH - a.lifetimeVolumeETH;
-        case 'holders':
-          return b.holders - a.holders;
-        case 'supply':
-          return b.supply - a.supply;
-        default:
-          return 0;
-      }
-    });
-  }, [allAgents, metric]);
 
-  // Calculate totals
-  const totals = useMemo(() => {
-    const totalVolume = allAgents.reduce((acc, a) => acc + a.lifetimeVolumeETH, 0);
-    const totalHolders = allAgents.reduce((acc, a) => acc + a.holders, 0);
-    const totalSupply = allAgents.reduce((acc, a) => acc + a.supply, 0);
-    const verifiedCount = allAgents.filter(a => a.clawsVerified).length;
-    
-    return { totalVolume, totalHolders, totalSupply, verifiedCount, totalAgents: allAgents.length };
-  }, [allAgents]);
-
-  const getRankClass = (rank: number) => {
-    if (rank === 1) return 'gold';
-    if (rank === 2) return 'silver';
-    if (rank === 3) return 'bronze';
-    return '';
-  };
+  const totals = useMemo(() => ({
+    totalVolume: agents.reduce((acc, a) => acc + a.lifetimeVolumeETH, 0),
+    totalHolders: agents.reduce((acc, a) => acc + a.holders, 0),
+    totalSupply: agents.reduce((acc, a) => acc + a.supply, 0),
+    verifiedCount: agents.filter(a => a.clawsVerified).length,
+    totalAgents: agents.length,
+  }), [agents]);
 
   return (
-    <div className="page-wrapper">
-      <Header />
-      
-      <main className="main-content">
-        <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            🏆 Leaderboard
+    <>
+      {/* Header */}
+      <header className="header">
+        <div className="header-inner">
+          <Link href="/" className="logo">
+            <span className="logo-text">CLAWS</span>
+          </Link>
+          
+          <nav className="header-nav">
+            <Link href="/" className="header-link">Home</Link>
+            <Link href="/verify" className="header-link">Verify</Link>
+          </nav>
+          
+          <ConnectButton.Custom>
+            {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
+              const ready = mounted;
+              const connected = ready && account && chain;
+              return (
+                <div {...(!ready && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}>
+                  {!connected ? (
+                    <button onClick={openConnectModal} className="btn btn-red">Connect</button>
+                  ) : (
+                    <button onClick={openAccountModal} className="btn btn-ghost mono">
+                      {account.displayName}
+                    </button>
+                  )}
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
+        </div>
+      </header>
+
+      <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
+        <section className="section">
+          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
+            <span className="text-red">Leaderboard</span>
           </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Top AI agents ranked by {metric === 'price' ? 'market price' : metric === 'volume' ? 'lifetime trading volume' : metric === 'holders' ? 'number of holders' : 'supply'}.
+          <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
+            All agents ranked by current price.
           </p>
-        </div>
-        
-        {/* Metric Tabs */}
-        <div 
-          style={{ 
-            display: 'flex', 
-            gap: '0.25rem', 
-            marginBottom: '1.5rem',
-            background: 'var(--bg-elevated)',
-            borderRadius: 'var(--radius-md)',
-            padding: '0.25rem',
-            width: 'fit-content',
-          }}
-        >
-          {([
-            { key: 'price', label: 'Price' },
-            { key: 'volume', label: 'Volume' },
-            { key: 'holders', label: 'Holders' },
-            { key: 'supply', label: 'Supply' },
-          ] as { key: SortMetric; label: string }[]).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setMetric(key)}
-              style={{
-                padding: '0.5rem 1rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                background: metric === key ? 'var(--bg-surface)' : 'transparent',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                color: metric === key ? 'var(--text-primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                boxShadow: metric === key ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        
-        {/* Leaderboard Table */}
-        <div className="leaderboard">
-          <div className="leaderboard-header">
-            <div className="leaderboard-col rank">#</div>
-            <div className="leaderboard-col agent">Agent</div>
-            <div className="leaderboard-col price">Price</div>
-            <div className="leaderboard-col supply">Supply</div>
-            <div className="leaderboard-col volume">Volume</div>
+          
+          {/* Stats */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '1rem',
+            marginBottom: '2rem',
+          }}>
+            <div style={{ 
+              background: 'var(--black-surface)', 
+              border: '1px solid var(--grey-800)',
+              borderRadius: '8px',
+              padding: '1rem',
+              textAlign: 'center',
+            }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--red)' }}>
+                {formatETH(totals.totalVolume)} ETH
+              </div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>
+                Total Volume
+              </div>
+            </div>
+            <div style={{ 
+              background: 'var(--black-surface)', 
+              border: '1px solid var(--grey-800)',
+              borderRadius: '8px',
+              padding: '1rem',
+              textAlign: 'center',
+            }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                {totals.totalAgents}
+              </div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>
+                Agents
+              </div>
+            </div>
+            <div style={{ 
+              background: 'var(--black-surface)', 
+              border: '1px solid var(--grey-800)',
+              borderRadius: '8px',
+              padding: '1rem',
+              textAlign: 'center',
+            }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                {totals.totalHolders}
+              </div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>
+                Traders
+              </div>
+            </div>
+            <div style={{ 
+              background: 'var(--black-surface)', 
+              border: '1px solid var(--grey-800)',
+              borderRadius: '8px',
+              padding: '1rem',
+              textAlign: 'center',
+            }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--green)' }}>
+                {totals.verifiedCount}
+              </div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>
+                Verified
+              </div>
+            </div>
           </div>
           
-          {sortedAgents.map((agent, index) => {
-            const rank = index + 1;
-            const emoji = getAgentEmoji(agent.xHandle);
+          {/* Table */}
+          <div className="leaderboard">
+            <div className="leaderboard-header">
+              <div>#</div>
+              <div>Agent</div>
+              <div style={{ textAlign: 'right' }}>Price</div>
+              <div style={{ textAlign: 'right' }}>Supply</div>
+            </div>
             
-            return (
+            {agents.map((agent, i) => (
               <Link 
-                key={agent.address} 
+                key={agent.address}
                 href={`/agent/${agent.xHandle}`}
-                className="leaderboard-item hover-lift"
+                className="leaderboard-item"
               >
-                <div className="leaderboard-rank">
-                  <span className={`rank-badge ${getRankClass(rank)}`}>
-                    {rank}
-                  </span>
+                <div className={`leaderboard-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`}>
+                  {i + 1}
                 </div>
-                
                 <div className="leaderboard-agent">
-                  <div className="leaderboard-avatar">{emoji}</div>
-                  <div className="leaderboard-agent-info">
-                    <div className="leaderboard-agent-name">
+                  <div className="leaderboard-avatar">
+                    <Image 
+                      src={agent.xProfileImage} 
+                      alt={agent.name}
+                      width={36}
+                      height={36}
+                      unoptimized
+                    />
+                  </div>
+                  <div>
+                    <div className="leaderboard-name" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                       {agent.name}
                       {agent.clawsVerified && (
-                        <span 
-                          style={{ 
-                            marginLeft: '0.375rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '14px',
-                            height: '14px',
-                            background: 'var(--brand)',
-                            borderRadius: '50%',
-                            fontSize: '0.5rem',
-                            color: 'white',
-                          }}
-                        >
+                        <span style={{
+                          width: '14px',
+                          height: '14px',
+                          background: 'var(--red)',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.5rem',
+                          color: 'white',
+                        }}>
                           ✓
                         </span>
                       )}
                     </div>
-                    <div className="leaderboard-agent-handle">@{agent.xHandle}</div>
+                    <div className="leaderboard-handle">@{agent.xHandle}</div>
                   </div>
                 </div>
-                
-                <div className="leaderboard-price">{formatETH(agent.priceETH)} Ξ</div>
+                <div className="leaderboard-price">{formatETH(agent.priceETH)} ETH</div>
                 <div className="leaderboard-supply">{agent.supply}</div>
-                <div className="leaderboard-volume">{formatETH(agent.lifetimeVolumeETH)} Ξ</div>
               </Link>
-            );
-          })}
-        </div>
-        
-        {/* Stats Summary */}
-        <div 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            marginTop: '2rem',
-          }}
-        >
-          <div className="card glow-hover">
-            <div className="card-body" style={{ textAlign: 'center' }}>
-              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--brand)' }}>
-                {formatETH(totals.totalVolume)} Ξ
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
-                Total Volume
-              </div>
-            </div>
+            ))}
           </div>
-          
-          <div className="card glow-hover">
-            <div className="card-body" style={{ textAlign: 'center' }}>
-              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--positive)' }}>
-                {totals.totalHolders}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
-                Total Holders
-              </div>
-            </div>
-          </div>
-          
-          <div className="card glow-hover">
-            <div className="card-body" style={{ textAlign: 'center' }}>
-              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                {totals.totalSupply}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
-                Total Supply
-              </div>
-            </div>
-          </div>
-          
-          <div className="card glow-hover">
-            <div className="card-body" style={{ textAlign: 'center' }}>
-              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                {totals.verifiedCount} / {totals.totalAgents}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
-                Verified Agents
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
       </main>
-      
-      <BottomNav />
-    </div>
+    </>
   );
 }

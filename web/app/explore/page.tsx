@@ -2,174 +2,245 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Header } from '@/components/header';
-import { BottomNav } from '@/components/bottom-nav';
-import { AgentCard } from '@/components/agent-card';
-import { getAgentList, type AgentListItem } from '@/lib/agents';
+import Image from 'next/image';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { getAgentList, AGENTS, formatETH, calculateCurrentPrice } from '@/lib/agents';
+import { TradeModal } from '@/components/trade-modal';
 
 type SortOption = 'price' | 'supply' | 'volume' | 'change';
-type FilterOption = 'all' | 'verified' | 'unverified';
 
 export default function ExplorePage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('price');
-  const [filter, setFilter] = useState<FilterOption>('all');
+  const { isConnected } = useAccount();
   
-  const allAgents = useMemo(() => getAgentList(), []);
+  const [tradeModal, setTradeModal] = useState<{
+    isOpen: boolean;
+    handle: string;
+    mode: 'buy' | 'sell';
+  }>({ isOpen: false, handle: '', mode: 'buy' });
   
-  // Filter and sort agents
+  const allAgents = useMemo(() => {
+    return getAgentList().map(agent => ({
+      ...agent,
+      lifetimeVolumeETH: AGENTS[agent.xHandle.toLowerCase()]?.lifetimeVolumeETH || 0,
+    }));
+  }, []);
+  
   const filteredAgents = useMemo(() => {
     return allAgents
       .filter((agent) => {
-        // Search filter
         if (search) {
           const q = search.toLowerCase();
           return agent.name.toLowerCase().includes(q) || agent.xHandle.toLowerCase().includes(q);
         }
         return true;
       })
-      .filter((agent) => {
-        // Verification filter
-        if (filter === 'verified') return agent.clawsVerified;
-        if (filter === 'unverified') return !agent.clawsVerified;
-        return true;
-      })
       .sort((a, b) => {
         switch (sortBy) {
-          case 'price':
-            return b.priceETH - a.priceETH;
-          case 'supply':
-            return b.supply - a.supply;
-          case 'volume':
-            return parseFloat(b.volume24h?.replace(/[$K]/g, '') || '0') - parseFloat(a.volume24h?.replace(/[$K]/g, '') || '0');
-          case 'change':
-            return b.priceChange24h - a.priceChange24h;
-          default:
-            return 0;
+          case 'price': return b.priceETH - a.priceETH;
+          case 'supply': return b.supply - a.supply;
+          case 'volume': return b.lifetimeVolumeETH - a.lifetimeVolumeETH;
+          case 'change': return b.priceChange24h - a.priceChange24h;
+          default: return 0;
         }
       });
-  }, [allAgents, search, sortBy, filter]);
+  }, [allAgents, search, sortBy]);
+
+  const selectedAgent = AGENTS[tradeModal.handle];
+
+  const openTrade = (handle: string, mode: 'buy' | 'sell') => {
+    setTradeModal({ isOpen: true, handle, mode });
+  };
 
   return (
-    <div className="page-wrapper">
-      <Header />
-      
-      <main className="main-content">
-        <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Explore Agents
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Discover and trade claws in {allAgents.length} AI agents from the Claw ecosystem.
-          </p>
-        </div>
-        
-        {/* Filters */}
-        <div 
-          style={{ 
-            display: 'flex', 
-            flexWrap: 'wrap',
-            gap: '0.75rem', 
-            marginBottom: '1.5rem',
-            alignItems: 'center',
-          }}
-        >
-          {/* Search */}
-          <div 
-            style={{ 
-              flex: '1',
-              minWidth: '200px',
-              maxWidth: '400px',
+    <>
+      {/* Header */}
+      <header className="header">
+        <div className="header-inner">
+          <Link href="/" className="logo">
+            <span className="logo-text">CLAWS</span>
+          </Link>
+          
+          <nav className="header-nav">
+            <Link href="/" className="header-link">Home</Link>
+            <Link href="/leaderboard" className="header-link">Leaderboard</Link>
+          </nav>
+          
+          <ConnectButton.Custom>
+            {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
+              const ready = mounted;
+              const connected = ready && account && chain;
+              return (
+                <div {...(!ready && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}>
+                  {!connected ? (
+                    <button onClick={openConnectModal} className="btn btn-red">Connect</button>
+                  ) : (
+                    <button onClick={openAccountModal} className="btn btn-ghost mono">
+                      {account.displayName}
+                    </button>
+                  )}
+                </div>
+              );
             }}
-          >
+          </ConnectButton.Custom>
+        </div>
+      </header>
+
+      <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
+        <section className="section">
+          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
+            <span className="text-red">Explore</span> Agents
+          </h1>
+          <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
+            {allAgents.length} agents available for trading.
+          </p>
+          
+          {/* Filters */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '1rem', 
+            marginBottom: '2rem',
+            flexWrap: 'wrap',
+          }}>
             <input
               type="text"
               placeholder="Search agents..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
-                width: '100%',
-                padding: '0.625rem 1rem',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
+                flex: '1',
+                minWidth: '200px',
+                background: 'var(--black-surface)',
+                border: '1px solid var(--grey-800)',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                color: 'var(--white)',
                 fontSize: '0.875rem',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                transition: 'border-color 0.15s ease',
               }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--brand)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
             />
+            
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              style={{
+                background: 'var(--black-surface)',
+                border: '1px solid var(--grey-800)',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                color: 'var(--white)',
+                fontSize: '0.875rem',
+              }}
+            >
+              <option value="price">Sort by Price</option>
+              <option value="supply">Sort by Supply</option>
+              <option value="volume">Sort by Volume</option>
+              <option value="change">Sort by Change</option>
+            </select>
           </div>
           
-          {/* Filter */}
-          <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: '0.25rem' }}>
-            {(['all', 'verified', 'unverified'] as FilterOption[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  background: filter === f ? 'var(--bg-surface)' : 'transparent',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  color: filter === f ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {f === 'all' ? 'All' : f === 'verified' ? '✓ Verified' : '○ Unverified'}
-              </button>
-            ))}
+          {/* Grid */}
+          <div className="agents-grid">
+            {filteredAgents.map((agent) => {
+              const isUp = agent.priceChange24h >= 0;
+              
+              return (
+                <div key={agent.address} className={`agent-card ${agent.clawsVerified ? 'verified' : ''}`}>
+                  <div className="agent-header">
+                    <div className="agent-avatar">
+                      <Image 
+                        src={agent.xProfileImage} 
+                        alt={agent.name}
+                        width={48}
+                        height={48}
+                        unoptimized
+                      />
+                    </div>
+                    <div className="agent-info">
+                      <div className="agent-name">
+                        {agent.name}
+                        {agent.clawsVerified && <span className="verified-badge">✓</span>}
+                      </div>
+                      <a 
+                        href={`https://x.com/${agent.xHandle}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="agent-handle"
+                      >
+                        @{agent.xHandle}
+                      </a>
+                    </div>
+                  </div>
+                  
+                  <div className="agent-price">
+                    <div className="agent-price-eth">{formatETH(agent.priceETH)} ETH</div>
+                    <div className="agent-price-usd">{agent.priceUSD}</div>
+                    <div className={`agent-price-change ${isUp ? 'up' : 'down'}`}>
+                      {isUp ? '↑' : '↓'} {Math.abs(agent.priceChange24h).toFixed(1)}%
+                    </div>
+                  </div>
+                  
+                  <div className="agent-stats">
+                    <div className="agent-stat">
+                      <div className="agent-stat-value">{agent.supply}</div>
+                      <div className="agent-stat-label">Supply</div>
+                    </div>
+                    <div className="agent-stat">
+                      <div className="agent-stat-value">{agent.volume24h}</div>
+                      <div className="agent-stat-label">Volume</div>
+                    </div>
+                  </div>
+                  
+                  <div className="agent-actions">
+                    {isConnected ? (
+                      <>
+                        <button 
+                          className="agent-action buy"
+                          onClick={() => openTrade(agent.xHandle, 'buy')}
+                        >
+                          BUY
+                        </button>
+                        <button 
+                          className="agent-action sell"
+                          onClick={() => openTrade(agent.xHandle, 'sell')}
+                        >
+                          SELL
+                        </button>
+                      </>
+                    ) : (
+                      <ConnectButton.Custom>
+                        {({ openConnectModal }) => (
+                          <button 
+                            className="agent-action buy"
+                            onClick={openConnectModal}
+                            style={{ gridColumn: '1 / -1' }}
+                          >
+                            CONNECT TO TRADE
+                          </button>
+                        )}
+                      </ConnectButton.Custom>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            style={{
-              padding: '0.625rem 1rem',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.875rem',
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <option value="price">Sort by Price</option>
-            <option value="supply">Sort by Supply</option>
-            <option value="volume">Sort by Volume</option>
-            <option value="change">Sort by 24h Change</option>
-          </select>
-        </div>
-        
-        {/* Results count */}
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-          Showing {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
-        </div>
-        
-        {/* Agent Grid */}
-        {filteredAgents.length > 0 ? (
-          <div className="agent-grid">
-            {filteredAgents.map((agent) => (
-              <AgentCard key={agent.address} agent={agent} />
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state" style={{ marginTop: '2rem' }}>
-            <div className="empty-state-icon">🔍</div>
-            <h3 className="empty-state-title">No agents found</h3>
-            <p className="empty-state-desc">Try adjusting your search or filters</p>
-          </div>
-        )}
+        </section>
       </main>
       
-      <BottomNav />
-    </div>
+      {tradeModal.isOpen && selectedAgent && (
+        <TradeModal
+          isOpen={tradeModal.isOpen}
+          onClose={() => setTradeModal({ ...tradeModal, isOpen: false })}
+          agentName={selectedAgent.name}
+          agentHandle={selectedAgent.xHandle}
+          agentImage={selectedAgent.xProfileImage}
+          currentPriceETH={calculateCurrentPrice(selectedAgent.supply)}
+          supply={selectedAgent.supply}
+          initialMode={tradeModal.mode}
+        />
+      )}
+    </>
   );
 }
