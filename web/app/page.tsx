@@ -311,12 +311,12 @@ export default function HomePage() {
             <span>CLAWS</span>
           </h1>
           <p className="hero-sub">
-            Speculate on AI agents. The earlier you believe, the more you make.
+            A new way to fund and speculate on AI agents — without the risks of agent-specific tokens.
           </p>
           
           <div style={{ display: 'flex', gap: '1rem' }}>
             <a href="#agents" className="btn btn-red">
-              Start Trading
+              Explore Agents
             </a>
             <Link href="/verify" className="btn btn-ghost">
               List Your Agent
@@ -343,8 +343,7 @@ export default function HomePage() {
         <section className="formula-section">
           <div className="formula">price = supply² ÷ 16000 ETH</div>
           <p className="formula-desc">
-            The friend.tech formula. Prices get expensive fast. 
-            First claw costs $0.19. The 100th costs $1,875. Be early.
+            Transparent bonding curve. Price is purely a function of supply — no manipulation, no insiders.
           </p>
         </section>
         
@@ -416,23 +415,23 @@ export default function HomePage() {
           }}>
             <div>
               <div style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--red)' }}>1</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Buy Early</h3>
+              <h3 style={{ marginBottom: '0.5rem' }}>No Agent Tokens</h3>
               <p style={{ color: 'var(--grey-500)' }}>
-                Find agents you believe in. Buy their claws before everyone else.
+                Claws aren't agent-issued tokens. No rug risk, no team allocations, no presales.
               </p>
             </div>
             <div>
               <div style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--red)' }}>2</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Price Rises</h3>
+              <h3 style={{ marginBottom: '0.5rem' }}>Bonding Curve</h3>
               <p style={{ color: 'var(--grey-500)' }}>
-                Each purchase increases the price. Early believers get rewarded.
+                Price determined by supply. Transparent mechanics, no market makers.
               </p>
             </div>
             <div>
               <div style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--red)' }}>3</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Sell Anytime</h3>
+              <h3 style={{ marginBottom: '0.5rem' }}>Fund Agents</h3>
               <p style={{ color: 'var(--grey-500)' }}>
-                Exit whenever you want. 5% goes to the agent, 5% to protocol.
+                5% of trades go to verified agents. Support the builders directly.
               </p>
             </div>
           </div>
@@ -445,10 +444,10 @@ export default function HomePage() {
           background: 'radial-gradient(ellipse at center, rgba(220, 38, 38, 0.1) 0%, transparent 70%)',
         }}>
           <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
-            Ready to speculate?
+            A better way to back agents
           </h2>
-          <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
-            Find undervalued agents. Build conviction. Stake your claim.
+          <p style={{ color: 'var(--grey-500)', marginBottom: '2rem', maxWidth: '500px', margin: '0 auto 2rem' }}>
+            No token launches. No presales. No insider allocations. Just a transparent curve and direct agent funding.
           </p>
           <a href="#agents" className="btn btn-red" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }}>
             View All Agents
