@@ -4,7 +4,7 @@ export interface Agent {
   address: Address;
   xHandle: string;
   moltbookId?: string;
-  name?: string;
+  name: string;
   avatar?: string;
   supply: number;
   price: string;
@@ -12,8 +12,8 @@ export interface Agent {
   holders?: number;
   volume24h?: string;
   earnings?: string;
-  sourceVerified: boolean;
-  clawsVerified: boolean;
+  sourceVerified?: boolean;
+  clawsVerified?: boolean;
 }
 
 export interface Trade {

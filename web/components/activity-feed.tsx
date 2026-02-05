@@ -1,66 +1,125 @@
 'use client';
 
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface Activity {
   id: string;
-  action: 'buy' | 'sell';
+  type: 'buy' | 'sell';
+  user: string;
+  agent: string;
+  agentName: string;
   amount: number;
-  agentAddress: string;
-  agentHandle: string;
+  price: string;
   timestamp: Date;
 }
 
-interface ActivityFeedProps {
-  activities?: Activity[];
-}
+// Mock activity data matching our whitelist
+const MOCK_ACTIVITIES: Omit<Activity, 'id' | 'timestamp'>[] = [
+  { type: 'buy', user: '0x7a3d...f821', agent: 'clawcustos', agentName: 'Custos', amount: 5, price: '2.34' },
+  { type: 'buy', user: '0x2b4e...a903', agent: 'bankrbot', agentName: 'Bankr', amount: 2, price: '12.45' },
+  { type: 'sell', user: '0x9c1f...d456', agent: 'kellyclaudeai', agentName: 'KellyClaude', amount: 3, price: '8.91' },
+  { type: 'buy', user: '0x4d8a...b789', agent: 'moltbook', agentName: 'Moltbook', amount: 10, price: '4.56' },
+  { type: 'buy', user: '0x6e2c...c012', agent: 'clawdbotatg', agentName: 'Clawd ATG', amount: 1, price: '15.23' },
+  { type: 'sell', user: '0x1f3d...e345', agent: 'starkbotai', agentName: 'StarkBot', amount: 4, price: '3.78' },
+  { type: 'buy', user: '0x8b5e...f678', agent: 'clawstr', agentName: 'Clawstr', amount: 7, price: '1.92' },
+];
 
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  
   if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
 }
 
-// Mock data for demo
-const MOCK_ACTIVITIES: Activity[] = [
-  { id: '1', action: 'buy', amount: 5, agentAddress: '0x1', agentHandle: 'clawstr', timestamp: new Date(Date.now() - 120000) },
-  { id: '2', action: 'sell', amount: 2, agentAddress: '0x2', agentHandle: 'kellyclaude', timestamp: new Date(Date.now() - 300000) },
-  { id: '3', action: 'buy', amount: 10, agentAddress: '0x3', agentHandle: 'starkbot', timestamp: new Date(Date.now() - 600000) },
-  { id: '4', action: 'buy', amount: 3, agentAddress: '0x1', agentHandle: 'clawstr', timestamp: new Date(Date.now() - 900000) },
-  { id: '5', action: 'sell', amount: 1, agentAddress: '0x4', agentHandle: 'ailex', timestamp: new Date(Date.now() - 1800000) },
-];
+export function ActivityFeed() {
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLive, setIsLive] = useState(true);
 
-export function ActivityFeed({ activities = MOCK_ACTIVITIES }: ActivityFeedProps) {
+  useEffect(() => {
+    // Initialize with some activities
+    const initial = MOCK_ACTIVITIES.slice(0, 5).map((a, i) => ({
+      ...a,
+      id: `activity-${i}`,
+      timestamp: new Date(Date.now() - i * 45000 - Math.random() * 30000),
+    }));
+    setActivities(initial);
+
+    // Simulate new activities
+    const interval = setInterval(() => {
+      if (!isLive) return;
+      
+      const randomActivity = MOCK_ACTIVITIES[Math.floor(Math.random() * MOCK_ACTIVITIES.length)];
+      const newActivity: Activity = {
+        ...randomActivity,
+        id: `activity-${Date.now()}`,
+        timestamp: new Date(),
+        amount: Math.floor(Math.random() * 10) + 1,
+      };
+      
+      setActivities(prev => [newActivity, ...prev.slice(0, 5)]);
+    }, 6000 + Math.random() * 4000);
+
+    return () => clearInterval(interval);
+  }, [isLive]);
+
   return (
-    <section className="activity-section">
+    <section className="section">
       <div className="section-header">
         <h2 className="section-title">
-          <span className="pulse"></span>
+          <span style={{ 
+            display: 'inline-block',
+            width: '8px',
+            height: '8px',
+            background: isLive ? 'var(--positive)' : 'var(--text-muted)',
+            borderRadius: '50%',
+            marginRight: '8px',
+            animation: isLive ? 'pulse 2s ease-in-out infinite' : 'none',
+          }} />
           Live Activity
         </h2>
+        <button 
+          onClick={() => setIsLive(!isLive)}
+          className="section-action"
+          style={{ cursor: 'pointer', background: 'none', border: 'none' }}
+        >
+          {isLive ? 'Pause' : 'Resume'}
+        </button>
       </div>
       
-      <div className="activity-feed">
+      <div className="activity-list">
         {activities.map((activity) => (
           <div key={activity.id} className="activity-item">
-            <div className={`activity-indicator ${activity.action}`}></div>
-            <div className="activity-content">
-              <span className="activity-action">
-                {activity.action === 'buy' ? 'Bought' : 'Sold'}{' '}
-                <span className="amount">{activity.amount}</span>{' '}
-                {activity.amount === 1 ? 'claw' : 'claws'} of
-              </span>
-              <Link href={`/agent/${activity.agentAddress}`} className="activity-agent">
-                @{activity.agentHandle}
-              </Link>
+            <div className={`activity-icon ${activity.type}`}>
+              {activity.type === 'buy' ? '↑' : '↓'}
             </div>
-            <span className="activity-time">{formatTimeAgo(activity.timestamp)}</span>
+            
+            <div className="activity-content">
+              <div className="activity-text">
+                <strong>{activity.user}</strong>
+                {activity.type === 'buy' ? ' bought ' : ' sold '}
+                <strong>{activity.amount}</strong>
+                {activity.amount === 1 ? ' claw' : ' claws'}
+                {' of '}
+                <strong>{activity.agentName}</strong>
+              </div>
+              <div className="activity-time">{formatTimeAgo(activity.timestamp)}</div>
+            </div>
+            
+            <div className="activity-amount">
+              ${(parseFloat(activity.price) * activity.amount).toFixed(2)}
+            </div>
           </div>
         ))}
       </div>
+      
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.1); }
+        }
+      `}</style>
     </section>
   );
 }

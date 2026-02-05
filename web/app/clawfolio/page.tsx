@@ -1,44 +1,38 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
 import { useAccount } from 'wagmi';
+import Link from 'next/link';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
 
-// Mock holdings data - will be replaced with contract reads
+// Mock portfolio data - will come from contract
 const MOCK_HOLDINGS = [
-  { agent: '0x1111', name: 'Clawstr', xHandle: 'clawstr', balance: 5, currentPrice: '0.0234', value: '0.117', pnl: 23.5, verified: true },
-  { agent: '0x2222', name: 'KellyClaude', xHandle: 'kellyclaude', balance: 3, currentPrice: '0.0189', value: '0.0567', pnl: -8.2, verified: true },
-  { agent: '0x4444', name: 'MoltX', xHandle: 'moltx', balance: 8, currentPrice: '0.0134', value: '0.1072', pnl: 45.1, verified: true },
-];
-
-const MOCK_ACTIVITY = [
-  { type: 'buy', agent: 'Clawstr', amount: 2, price: '0.0198', time: '2h ago' },
-  { type: 'sell', agent: 'StarkBot', amount: 1, price: '0.0145', time: '5h ago' },
-  { type: 'buy', agent: 'MoltX', amount: 5, price: '0.0089', time: '1d ago' },
+  { handle: 'bankrbot', name: 'Bankr', amount: 3, avgCost: '45.20', currentPrice: '52.10', emoji: '💰' },
+  { handle: 'moltbook', name: 'Moltbook', amount: 5, avgCost: '38.50', currentPrice: '41.20', emoji: '🦀' },
+  { handle: 'clawcustos', name: 'Custos', amount: 10, avgCost: '6.80', currentPrice: '8.20', emoji: '🏛️' },
 ];
 
 export default function ClawfolioPage() {
   const { address, isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState<'holdings' | 'activity'>('holdings');
-
-  // Calculate totals from mock data
-  const totalValue = MOCK_HOLDINGS.reduce((sum, h) => sum + parseFloat(h.value), 0);
-  const totalPnl = 18.7; // Mock overall P&L
+  
+  // Calculate totals
+  const totalValue = MOCK_HOLDINGS.reduce((acc, h) => acc + (parseFloat(h.currentPrice) * h.amount), 0);
+  const totalCost = MOCK_HOLDINGS.reduce((acc, h) => acc + (parseFloat(h.avgCost) * h.amount), 0);
+  const totalPnL = totalValue - totalCost;
+  const pnlPercent = (totalPnL / totalCost) * 100;
 
   if (!isConnected) {
     return (
       <div className="page-wrapper">
         <Header />
-        <main className="main-content" style={{ paddingBottom: '80px' }}>
-          <div className="clawfolio-connect">
-            <div className="connect-prompt">
-              <h1>Your Clawfolio</h1>
-              <p>Connect your wallet to view your claw holdings and activity.</p>
-              <div className="connect-illustration">🦞</div>
-            </div>
+        <main className="main-content">
+          <div className="empty-state" style={{ marginTop: '4rem' }}>
+            <div className="empty-state-icon">💼</div>
+            <h2 className="empty-state-title">Connect Your Wallet</h2>
+            <p className="empty-state-desc">Connect your wallet to view your clawfolio</p>
+            <button className="btn btn-primary btn-lg" style={{ marginTop: '1.5rem' }}>
+              Connect Wallet
+            </button>
           </div>
         </main>
         <BottomNav />
@@ -50,129 +44,229 @@ export default function ClawfolioPage() {
     <div className="page-wrapper">
       <Header />
       
-      <main className="main-content" style={{ paddingBottom: '80px' }}>
-        <div className="clawfolio-page">
-          {/* Portfolio Summary */}
-          <div className="portfolio-summary">
-            <div className="portfolio-header">
-              <h1>Your Clawfolio</h1>
-              <span className="wallet-address">
-                {address?.slice(0, 6)}...{address?.slice(-4)}
-              </span>
-            </div>
-            
-            <div className="portfolio-stats">
-              <div className="portfolio-stat main">
-                <span className="stat-label">Total Value</span>
-                <span className="stat-value">Ξ{totalValue.toFixed(4)}</span>
-              </div>
-              <div className="portfolio-stat">
-                <span className="stat-label">Total P&L</span>
-                <span className={`stat-value ${totalPnl >= 0 ? 'positive' : 'negative'}`}>
-                  {totalPnl >= 0 ? '+' : ''}{totalPnl}%
-                </span>
-              </div>
-              <div className="portfolio-stat">
-                <span className="stat-label">Holdings</span>
-                <span className="stat-value">{MOCK_HOLDINGS.length} agents</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="clawfolio-tabs">
-            <button 
-              className={`tab-btn ${activeTab === 'holdings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('holdings')}
-            >
-              Holdings
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
-              onClick={() => setActiveTab('activity')}
-            >
-              Activity
-            </button>
-          </div>
-
-          {/* Holdings Tab */}
-          {activeTab === 'holdings' && (
-            <div className="holdings-list">
-              {MOCK_HOLDINGS.length === 0 ? (
-                <div className="empty-state">
-                  <p>No claws yet. Start speculating!</p>
-                  <Link href="/" className="cta-link">Browse Agents →</Link>
-                </div>
-              ) : (
-                MOCK_HOLDINGS.map((holding) => (
-                  <Link 
-                    key={holding.agent} 
-                    href={`/agent/${holding.agent}`}
-                    className="holding-card"
-                  >
-                    <div className="holding-agent">
-                      <Image
-                        src={`https://unavatar.io/twitter/${holding.xHandle}`}
-                        alt={holding.name}
-                        width={44}
-                        height={44}
-                        className="holding-avatar"
-                        unoptimized
-                      />
-                      <div className="holding-info">
-                        <span className="holding-name">
-                          {holding.name}
-                          {holding.verified && <span className="verified-tick">✓</span>}
-                        </span>
-                        <span className="holding-handle">@{holding.xHandle}</span>
-                      </div>
-                    </div>
-                    <div className="holding-stats">
-                      <div className="holding-balance">
-                        <span className="balance-value">{holding.balance}</span>
-                        <span className="balance-label">claws</span>
-                      </div>
-                      <div className="holding-value">
-                        <span className="value-amount">Ξ{holding.value}</span>
-                        <span className={`value-pnl ${holding.pnl >= 0 ? 'positive' : 'negative'}`}>
-                          {holding.pnl >= 0 ? '+' : ''}{holding.pnl}%
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* Activity Tab */}
-          {activeTab === 'activity' && (
-            <div className="activity-list">
-              {MOCK_ACTIVITY.length === 0 ? (
-                <div className="empty-state">
-                  <p>No activity yet.</p>
-                </div>
-              ) : (
-                MOCK_ACTIVITY.map((activity, i) => (
-                  <div key={i} className="activity-row">
-                    <div className={`activity-type ${activity.type}`}>
-                      {activity.type === 'buy' ? '↑' : '↓'}
-                    </div>
-                    <div className="activity-details">
-                      <span className="activity-action">
-                        {activity.type === 'buy' ? 'Bought' : 'Sold'} {activity.amount} {activity.agent}
-                      </span>
-                      <span className="activity-price">@ Ξ{activity.price}</span>
-                    </div>
-                    <span className="activity-time">{activity.time}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+      <main className="main-content">
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            Clawfolio
+          </h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Your agent claw holdings and performance
+          </p>
         </div>
+        
+        {/* Portfolio Summary */}
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '1rem',
+            marginBottom: '2rem',
+          }}
+        >
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                ${totalValue.toFixed(2)}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Total Value
+              </div>
+            </div>
+          </div>
+          
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div 
+                className="mono" 
+                style={{ 
+                  fontSize: '1.5rem', 
+                  fontWeight: 700,
+                  color: totalPnL >= 0 ? 'var(--positive)' : 'var(--negative)',
+                }}
+              >
+                {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Unrealized P&L
+              </div>
+            </div>
+          </div>
+          
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div 
+                className="mono" 
+                style={{ 
+                  fontSize: '1.5rem', 
+                  fontWeight: 700,
+                  color: pnlPercent >= 0 ? 'var(--positive)' : 'var(--negative)',
+                }}
+              >
+                {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(1)}%
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Return
+              </div>
+            </div>
+          </div>
+          
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                {MOCK_HOLDINGS.length}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Agents
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Holdings Table */}
+        <section className="section">
+          <div className="section-header">
+            <h2 className="section-title">Holdings</h2>
+          </div>
+          
+          <div className="card">
+            {MOCK_HOLDINGS.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table 
+                  style={{ 
+                    width: '100%', 
+                    borderCollapse: 'collapse',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <thead>
+                    <tr 
+                      style={{ 
+                        borderBottom: '1px solid var(--border)',
+                        background: 'var(--bg-elevated)',
+                      }}
+                    >
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                        Agent
+                      </th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                        Claws
+                      </th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                        Avg Cost
+                      </th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                        Price
+                      </th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                        Value
+                      </th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                        P&L
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOCK_HOLDINGS.map((holding) => {
+                      const value = parseFloat(holding.currentPrice) * holding.amount;
+                      const cost = parseFloat(holding.avgCost) * holding.amount;
+                      const pnl = value - cost;
+                      const pnlPct = (pnl / cost) * 100;
+                      
+                      return (
+                        <tr 
+                          key={holding.handle}
+                          style={{ borderBottom: '1px solid var(--border)' }}
+                        >
+                          <td style={{ padding: '1rem' }}>
+                            <Link 
+                              href={`/agent/${holding.handle}`}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '0.75rem',
+                                textDecoration: 'none',
+                                color: 'inherit',
+                              }}
+                            >
+                              <div 
+                                style={{ 
+                                  width: '36px', 
+                                  height: '36px', 
+                                  background: 'var(--bg-elevated)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '1.25rem',
+                                }}
+                              >
+                                {holding.emoji}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{holding.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                  @{holding.handle}
+                                </div>
+                              </div>
+                            </Link>
+                          </td>
+                          <td className="mono" style={{ padding: '1rem', textAlign: 'right' }}>
+                            {holding.amount}
+                          </td>
+                          <td className="mono" style={{ padding: '1rem', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                            ${holding.avgCost}
+                          </td>
+                          <td className="mono" style={{ padding: '1rem', textAlign: 'right' }}>
+                            ${holding.currentPrice}
+                          </td>
+                          <td className="mono" style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
+                            ${value.toFixed(2)}
+                          </td>
+                          <td 
+                            className="mono" 
+                            style={{ 
+                              padding: '1rem', 
+                              textAlign: 'right',
+                              color: pnl >= 0 ? 'var(--positive)' : 'var(--negative)',
+                            }}
+                          >
+                            {pnl >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-state-icon">💼</div>
+                <h3 className="empty-state-title">No holdings yet</h3>
+                <p className="empty-state-desc">Buy some claws to get started</p>
+                <Link href="/explore" className="btn btn-primary" style={{ marginTop: '1rem' }}>
+                  Explore Agents
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+        
+        {/* Transaction History Placeholder */}
+        <section className="section">
+          <div className="section-header">
+            <h2 className="section-title">Transaction History</h2>
+          </div>
+          
+          <div className="card">
+            <div className="empty-state">
+              <div className="empty-state-icon">📜</div>
+              <h3 className="empty-state-title">No transactions yet</h3>
+              <p className="empty-state-desc">Your trade history will appear here</p>
+            </div>
+          </div>
+        </section>
       </main>
-
+      
       <BottomNav />
     </div>
   );

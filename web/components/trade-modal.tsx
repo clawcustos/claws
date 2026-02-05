@@ -1,158 +1,274 @@
 'use client';
 
-import { useState } from 'react';
-import { Address } from 'viem';
-import { useAccount } from 'wagmi';
-import { useBuyPrice, useSellPrice, useBuyClaws, useSellClaws, useClawsBalance, formatPrice } from '@/lib/hooks';
+import { useState, useEffect, useCallback } from 'react';
+import { useAccount, useBalance } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { getAgentEmoji } from '@/lib/agents';
 
 interface TradeModalProps {
-  agent: Address;
-  agentName: string;
   isOpen: boolean;
   onClose: () => void;
+  agentName: string;
+  agentHandle: string;
+  currentPrice: string;
+  supply: number;
 }
 
-export function TradeModal({ agent, agentName, isOpen, onClose }: TradeModalProps) {
+// Bonding curve: price = supply² / 160000 USDC
+function calculateBuyPrice(supply: number, amount: number): number {
+  // Sum of squares formula for bonding curve
+  const endSupply = supply + amount;
+  const sumEnd = (endSupply * (endSupply + 1) * (2 * endSupply + 1)) / 6;
+  const sumStart = (supply * (supply + 1) * (2 * supply + 1)) / 6;
+  const sumSquares = sumEnd - sumStart;
+  return (sumSquares * 1e6) / 160000 / 1e6; // USDC has 6 decimals
+}
+
+function calculateSellPrice(supply: number, amount: number): number {
+  if (amount > supply || amount === 0) return 0;
+  const newSupply = supply - amount;
+  const sumEnd = (supply * (supply + 1) * (2 * supply + 1)) / 6;
+  const sumStart = (newSupply * (newSupply + 1) * (2 * newSupply + 1)) / 6;
+  const sumSquares = sumEnd - sumStart;
+  return (sumSquares * 1e6) / 160000 / 1e6;
+}
+
+function formatUSD(value: number): string {
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(2)}K`;
+  }
+  return `$${value.toFixed(2)}`;
+}
+
+export function TradeModal({ 
+  isOpen, 
+  onClose, 
+  agentName, 
+  agentHandle,
+  currentPrice,
+  supply 
+}: TradeModalProps) {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
-  const [amount, setAmount] = useState(1);
+  const [amount, setAmount] = useState('1');
+  const [isLoading, setIsLoading] = useState(false);
+  const { address, isConnected } = useAccount();
   
-  const { address } = useAccount();
-  const { data: buyPrice } = useBuyPrice(agent, BigInt(amount));
-  const { data: sellPrice } = useSellPrice(agent, BigInt(amount));
-  const { data: balance } = useClawsBalance(agent, address);
+  const amountNum = parseInt(amount) || 0;
+  const emoji = getAgentEmoji(agentHandle);
   
-  const { buy, isPending: isBuying, isConfirming: isConfirmingBuy } = useBuyClaws();
-  const { sell, isPending: isSelling, isConfirming: isConfirmingSell } = useSellClaws();
+  // Calculate prices
+  const basePrice = mode === 'buy' 
+    ? calculateBuyPrice(supply, amountNum)
+    : calculateSellPrice(supply, amountNum);
+  
+  const protocolFee = basePrice * 0.05;
+  const agentFee = basePrice * 0.05;
+  
+  const totalCost = mode === 'buy' 
+    ? basePrice + protocolFee + agentFee
+    : basePrice - protocolFee - agentFee;
 
-  if (!isOpen) return null;
+  // Preview new supply after trade
+  const newSupply = mode === 'buy' ? supply + amountNum : supply - amountNum;
+  const newPrice = mode === 'buy'
+    ? calculateBuyPrice(newSupply, 1)
+    : calculateBuyPrice(Math.max(0, newSupply), 1);
 
-  const price = mode === 'buy' ? buyPrice : sellPrice;
-  const isLoading = isBuying || isSelling || isConfirmingBuy || isConfirmingSell;
-  const userBalance = balance ? Number(balance) : 0;
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
-  const handleTrade = () => {
-    if (mode === 'buy' && buyPrice) {
-      buy(agent, BigInt(amount), buyPrice);
-    } else if (mode === 'sell') {
-      sell(agent, BigInt(amount));
+  // Reset on close
+  useEffect(() => {
+    if (!isOpen) {
+      setAmount('1');
+      setMode('buy');
+    }
+  }, [isOpen]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    const num = parseInt(value) || 0;
+    // Limit to available supply for sells
+    if (mode === 'sell' && num > supply) {
+      setAmount(supply.toString());
+    } else {
+      setAmount(value || '0');
     }
   };
 
-  const canSell = mode === 'sell' && userBalance >= amount;
-  const canTrade = mode === 'buy' ? !!buyPrice : canSell;
+  const setQuickAmount = (val: number) => {
+    if (mode === 'sell' && val > supply) {
+      setAmount(supply.toString());
+    } else {
+      setAmount(val.toString());
+    }
+  };
+
+  const handleTrade = async () => {
+    if (!isConnected || amountNum === 0) return;
+    
+    setIsLoading(true);
+    // TODO: Implement actual contract call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsLoading(false);
+    onClose();
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md">
+    <div 
+      className="modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="modal-content">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-lg font-semibold text-white">Trade {agentName}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <div className="modal-header">
+          <div className="modal-agent-info">
+            <div className="modal-avatar">{emoji}</div>
+            <div>
+              <h2 className="modal-title">Trade {agentName}</h2>
+              <span className="modal-handle">@{agentHandle}</span>
+            </div>
+          </div>
+          <button className="modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
-
-        {/* Mode Toggle */}
-        <div className="p-4">
-          <div className="flex bg-gray-800 rounded-lg p-1">
-            <button
-              onClick={() => setMode('buy')}
-              className={`flex-1 py-2 rounded-md font-medium transition ${
-                mode === 'buy' 
-                  ? 'bg-green-600 text-white' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Buy
-            </button>
-            <button
-              onClick={() => setMode('sell')}
-              className={`flex-1 py-2 rounded-md font-medium transition ${
-                mode === 'sell' 
-                  ? 'bg-red-600 text-white' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Sell
-            </button>
-          </div>
-        </div>
-
-        {/* Amount */}
-        <div className="px-4 pb-4">
-          <label className="block text-sm text-gray-400 mb-2">Amount</label>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setAmount(Math.max(1, amount - 1))}
-              className="w-10 h-10 bg-gray-800 rounded-lg text-white hover:bg-gray-700 transition"
-            >
-              -
-            </button>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(Math.max(1, parseInt(e.target.value) || 1))}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-center text-white text-lg font-medium focus:outline-none focus:border-blue-500"
-            />
-            <button
-              onClick={() => setAmount(amount + 1)}
-              className="w-10 h-10 bg-gray-800 rounded-lg text-white hover:bg-gray-700 transition"
-            >
-              +
-            </button>
-          </div>
-          {mode === 'sell' && (
-            <div className="text-sm text-gray-500 mt-2">
-              Your balance: {userBalance} claws
-            </div>
-          )}
-        </div>
-
-        {/* Price */}
-        <div className="px-4 pb-4">
-          <div className="bg-gray-800 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400">
-                {mode === 'buy' ? 'Total Cost' : 'You Receive'}
-              </span>
-              <span className="text-xl font-semibold text-white">
-                {formatPrice(price)} ETH
-              </span>
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              Includes 10% fees (5% protocol + 5% agent)
-            </div>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="p-4 border-t border-gray-800">
-          <button
-            onClick={handleTrade}
-            disabled={!canTrade || isLoading}
-            className={`w-full py-3 rounded-lg font-semibold transition ${
-              mode === 'buy'
-                ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-800'
-                : 'bg-red-600 hover:bg-red-700 disabled:bg-red-800'
-            } text-white disabled:opacity-50 disabled:cursor-not-allowed`}
+        
+        {/* Tabs */}
+        <div className="trade-tabs">
+          <button 
+            className={`trade-tab ${mode === 'buy' ? 'active buy' : ''}`}
+            onClick={() => setMode('buy')}
           >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                {isConfirmingBuy || isConfirmingSell ? 'Confirming...' : 'Processing...'}
-              </span>
-            ) : mode === 'buy' ? (
-              `Buy ${amount} Claw${amount > 1 ? 's' : ''}`
-            ) : (
-              `Sell ${amount} Claw${amount > 1 ? 's' : ''}`
-            )}
+            Buy
+          </button>
+          <button 
+            className={`trade-tab ${mode === 'sell' ? 'active sell' : ''}`}
+            onClick={() => setMode('sell')}
+          >
+            Sell
           </button>
         </div>
+        
+        {/* Amount Input */}
+        <div className="trade-input-group">
+          <div className="trade-input-label">
+            <span>Amount</span>
+            <span className="trade-input-supply">Supply: {supply}</span>
+          </div>
+          <div className="trade-input-wrapper">
+            <input
+              type="text"
+              className="trade-input"
+              value={amount}
+              onChange={handleAmountChange}
+              placeholder="0"
+              inputMode="numeric"
+              pattern="[0-9]*"
+            />
+            <span className="trade-input-suffix">claws</span>
+          </div>
+          
+          <div className="trade-amounts">
+            <button className="trade-amount-btn" onClick={() => setQuickAmount(1)}>1</button>
+            <button className="trade-amount-btn" onClick={() => setQuickAmount(5)}>5</button>
+            <button className="trade-amount-btn" onClick={() => setQuickAmount(10)}>10</button>
+            <button className="trade-amount-btn" onClick={() => setQuickAmount(25)}>25</button>
+            {mode === 'sell' && (
+              <button className="trade-amount-btn max" onClick={() => setQuickAmount(supply)}>MAX</button>
+            )}
+          </div>
+        </div>
+        
+        {/* Price Summary */}
+        <div className="trade-summary">
+          <div className="trade-summary-row">
+            <span className="trade-summary-label">Current price</span>
+            <span className="trade-summary-value mono">${currentPrice}</span>
+          </div>
+          <div className="trade-summary-row">
+            <span className="trade-summary-label">
+              {mode === 'buy' ? 'Cost' : 'Value'} ({amountNum} claw{amountNum !== 1 ? 's' : ''})
+            </span>
+            <span className="trade-summary-value mono">{formatUSD(basePrice)}</span>
+          </div>
+          <div className="trade-summary-row muted">
+            <span className="trade-summary-label">Protocol fee (5%)</span>
+            <span className="trade-summary-value mono">{formatUSD(protocolFee)}</span>
+          </div>
+          <div className="trade-summary-row muted">
+            <span className="trade-summary-label">Agent fee (5%)</span>
+            <span className="trade-summary-value mono">{formatUSD(agentFee)}</span>
+          </div>
+          <div className="trade-summary-divider" />
+          <div className="trade-summary-row total">
+            <span className="trade-summary-label">
+              {mode === 'buy' ? 'Total cost' : 'You receive'}
+            </span>
+            <span className={`trade-summary-value mono ${mode === 'sell' ? 'positive' : ''}`}>
+              {formatUSD(Math.abs(totalCost))}
+            </span>
+          </div>
+          
+          {/* Price impact preview */}
+          <div className="trade-impact">
+            <span>New price after trade:</span>
+            <span className="mono">${newPrice.toFixed(2)}</span>
+          </div>
+        </div>
+        
+        {/* Action Button */}
+        <div className="trade-action">
+          {!isConnected ? (
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button 
+                  className="btn btn-primary trade-btn"
+                  onClick={openConnectModal}
+                >
+                  Connect Wallet
+                </button>
+              )}
+            </ConnectButton.Custom>
+          ) : (
+            <button 
+              className={`btn trade-btn ${mode === 'buy' ? 'btn-positive' : 'btn-negative'}`}
+              disabled={amountNum === 0 || isLoading}
+              onClick={handleTrade}
+            >
+              {isLoading ? (
+                <span className="spinner" />
+              ) : (
+                <>
+                  {mode === 'buy' ? 'Buy' : 'Sell'} {amountNum} Claw{amountNum !== 1 ? 's' : ''}
+                </>
+              )}
+            </button>
+          )}
+        </div>
+        
+        {/* Info */}
+        <p className="trade-info">
+          {mode === 'buy' 
+            ? '💡 Price increases with each purchase. Early is better.'
+            : '⚠️ You can only sell claws you own.'
+          }
+        </p>
       </div>
     </div>
   );

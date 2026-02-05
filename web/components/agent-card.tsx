@@ -1,46 +1,102 @@
 'use client';
 
 import Link from 'next/link';
-import { Agent } from '@/lib/types';
+
+interface Agent {
+  address: `0x${string}`;
+  xHandle: string;
+  name: string;
+  supply: number;
+  price: string;
+  priceChange24h: number;
+  volume24h?: string;
+  sourceVerified?: boolean;
+  clawsVerified?: boolean;
+}
 
 interface AgentCardProps {
   agent: Agent;
 }
 
+const AGENT_EMOJIS: Record<string, string> = {
+  bankrbot: '💰',
+  moltbook: '🦀',
+  clawdbotatg: '🦞',
+  clawnch: '🚀',
+  kellyclaudeai: '🤖',
+  starkbotai: '⚡',
+  clawcustos: '🏛️',
+  clawstr: '🦞',
+  molten: '🔥',
+  clawdvine: '🍇',
+  clawdia: '✨',
+  clawcaster: '📡',
+  lobchanai: '🦞',
+  solvrbot: '🔧',
+  moltcaster: '📺',
+};
+
 export function AgentCard({ agent }: AgentCardProps) {
-  const priceChange = agent.priceChange24h ?? 0;
-  const isPositive = priceChange >= 0;
-  const initial = (agent.name || agent.xHandle || '?')[0].toUpperCase();
+  const emoji = AGENT_EMOJIS[agent.xHandle.toLowerCase()] || '🤖';
+  const isPositive = agent.priceChange24h >= 0;
   
   return (
-    <Link href={`/agent/${agent.address}`} className="agent-card">
-      <div className="agent-card-header">
+    <Link href={`/agent/${agent.xHandle}`} className="agent-card">
+      {/* Glow effect for verified agents */}
+      {agent.clawsVerified && (
+        <div 
+          className="agent-card-glow"
+          style={{
+            position: 'absolute',
+            inset: '-1px',
+            background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, transparent 50%)',
+            borderRadius: 'inherit',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+      )}
+      
+      <div className="agent-card-top" style={{ position: 'relative', zIndex: 1 }}>
         <div className="agent-avatar">
-          <span className="agent-avatar-placeholder">{initial}</span>
+          {emoji}
         </div>
-        <div className="agent-info">
-          <h3 className="agent-name">
-            {agent.name || agent.xHandle}
-            {agent.clawsVerified && <span className="verification-badge" title="Verified">✓</span>}
-          </h3>
-          <span className="agent-handle">@{agent.xHandle}</span>
+        
+        <div className="agent-info" style={{ overflow: 'hidden', minWidth: 0, flex: 1 }}>
+          <div className="agent-name-row">
+            <span className="agent-name">{agent.name}</span>
+            {agent.clawsVerified && (
+              <span className="badge badge-verified" title="Verified Agent">✓</span>
+            )}
+            {agent.sourceVerified && !agent.clawsVerified && (
+              <span className="badge badge-pending" title="Pending Verification">○</span>
+            )}
+          </div>
+          <div className="agent-handle">@{agent.xHandle}</div>
+        </div>
+        
+        <div className="agent-price">
+          <div className="agent-price-value">${agent.price}</div>
+          <div className={`agent-price-change ${isPositive ? 'positive' : 'negative'}`}>
+            {isPositive ? '↑' : '↓'} {Math.abs(agent.priceChange24h).toFixed(1)}%
+          </div>
         </div>
       </div>
       
-      <div className="agent-stats">
+      <div className="agent-card-stats" style={{ position: 'relative', zIndex: 1 }}>
         <div className="agent-stat">
-          <span className="agent-stat-value">Ξ{agent.price}</span>
-          <span className="agent-stat-label">Price</span>
+          <div className="agent-stat-value">{agent.supply}</div>
+          <div className="agent-stat-label">Supply</div>
         </div>
         <div className="agent-stat">
-          <span className="agent-stat-value">{agent.supply}</span>
-          <span className="agent-stat-label">Holders</span>
+          <div className="agent-stat-value">{agent.volume24h || '-'}</div>
+          <div className="agent-stat-label">24h Vol</div>
         </div>
         <div className="agent-stat">
-          <span className={`agent-stat-value ${isPositive ? 'positive' : 'negative'}`}>
-            {isPositive ? '+' : ''}{priceChange.toFixed(1)}%
-          </span>
-          <span className="agent-stat-label">24h</span>
+          <div className="agent-stat-value">
+            {agent.clawsVerified ? '✓' : '○'}
+          </div>
+          <div className="agent-stat-label">Verified</div>
         </div>
       </div>
     </Link>

@@ -1,7 +1,17 @@
 'use client';
 
 import { AgentCard } from './agent-card';
-import { Agent } from '@/lib/types';
+
+interface Agent {
+  address: `0x${string}`;
+  xHandle: string;
+  name: string;
+  supply: number;
+  price: string;
+  priceChange24h: number;
+  sourceVerified?: boolean;
+  clawsVerified?: boolean;
+}
 
 // Mock data - replace with real data from indexer
 const MOCK_AGENTS: Agent[] = [

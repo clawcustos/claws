@@ -1,108 +1,217 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
 
-// Mock data - will be replaced with API/contract data
-const MOCK_AGENTS = [
-  { address: '0x1111', name: 'Clawstr', xHandle: 'clawstr', price: '0.0234', supply: 156, holders: 89, change: 12.5, verified: true },
-  { address: '0x2222', name: 'KellyClaude', xHandle: 'kellyclaude', price: '0.0189', supply: 134, holders: 72, change: -3.2, verified: true },
-  { address: '0x3333', name: 'StarkBot', xHandle: 'starkbot', price: '0.0156', supply: 121, holders: 65, change: 8.7, verified: false },
-  { address: '0x4444', name: 'MoltX', xHandle: 'moltx', price: '0.0134', supply: 98, holders: 54, change: 15.3, verified: true },
-  { address: '0x5555', name: 'BankrWallet', xHandle: 'bankrwallet', price: '0.0112', supply: 87, holders: 48, change: -1.8, verified: false },
-  { address: '0x6666', name: 'OpenClaw', xHandle: 'openclaw', price: '0.0098', supply: 76, holders: 42, change: 6.2, verified: true },
-  { address: '0x7777', name: 'Conway', xHandle: 'conway', price: '0.0087', supply: 65, holders: 38, change: -5.4, verified: false },
-  { address: '0x8888', name: 'Clawsino', xHandle: 'clawsino', price: '0.0076', supply: 54, holders: 31, change: 22.1, verified: true },
-  { address: '0x9999', name: '4claw', xHandle: '4claw', price: '0.0065', supply: 43, holders: 25, change: -8.9, verified: false },
-  { address: '0xaaaa', name: 'GitMolt', xHandle: 'gitmolt', price: '0.0054', supply: 32, holders: 19, change: 4.5, verified: true },
+// Full agent data
+const ALL_AGENTS = [
+  { address: '0x22aF33FE49fD1Fa80c7149773dDe5890D3c76F3b' as const, xHandle: 'bankrbot', name: 'Bankr', supply: 234, price: '52.10', volume24h: '$12.4K', lifetimeVolume: '$423.5K', holders: 89, clawsVerified: true },
+  { address: '0xB695559b26BB2c9703ef1935c37AeaE9526bab07' as const, xHandle: 'moltbook', name: 'Moltbook', supply: 189, price: '41.20', volume24h: '$8.9K', lifetimeVolume: '$312.1K', holders: 67, clawsVerified: true },
+  { address: '0x9f86dB9fc6f7c9408e8Fda3Ff8ce4e78ac7a6b07' as const, xHandle: 'clawdbotatg', name: 'Clawd ATG', supply: 156, price: '29.80', volume24h: '$5.2K', lifetimeVolume: '$187.4K', holders: 52, clawsVerified: true },
+  { address: '0xa1f72459dfa10bad200ac160ecd78c6b77a747be' as const, xHandle: 'clawnch', name: 'CLAWNCH', supply: 142, price: '26.70', volume24h: '$3.8K', lifetimeVolume: '$145.2K', holders: 45, clawsVerified: false },
+  { address: '0x50D2280441372486BeecdD328c1854743EBaCb07' as const, xHandle: 'kellyclaudeai', name: 'KellyClaude', supply: 98, price: '18.90', volume24h: '$2.1K', lifetimeVolume: '$78.9K', holders: 34, clawsVerified: true },
+  { address: '0x587Cd533F418825521f3A1daa7CCd1E7339A1B07' as const, xHandle: 'starkbotai', name: 'StarkBot', supply: 87, price: '15.60', volume24h: '$1.5K', lifetimeVolume: '$56.7K', holders: 28, clawsVerified: true },
+  { address: '0x0000000000000000000000000000000000000000' as const, xHandle: 'clawcustos', name: 'Custos', supply: 45, price: '8.20', volume24h: '$980', lifetimeVolume: '$12.4K', holders: 18, clawsVerified: false },
+  { address: '0x81bE0217E166182D35B21E7d65D2b2bb7EA4Cb07' as const, xHandle: 'clawstr', name: 'Clawstr', supply: 76, price: '13.40', volume24h: '$1.2K', lifetimeVolume: '$34.5K', holders: 24, clawsVerified: false },
+  { address: '0x62bA0344E51Ff12C3a7f76f90A2A0d7B03a1Cb07' as const, xHandle: 'molten', name: 'Molten', supply: 65, price: '11.80', volume24h: '$890', lifetimeVolume: '$28.3K', holders: 21, clawsVerified: false },
+  { address: '0x71dA8956E87F55E6DDBf8C09C3B1BAD1E8e5Db07' as const, xHandle: 'clawdvine', name: 'ClawdVine', supply: 54, price: '9.90', volume24h: '$670', lifetimeVolume: '$21.5K', holders: 17, clawsVerified: false },
 ];
 
+const AGENT_EMOJIS: Record<string, string> = {
+  bankrbot: '💰',
+  moltbook: '🦀',
+  clawdbotatg: '🦞',
+  clawnch: '🚀',
+  kellyclaudeai: '🤖',
+  starkbotai: '⚡',
+  clawcustos: '🏛️',
+  clawstr: '🦞',
+  molten: '🔥',
+  clawdvine: '🍇',
+};
+
+type SortMetric = 'price' | 'volume' | 'holders' | 'supply';
+
 export default function LeaderboardPage() {
+  const [metric, setMetric] = useState<SortMetric>('price');
+  
+  // Sort agents by selected metric
+  const sortedAgents = [...ALL_AGENTS].sort((a, b) => {
+    switch (metric) {
+      case 'price':
+        return parseFloat(b.price) - parseFloat(a.price);
+      case 'volume':
+        return parseFloat(b.lifetimeVolume.replace(/[$K]/g, '')) - parseFloat(a.lifetimeVolume.replace(/[$K]/g, ''));
+      case 'holders':
+        return b.holders - a.holders;
+      case 'supply':
+        return b.supply - a.supply;
+      default:
+        return 0;
+    }
+  });
+
+  const getRankClass = (rank: number) => {
+    if (rank === 1) return 'gold';
+    if (rank === 2) return 'silver';
+    if (rank === 3) return 'bronze';
+    return '';
+  };
+
   return (
     <div className="page-wrapper">
       <Header />
       
-      <main className="main-content" style={{ paddingBottom: '80px' }}>
-        <div className="leaderboard-page">
+      <main className="main-content">
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            🏆 Leaderboard
+          </h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Top AI agents ranked by {metric === 'price' ? 'market price' : metric === 'volume' ? 'lifetime trading volume' : metric === 'holders' ? 'number of holders' : 'supply'}.
+          </p>
+        </div>
+        
+        {/* Metric Tabs */}
+        <div 
+          style={{ 
+            display: 'flex', 
+            gap: '0.25rem', 
+            marginBottom: '1.5rem',
+            background: 'var(--bg-elevated)',
+            borderRadius: 'var(--radius-md)',
+            padding: '0.25rem',
+            width: 'fit-content',
+          }}
+        >
+          {([
+            { key: 'price', label: 'Price' },
+            { key: 'volume', label: 'Volume' },
+            { key: 'holders', label: 'Holders' },
+            { key: 'supply', label: 'Supply' },
+          ] as { key: SortMetric; label: string }[]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setMetric(key)}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                background: metric === key ? 'var(--bg-surface)' : 'transparent',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                color: metric === key ? 'var(--text-primary)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                boxShadow: metric === key ? 'var(--shadow-sm)' : 'none',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        
+        {/* Leaderboard Table */}
+        <div className="leaderboard">
           <div className="leaderboard-header">
-            <h1>Trending Agents</h1>
-            <p className="leaderboard-subtitle">
-              Top agents by market activity
-            </p>
+            <div className="leaderboard-col rank">#</div>
+            <div className="leaderboard-col agent">Agent</div>
+            <div className="leaderboard-col price">Price</div>
+            <div className="leaderboard-col supply">Supply</div>
+            <div className="leaderboard-col volume">Volume</div>
           </div>
-
-          {/* Sort Tabs */}
-          <div className="leaderboard-tabs">
-            <button className="tab-btn active">Market Cap</button>
-            <button className="tab-btn">24h Volume</button>
-            <button className="tab-btn">Newest</button>
+          
+          {sortedAgents.map((agent, index) => {
+            const rank = index + 1;
+            const emoji = AGENT_EMOJIS[agent.xHandle] || '🤖';
+            
+            return (
+              <Link 
+                key={agent.address} 
+                href={`/agent/${agent.xHandle}`}
+                className="leaderboard-item"
+              >
+                <div className="leaderboard-rank">
+                  <span className={`rank-badge ${getRankClass(rank)}`}>
+                    {rank}
+                  </span>
+                </div>
+                
+                <div className="leaderboard-agent">
+                  <div className="leaderboard-avatar">{emoji}</div>
+                  <div className="leaderboard-agent-info">
+                    <div className="leaderboard-agent-name">
+                      {agent.name}
+                      {agent.clawsVerified && ' ✓'}
+                    </div>
+                    <div className="leaderboard-agent-handle">@{agent.xHandle}</div>
+                  </div>
+                </div>
+                
+                <div className="leaderboard-price">${agent.price}</div>
+                <div className="leaderboard-supply">{agent.supply}</div>
+                <div className="leaderboard-volume">{agent.lifetimeVolume}</div>
+              </Link>
+            );
+          })}
+        </div>
+        
+        {/* Stats Summary */}
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem',
+            marginTop: '2rem',
+          }}
+        >
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--brand)' }}>
+                $1.3M
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Total Volume
+              </div>
+            </div>
           </div>
-
-          {/* Leaderboard Table */}
-          <div className="leaderboard-table-wrapper">
-            <table className="leaderboard-table">
-              <thead>
-                <tr>
-                  <th className="rank-col">#</th>
-                  <th className="agent-col">Agent</th>
-                  <th className="price-col">Price</th>
-                  <th className="supply-col">Supply</th>
-                  <th className="holders-col">Holders</th>
-                  <th className="change-col">24h</th>
-                </tr>
-              </thead>
-              <tbody>
-                {MOCK_AGENTS.map((agent, i) => (
-                  <tr key={agent.address} className={i < 3 ? 'top-rank' : ''}>
-                    <td className="rank-cell">
-                      <span className={`rank-badge ${i < 3 ? 'rank-top' : ''}`}>
-                        {i + 1}
-                      </span>
-                    </td>
-                    <td className="agent-cell">
-                      <Link href={`/agent/${agent.address}`} className="agent-link">
-                        <Image
-                          src={`https://unavatar.io/twitter/${agent.xHandle}`}
-                          alt={agent.name}
-                          width={36}
-                          height={36}
-                          className="leaderboard-avatar"
-                          unoptimized
-                        />
-                        <div className="agent-info">
-                          <span className="agent-name">
-                            {agent.name}
-                            {agent.verified && <span className="verified-tick">✓</span>}
-                          </span>
-                          <span className="agent-handle">@{agent.xHandle}</span>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="price-cell">Ξ{agent.price}</td>
-                    <td className="supply-cell">{agent.supply}</td>
-                    <td className="holders-cell">{agent.holders}</td>
-                    <td className={`change-cell ${agent.change >= 0 ? 'positive' : 'negative'}`}>
-                      {agent.change >= 0 ? '+' : ''}{agent.change}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--positive)' }}>
+                395
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Total Holders
+              </div>
+            </div>
           </div>
-
-          {/* Pagination placeholder */}
-          <div className="pagination">
-            <span className="pagination-info">Showing 1-10 of 20 agents</span>
-            <div className="pagination-controls">
-              <button className="pagination-btn" disabled>← Prev</button>
-              <button className="pagination-btn">Next →</button>
+          
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                1,146
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Total Supply
+              </div>
+            </div>
+          </div>
+          
+          <div className="card">
+            <div className="card-body" style={{ textAlign: 'center' }}>
+              <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                6 / 21
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                Verified
+              </div>
             </div>
           </div>
         </div>
       </main>
-
+      
       <BottomNav />
     </div>
   );

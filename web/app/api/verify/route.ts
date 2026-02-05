@@ -1,165 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { addVerifiedAgent, isAgentVerified } from '@/lib/verifier'
-import { isAddress } from 'viem'
+import { createPublicClient, http, parseAbi, keccak256, toBytes } from 'viem'
+import { base } from 'viem/chains'
 
-const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN
+const CLAWS_CONTRACT = process.env.CLAWS_CONTRACT_ADDRESS as `0x${string}`
 
-/**
- * POST /api/verify
- * 
- * Body: { walletAddress: string }
- * 
- * Flow:
- * 1. User must be signed in with Twitter
- * 2. User provides their wallet address
- * 3. We check if they've tweeted their wallet address
- * 4. If valid, we call the contract to verify them
- */
-export async function POST(req: NextRequest) {
-  try {
-    // Check auth
-    const session = await auth()
-    if (!session?.twitterId || !session?.twitterUsername) {
-      return NextResponse.json(
-        { error: 'Not authenticated with Twitter' },
-        { status: 401 }
-      )
-    }
+const CLAWS_ABI = parseAbi([
+  'function markets(bytes32 handleHash) external view returns (uint256 supply, uint256 pendingFees, uint256 lifetimeFees, address verifiedWallet, bool isVerified)',
+])
 
-    // Get wallet address from body
-    const body = await req.json()
-    const { walletAddress } = body
-
-    if (!walletAddress || !isAddress(walletAddress)) {
-      return NextResponse.json(
-        { error: 'Invalid wallet address' },
-        { status: 400 }
-      )
-    }
-
-    // Check if already verified
-    const alreadyVerified = await isAgentVerified(walletAddress as `0x${string}`)
-    if (alreadyVerified) {
-      return NextResponse.json(
-        { error: 'Agent already verified', alreadyVerified: true },
-        { status: 400 }
-      )
-    }
-
-    // Search for verification tweet
-    const tweetFound = await findVerificationTweet(
-      session.twitterId,
-      session.twitterUsername,
-      walletAddress
-    )
-
-    if (!tweetFound) {
-      return NextResponse.json(
-        { 
-          error: 'Verification tweet not found',
-          instructions: `Tweet: "Verifying my wallet ${walletAddress} on @claws_tech" from @${session.twitterUsername}`,
-        },
-        { status: 400 }
-      )
-    }
-
-    // Call contract to verify
-    const txHash = await addVerifiedAgent(
-      walletAddress as `0x${string}`,
-      session.twitterUsername,
-      '' // moltbookId - empty for now
-    )
-
-    return NextResponse.json({
-      success: true,
-      txHash,
-      agent: walletAddress,
-      xHandle: session.twitterUsername,
-    })
-
-  } catch (error) {
-    console.error('Verification error:', error)
-    return NextResponse.json(
-      { error: 'Verification failed', details: String(error) },
-      { status: 500 }
-    )
-  }
-}
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http(),
+})
 
 /**
- * GET /api/verify?wallet=0x...
+ * GET /api/verify?handle=username
  * 
- * Check verification status for a wallet
+ * Check verification status for an X handle
  */
 export async function GET(req: NextRequest) {
   try {
-    const wallet = req.nextUrl.searchParams.get('wallet')
+    const handle = req.nextUrl.searchParams.get('handle')
     
-    if (!wallet || !isAddress(wallet)) {
+    if (!handle) {
       return NextResponse.json(
-        { error: 'Invalid wallet address' },
+        { error: 'Handle required. Use ?handle=username' },
         { status: 400 }
       )
     }
 
-    const verified = await isAgentVerified(wallet as `0x${string}`)
+    const normalizedHandle = handle.toLowerCase().replace('@', '')
     
-    return NextResponse.json({ wallet, verified })
+    // If no contract deployed yet, return unverified
+    if (!CLAWS_CONTRACT) {
+      return NextResponse.json({ 
+        handle: normalizedHandle,
+        verified: false,
+        wallet: null,
+        marketExists: false,
+        message: 'Contract not deployed yet',
+      })
+    }
+
+    // Hash the handle (must match contract's hashing)
+    const handleHash = keccak256(toBytes(normalizedHandle))
+    
+    try {
+      const market = await publicClient.readContract({
+        address: CLAWS_CONTRACT,
+        abi: CLAWS_ABI,
+        functionName: 'markets',
+        args: [handleHash],
+      })
+
+      const [supply, pendingFees, lifetimeFees, verifiedWallet, isVerified] = market
+
+      return NextResponse.json({ 
+        handle: normalizedHandle,
+        verified: isVerified,
+        wallet: isVerified ? verifiedWallet : null,
+        marketExists: supply > 0n,
+        supply: supply.toString(),
+        pendingFees: pendingFees.toString(),
+        lifetimeFees: lifetimeFees.toString(),
+      })
+    } catch (contractError) {
+      // Contract call failed - likely no market exists
+      return NextResponse.json({ 
+        handle: normalizedHandle,
+        verified: false,
+        wallet: null,
+        marketExists: false,
+      })
+    }
+
   } catch (error) {
     console.error('Status check error:', error)
     return NextResponse.json(
       { error: 'Status check failed', details: String(error) },
       { status: 500 }
     )
-  }
-}
-
-/**
- * Search user's recent tweets for verification message
- */
-async function findVerificationTweet(
-  userId: string,
-  username: string,
-  walletAddress: string
-): Promise<boolean> {
-  if (!TWITTER_BEARER_TOKEN) {
-    console.warn('TWITTER_BEARER_TOKEN not set, skipping tweet verification')
-    // In development, we might want to skip this check
-    return process.env.NODE_ENV === 'development'
-  }
-
-  try {
-    // Search user's recent tweets
-    const response = await fetch(
-      `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=text`,
-      {
-        headers: {
-          Authorization: `Bearer ${TWITTER_BEARER_TOKEN}`,
-        },
-      }
-    )
-
-    if (!response.ok) {
-      console.error('Twitter API error:', await response.text())
-      return false
-    }
-
-    const data = await response.json()
-    const tweets = data.data || []
-
-    // Check if any tweet contains the wallet address
-    const walletLower = walletAddress.toLowerCase()
-    for (const tweet of tweets) {
-      const text = tweet.text.toLowerCase()
-      if (text.includes(walletLower) && text.includes('verif')) {
-        return true
-      }
-    }
-
-    return false
-  } catch (error) {
-    console.error('Tweet search error:', error)
-    return false
   }
 }
