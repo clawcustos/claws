@@ -250,8 +250,6 @@ export default function AgentPage() {
         agentName={agent.name}
         agentHandle={agent.xHandle}
         agentImage={agent.xProfileImage}
-        currentPriceETH={priceETH}
-        supply={agent.supply}
         initialMode={tradeMode}
       />
     </>

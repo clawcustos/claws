@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useAccount } from 'wagmi';
+import { useAccount, useWaitForTransactionReceipt } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { calculateBuyPrice, calculateSellPrice, calculateCurrentPrice, formatETH } from '@/lib/agents';
+import { formatEther } from 'viem';
+import { 
+  useMarket, 
+  useBuyPrice, 
+  useSellPrice, 
+  useBuyClaws, 
+  useSellClaws,
+  useClawBalance,
+  useETHBalance 
+} from '@/hooks/useClaws';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -12,8 +21,6 @@ interface TradeModalProps {
   agentName: string;
   agentHandle: string;
   agentImage: string;
-  currentPriceETH: number;
-  supply: number;
   initialMode?: 'buy' | 'sell';
 }
 
@@ -27,40 +34,62 @@ function formatUSD(eth: number): string {
   return `$${(usd / 1000).toFixed(2)}K`;
 }
 
+function formatETH(eth: number): string {
+  if (eth === 0) return 'FREE';
+  if (eth < 0.0001) return '<0.0001';
+  if (eth < 0.01) return eth.toFixed(4);
+  if (eth < 1) return eth.toFixed(3);
+  return eth.toFixed(2);
+}
+
 export function TradeModal({ 
   isOpen, 
   onClose, 
   agentName, 
   agentHandle,
   agentImage,
-  currentPriceETH,
-  supply,
   initialMode = 'buy'
 }: TradeModalProps) {
   const [mode, setMode] = useState<'buy' | 'sell'>(initialMode);
   const [amount, setAmount] = useState('1');
-  const [isLoading, setIsLoading] = useState(false);
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   
   const amountNum = parseInt(amount) || 0;
   
-  // Calculate prices
-  const basePrice = useMemo(() => {
-    if (amountNum === 0) return 0;
-    return mode === 'buy' 
-      ? calculateBuyPrice(supply, amountNum)
-      : calculateSellPrice(supply, amountNum);
-  }, [mode, supply, amountNum]);
+  // Fetch real data from contract
+  const { market, refetch: refetchMarket } = useMarket(agentHandle);
+  const { balance: userBalance, refetch: refetchBalance } = useClawBalance(agentHandle, address);
+  const { balanceETH } = useETHBalance();
   
-  const protocolFee = basePrice * 0.05;
-  const agentFee = basePrice * 0.05;
+  const supply = market ? Number(market.supply) : 0;
+  const userClaws = userBalance ? Number(userBalance) : 0;
   
-  const totalCost = mode === 'buy' 
-    ? basePrice + protocolFee + agentFee
-    : basePrice - protocolFee - agentFee;
-
-  const newSupply = mode === 'buy' ? supply + amountNum : Math.max(0, supply - amountNum);
-  const newPrice = calculateCurrentPrice(newSupply);
+  // Get real prices from contract
+  const { totalCost: buyCostWei, totalCostETH: buyCostETH, isLoading: buyPriceLoading } = useBuyPrice(agentHandle, amountNum);
+  const { proceeds: sellProceedsWei, proceedsETH: sellProceedsETH, isLoading: sellPriceLoading } = useSellPrice(agentHandle, amountNum);
+  
+  // Trade functions
+  const { buyClaws, isPending: isBuying, isSuccess: buySuccess, hash: buyHash, error: buyError } = useBuyClaws();
+  const { sellClaws, isPending: isSelling, isSuccess: sellSuccess, hash: sellHash, error: sellError } = useSellClaws();
+  
+  // Wait for transaction confirmations
+  const { isLoading: isBuyConfirming, isSuccess: buyConfirmed } = useWaitForTransactionReceipt({ hash: buyHash });
+  const { isLoading: isSellConfirming, isSuccess: sellConfirmed } = useWaitForTransactionReceipt({ hash: sellHash });
+  
+  const isLoading = isBuying || isSelling || isBuyConfirming || isSellConfirming;
+  const isPriceLoading = mode === 'buy' ? buyPriceLoading : sellPriceLoading;
+  
+  // Calculate display values
+  const totalCostETH = mode === 'buy' ? buyCostETH : sellProceedsETH;
+  const priceLabel = mode === 'buy' ? 'Total Cost' : 'You Receive';
+  
+  // Refetch data after successful trade
+  useEffect(() => {
+    if (buyConfirmed || sellConfirmed) {
+      refetchMarket();
+      refetchBalance();
+    }
+  }, [buyConfirmed, sellConfirmed, refetchMarket, refetchBalance]);
 
   useEffect(() => {
     if (isOpen) {
@@ -76,16 +105,17 @@ export function TradeModal({
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');
     const num = parseInt(value) || 0;
-    if (mode === 'sell' && num >= supply) {
-      setAmount(Math.max(0, supply - 1).toString());
+    // For sell, can't sell all claws (would leave supply at 0)
+    if (mode === 'sell' && num >= userClaws) {
+      setAmount(Math.max(0, userClaws).toString());
     } else {
       setAmount(value || '0');
     }
   };
 
   const setQuickAmount = (val: number) => {
-    if (mode === 'sell' && val >= supply) {
-      setAmount(Math.max(0, supply - 1).toString());
+    if (mode === 'sell' && val > userClaws) {
+      setAmount(userClaws.toString());
     } else {
       setAmount(val.toString());
     }
@@ -93,146 +123,176 @@ export function TradeModal({
 
   const handleTrade = async () => {
     if (!isConnected || amountNum === 0) return;
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    onClose();
+    
+    try {
+      if (mode === 'buy' && buyCostWei) {
+        await buyClaws(agentHandle, amountNum, buyCostWei);
+      } else if (mode === 'sell' && sellProceedsWei) {
+        // Use 95% of expected proceeds as min (5% slippage tolerance)
+        const minProceeds = (sellProceedsWei * 95n) / 100n;
+        await sellClaws(agentHandle, amountNum, minProceeds);
+      }
+    } catch (err) {
+      console.error('Trade failed:', err);
+    }
   };
+
+  const canBuy = mode === 'buy' && amountNum > 0 && buyCostETH <= balanceETH;
+  const canSell = mode === 'sell' && amountNum > 0 && amountNum <= userClaws && supply > amountNum;
+  const canTrade = mode === 'buy' ? canBuy : canSell;
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        {/* Header */}
-        <div className="modal-header">
-          <div className="modal-agent">
-            <div className="modal-avatar">
-              <Image src={agentImage} alt={agentName} width={48} height={48} unoptimized />
-            </div>
-            <div>
-              <div className="modal-title">{agentName}</div>
-              <div className="modal-handle">@{agentHandle}</div>
-            </div>
-          </div>
-          <button className="modal-close" onClick={onClose}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content trade-modal" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         
-        {/* Current Price */}
-        <div style={{ 
-          background: 'var(--black)', 
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1.5rem',
-          textAlign: 'center',
-        }}>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            Current Price
+        {/* Agent Header */}
+        <div className="trade-agent-header">
+          <div className="trade-agent-image">
+            <Image 
+              src={agentImage} 
+              alt={agentName}
+              width={64}
+              height={64}
+              style={{ borderRadius: '50%' }}
+            />
           </div>
-          <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            {formatETH(currentPriceETH)} ETH
-          </div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--grey-500)' }}>
-            {formatUSD(currentPriceETH)}
+          <div className="trade-agent-info">
+            <h3>{agentName}</h3>
+            <div className="trade-agent-handle">@{agentHandle}</div>
           </div>
         </div>
-        
-        {/* Tabs */}
-        <div className="trade-tabs">
+
+        {/* Market Stats */}
+        <div className="trade-market-stats">
+          <div className="trade-stat">
+            <span className="trade-stat-label">Supply</span>
+            <span className="trade-stat-value">{supply}</span>
+          </div>
+          <div className="trade-stat">
+            <span className="trade-stat-label">Your Claws</span>
+            <span className="trade-stat-value">{userClaws}</span>
+          </div>
+          <div className="trade-stat">
+            <span className="trade-stat-label">Your ETH</span>
+            <span className="trade-stat-value">{balanceETH.toFixed(4)}</span>
+          </div>
+        </div>
+
+        {/* Buy/Sell Toggle */}
+        <div className="trade-mode-toggle">
           <button 
-            className={`trade-tab ${mode === 'buy' ? 'active buy' : ''}`}
-            onClick={() => setMode('buy')}
+            className={`toggle-btn ${mode === 'buy' ? 'active' : ''}`}
+            onClick={() => { setMode('buy'); setAmount('1'); }}
           >
             Buy
           </button>
           <button 
-            className={`trade-tab ${mode === 'sell' ? 'active sell' : ''}`}
-            onClick={() => setMode('sell')}
+            className={`toggle-btn ${mode === 'sell' ? 'active' : ''}`}
+            onClick={() => { setMode('sell'); setAmount('1'); }}
           >
             Sell
           </button>
         </div>
-        
+
         {/* Amount Input */}
-        <div className="trade-input-wrap">
-          <div className="trade-input-label">
-            <span>Amount</span>
-            <span>Supply: {supply}</span>
-          </div>
-          <div className="trade-input-box">
+        <div className="trade-input-section">
+          <label>Amount (whole claws only)</label>
+          <div className="trade-input-wrapper">
             <input
               type="text"
-              className="trade-input"
               value={amount}
               onChange={handleAmountChange}
-              placeholder="0"
-              inputMode="numeric"
+              className="trade-input"
+              placeholder="1"
             />
-            <span className="trade-input-suffix">claws</span>
+            <span className="trade-input-suffix">CLAWS</span>
           </div>
-          
-          <div className="trade-quick">
-            <button className="trade-quick-btn" onClick={() => setQuickAmount(1)}>1</button>
-            <button className="trade-quick-btn" onClick={() => setQuickAmount(5)}>5</button>
-            <button className="trade-quick-btn" onClick={() => setQuickAmount(10)}>10</button>
-            {mode === 'sell' && supply > 1 && (
-              <button className="trade-quick-btn" onClick={() => setQuickAmount(supply - 1)}>MAX</button>
-            )}
+          <div className="quick-amounts">
+            {[1, 2, 5, 10].map(val => (
+              <button 
+                key={val} 
+                onClick={() => setQuickAmount(val)}
+                className={amountNum === val ? 'active' : ''}
+              >
+                {val}
+              </button>
+            ))}
           </div>
         </div>
-        
-        {/* Summary */}
+
+        {/* Price Breakdown */}
         <div className="trade-summary">
-          <div className="trade-row">
-            <span>{mode === 'buy' ? 'Cost' : 'Value'}</span>
-            <span>{formatETH(basePrice)} ETH</span>
-          </div>
-          <div className="trade-row muted">
-            <span>Protocol fee (5%)</span>
-            <span>{formatETH(protocolFee)} ETH</span>
-          </div>
-          <div className="trade-row muted">
-            <span>Agent fee (5%)</span>
-            <span>{formatETH(agentFee)} ETH</span>
-          </div>
-          <div className="trade-row total">
-            <span>{mode === 'buy' ? 'Total' : 'You receive'}</span>
-            <span style={{ color: mode === 'sell' ? 'var(--green)' : 'inherit' }}>
-              {formatETH(Math.abs(totalCost))} ETH
+          <div className="trade-summary-row">
+            <span>{priceLabel}</span>
+            <span className="trade-price">
+              {isPriceLoading ? '...' : `${formatETH(totalCostETH)} ETH`}
+              <span className="trade-price-usd">
+                ({isPriceLoading ? '...' : formatUSD(totalCostETH)})
+              </span>
             </span>
           </div>
-        </div>
-        
-        {/* CTA */}
-        <div className="trade-cta">
-          {!isConnected ? (
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
-                <button className="btn btn-red trade-btn" onClick={openConnectModal}>
-                  Connect Wallet
-                </button>
-              )}
-            </ConnectButton.Custom>
-          ) : (
-            <button 
-              className={`btn trade-btn ${mode === 'buy' ? 'btn-buy' : 'btn-sell'}`}
-              disabled={amountNum === 0 || isLoading}
-              onClick={handleTrade}
-            >
-              {isLoading ? 'Processing...' : `${mode === 'buy' ? 'Buy' : 'Sell'} ${amountNum} Claw${amountNum !== 1 ? 's' : ''}`}
-            </button>
+          {supply === 0 && mode === 'buy' && amountNum === 1 && (
+            <div className="trade-summary-note" style={{ color: 'var(--red-500)', marginTop: '0.5rem' }}>
+              🎉 First claw is FREE!
+            </div>
+          )}
+          {mode === 'buy' && buyCostETH > balanceETH && (
+            <div className="trade-summary-note" style={{ color: 'var(--red-500)', marginTop: '0.5rem' }}>
+              Insufficient ETH balance
+            </div>
+          )}
+          {mode === 'sell' && amountNum > userClaws && (
+            <div className="trade-summary-note" style={{ color: 'var(--red-500)', marginTop: '0.5rem' }}>
+              You only have {userClaws} claws
+            </div>
           )}
         </div>
+
+        {/* Trade Button */}
+        {!isConnected ? (
+          <div className="trade-connect-wrapper">
+            <ConnectButton />
+          </div>
+        ) : (
+          <button 
+            className={`trade-btn ${mode === 'buy' ? 'buy' : 'sell'}`}
+            onClick={handleTrade}
+            disabled={!canTrade || isLoading}
+          >
+            {isLoading 
+              ? (isBuyConfirming || isSellConfirming ? 'Confirming...' : 'Processing...') 
+              : `${mode === 'buy' ? 'Buy' : 'Sell'} ${amountNum} Claw${amountNum !== 1 ? 's' : ''}`
+            }
+          </button>
+        )}
         
-        <p className="trade-note">
-          {mode === 'buy' 
-            ? 'Price increases with each purchase. Early = cheaper.'
-            : 'Cannot sell the last claw.'}
-        </p>
+        {/* Transaction Status */}
+        {(buyHash || sellHash) && (
+          <div className="trade-tx-status" style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
+            {buyConfirmed || sellConfirmed ? (
+              <span style={{ color: 'var(--green-500)' }}>✓ Transaction confirmed!</span>
+            ) : (
+              <a 
+                href={`https://basescan.org/tx/${buyHash || sellHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--red-500)' }}
+              >
+                View on Basescan →
+              </a>
+            )}
+          </div>
+        )}
+        
+        {/* Error Display */}
+        {(buyError || sellError) && (
+          <div className="trade-error" style={{ marginTop: '1rem', color: 'var(--red-500)', fontSize: '0.875rem' }}>
+            {(buyError || sellError)?.message?.slice(0, 100)}
+          </div>
+        )}
       </div>
     </div>
   );

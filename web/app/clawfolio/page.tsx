@@ -401,8 +401,6 @@ export default function ClawfolioPage() {
           agentName={selectedAgent.name}
           agentHandle={selectedAgent.xHandle}
           agentImage={selectedAgent.xProfileImage}
-          currentPriceETH={calculateCurrentPrice(selectedAgent.supply)}
-          supply={selectedAgent.supply}
           initialMode={tradeModal.mode}
         />
       )}
