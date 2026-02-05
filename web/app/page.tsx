@@ -11,9 +11,13 @@ import {
   AGENTS, 
   formatETH, 
   formatUSD,
-  calculateCurrentPrice 
+  calculateCurrentPrice,
+  type AgentListItem
 } from '@/lib/agents';
 import { TradeModal } from '@/components/trade-modal';
+
+// Fallback avatar for broken images
+const FALLBACK_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/><text x="50" y="60" text-anchor="middle" fill="%23666" font-size="40">?</text></svg>';
 
 // Header component
 function Header() {
@@ -59,24 +63,26 @@ function Header() {
   );
 }
 
-// Agent Card
+// Agent Card with image fallback
 function AgentCard({ agent, onTrade }: { 
-  agent: ReturnType<typeof getAgentList>[0];
+  agent: AgentListItem;
   onTrade: (handle: string, mode: 'buy' | 'sell') => void;
 }) {
   const { isConnected } = useAccount();
   const isUp = agent.priceChange24h >= 0;
+  const [imgError, setImgError] = useState(false);
   
   return (
     <div className={`agent-card ${agent.clawsVerified ? 'verified' : ''}`}>
       <div className="agent-header">
         <div className="agent-avatar">
-          <Image 
-            src={agent.xProfileImage} 
+          <img 
+            src={imgError ? FALLBACK_AVATAR : agent.xProfileImage} 
             alt={agent.name}
             width={48}
             height={48}
-            unoptimized
+            onError={() => setImgError(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         </div>
         <div className="agent-info">
@@ -145,6 +151,126 @@ function AgentCard({ agent, onTrade }: {
         )}
       </div>
     </div>
+  );
+}
+
+// Agents Section with Search
+function AgentsSection({ agents, onTrade }: {
+  agents: AgentListItem[];
+  onTrade: (handle: string, mode: 'buy' | 'sell') => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'price' | 'supply' | 'volume'>('price');
+  
+  const filteredAgents = useMemo(() => {
+    let result = agents;
+    
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(a => 
+        a.name.toLowerCase().includes(q) || 
+        a.xHandle.toLowerCase().includes(q)
+      );
+    }
+    
+    return result.sort((a, b) => {
+      if (sortBy === 'price') return b.priceETH - a.priceETH;
+      if (sortBy === 'supply') return b.supply - a.supply;
+      return 0;
+    });
+  }, [agents, search, sortBy]);
+
+  return (
+    <section id="agents" className="section agents-section section-full">
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Search & Filter Bar */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          marginBottom: '2rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}>
+          <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="Search agents..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: '100%',
+                background: 'var(--black-surface)',
+                border: '1px solid var(--grey-800)',
+                borderRadius: '8px',
+                padding: '0.875rem 1rem 0.875rem 2.75rem',
+                color: 'var(--white)',
+                fontSize: '1rem',
+              }}
+            />
+            <span style={{
+              position: 'absolute',
+              left: '1rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--grey-600)',
+              fontSize: '1.125rem',
+            }}>
+              🔍
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {(['price', 'supply'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSortBy(s)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: sortBy === s ? 'var(--red)' : 'var(--black-surface)',
+                  border: '1px solid',
+                  borderColor: sortBy === s ? 'var(--red)' : 'var(--grey-800)',
+                  borderRadius: '8px',
+                  color: sortBy === s ? 'white' : 'var(--grey-400)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          
+          <div style={{ color: 'var(--grey-600)', fontSize: '0.875rem' }}>
+            {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+        
+        {filteredAgents.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '4rem 2rem',
+            background: 'var(--black-surface)',
+            borderRadius: '12px',
+            border: '1px solid var(--grey-800)',
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔍</div>
+            <div style={{ color: 'var(--grey-400)' }}>No agents found for "{search}"</div>
+          </div>
+        ) : (
+          <div className="agents-grid">
+            {filteredAgents.map((agent) => (
+              <AgentCard 
+                key={agent.address} 
+                agent={agent} 
+                onTrade={onTrade}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -223,25 +349,7 @@ export default function HomePage() {
         </section>
         
         {/* AGENTS */}
-        <section id="agents" className="section agents-section section-full">
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div className="section-header">
-              <h2 className="section-title">
-                <span>All</span> Agents
-              </h2>
-            </div>
-            
-            <div className="agents-grid">
-              {agents.map((agent) => (
-                <AgentCard 
-                  key={agent.address} 
-                  agent={agent} 
-                  onTrade={openTrade}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
+        <AgentsSection agents={agents} onTrade={openTrade} />
         
         {/* LEADERBOARD */}
         <section id="leaderboard" className="section">
@@ -272,12 +380,13 @@ export default function HomePage() {
                 </div>
                 <div className="leaderboard-agent">
                   <div className="leaderboard-avatar">
-                    <Image 
+                    <img 
                       src={agent.xProfileImage} 
                       alt={agent.name}
                       width={36}
                       height={36}
-                      unoptimized
+                      onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_AVATAR; }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   </div>
                   <div>
