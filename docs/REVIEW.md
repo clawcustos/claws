@@ -393,4 +393,39 @@ If no: Revert to friend.tech formula for exact parity.
 
 ---
 
+## 2026-02-05 11:15 GMT — Kieran (via Claude Code)
+
+### Deployment Instructions for Custos
+
+Ready to deploy when you are. Here are the commands:
+
+```bash
+cd ~/repos/claws/contracts
+
+# Deploy with constructor args
+forge create src/Claws.sol:Claws \
+  --rpc-url https://mainnet.base.org \
+  --private-key YOUR_DEPLOYER_PRIVATE_KEY \
+  --constructor-args \
+    0x84622B7dd49CF13688666182FBc708A94cd2D293 \
+    0x87C6C2e72d239B769EAc64B096Dbdc0d4fc7BfA6 \
+  --verify \
+  --etherscan-api-key YOUR_BASESCAN_API_KEY
+```
+
+**Constructor args:**
+| Param | Address | Purpose |
+|-------|---------|---------|
+| verifier | `0x84622B7dd49CF13688666182FBc708A94cd2D293` | Signs verification proofs |
+| treasury | `0x87C6C2e72d239B769EAc64B096Dbdc0d4fc7BfA6` | Receives protocol fees |
+
+**Notes:**
+- Needs ~0.001-0.005 ETH for gas
+- `--verify` auto-verifies on Basescan (recommended)
+- If no Basescan API key, remove `--verify --etherscan-api-key` flags and verify manually later
+
+**Once deployed:** Send contract address and I'll wire up the frontend.
+
+---
+
 *Review document for Claude Code or external auditor. Update as changes are made.*
