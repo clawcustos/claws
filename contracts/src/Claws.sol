@@ -3,25 +3,26 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
  * @title Claws
  * @notice Bonding curve speculation market for AI agents
- * @dev Handle-based markets using friend.tech pricing formula
+ * @dev Handle-based markets using exact friend.tech pricing formula
  * 
- * Formula: price = supply² / 16000 ETH
- * - 1st claw: 0.0000625 ETH (~$0.19)
+ * Formula: price = supply² / 16000 ETH (friend.tech parity)
+ * - 1st claw: FREE (viral onboarding hook)
  * - 10th claw: 0.00625 ETH (~$19)
  * - 100th claw: 0.625 ETH (~$1,875)
  * - Gets expensive FAST — creates early buyer advantage
  * 
  * WHOLE CLAWS ONLY: Minimum 1 claw per trade. No fractional purchases.
- * The `amount` parameter represents whole claws (1, 2, 3...), not decimals.
- * This creates scarcity and rewards early believers.
+ * 
+ * VERIFIED AGENTS: Receive 1 free claw upon verification (friend.tech model).
  */
-contract Claws is ReentrancyGuard, Ownable {
+contract Claws is ReentrancyGuard, Ownable, Pausable {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -162,7 +163,7 @@ contract Claws is ReentrancyGuard, Ownable {
     function buyClaws(
         string calldata handle,
         uint256 amount
-    ) external payable nonReentrant {
+    ) external payable nonReentrant whenNotPaused {
         if (amount == 0) revert InvalidAmount();
         
         bytes32 handleHash = _hashHandle(handle);
@@ -223,7 +224,7 @@ contract Claws is ReentrancyGuard, Ownable {
         string calldata handle,
         uint256 amount,
         uint256 minProceeds
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         if (amount == 0) revert InvalidAmount();
         
         bytes32 handleHash = _hashHandle(handle);
@@ -313,6 +314,10 @@ contract Claws is ReentrancyGuard, Ownable {
         market.verifiedWallet = wallet;
         market.isVerified = true;
         
+        // Give verified agent 1 free claw (friend.tech model)
+        market.supply += 1;
+        clawsBalance[handleHash][wallet] += 1;
+        
         emit AgentVerified(handleHash, handle, wallet);
         
         // Auto-claim any pending fees
@@ -386,33 +391,36 @@ contract Claws is ReentrancyGuard, Ownable {
     }
     
     /**
-     * @notice Calculate price using bonding curve (friend.tech formula)
-     * @dev Price = sum of (supply + i)² / PRICE_DIVISOR for i = 1 to amount
-     *      Using sum of squares formula for gas efficiency
+     * @notice Calculate price using bonding curve (exact friend.tech formula)
+     * @dev First claw is FREE. Price = sum of squares from supply to supply+amount-1
+     *      Matches friend.tech FriendtechSharesV1.getPrice() exactly
      */
     function _getPrice(uint256 supply, uint256 amount) internal pure returns (uint256) {
-        // Sum of squares formula: n(n+1)(2n+1)/6
-        // We want sum from (supply+1)² to (supply+amount)²
+        // friend.tech formula: sum squares from supply to (supply + amount - 1)
+        // Using sum of squares: n(n+1)(2n+1)/6 for 1 to n
         
-        uint256 endSupply = supply + amount;
+        // sum1 = sum of squares from 1 to (supply - 1), or 0 if supply is 0
+        uint256 sum1 = supply == 0 ? 0 : (supply - 1) * supply * (2 * (supply - 1) + 1) / 6;
         
-        uint256 sumEnd = (endSupply * (endSupply + 1) * (2 * endSupply + 1)) / 6;
-        uint256 sumStart = (supply * (supply + 1) * (2 * supply + 1)) / 6;
+        // sum2 = sum of squares from 1 to (supply + amount - 1), or 0 if first claw
+        uint256 sum2 = (supply == 0 && amount == 1) ? 0 : 
+            (supply + amount - 1) * (supply + amount) * (2 * (supply + amount - 1) + 1) / 6;
         
-        uint256 sumSquares = sumEnd - sumStart;
+        uint256 summation = sum2 - sum1;
         
-        // Convert to ETH (multiply by 1 ether, divide by price divisor)
-        return (sumSquares * 1 ether) / PRICE_DIVISOR;
+        // Convert to ETH
+        return (summation * 1 ether) / PRICE_DIVISOR;
     }
     
     /**
      * @notice Get current price for 1 claw (next buy price)
+     * @dev First claw is FREE (friend.tech model)
      */
     function getCurrentPrice(string calldata handle) external view returns (uint256) {
         bytes32 handleHash = _hashHandle(handle);
         uint256 supply = markets[handleHash].supply;
-        // Price of the next claw = (supply+1)² / PRICE_DIVISOR
-        return ((supply + 1) * (supply + 1) * 1 ether) / PRICE_DIVISOR;
+        // Price of the next claw = supply² / PRICE_DIVISOR (first claw = 0² = FREE)
+        return (supply * supply * 1 ether) / PRICE_DIVISOR;
     }
     
     /**
@@ -479,8 +487,8 @@ contract Claws is ReentrancyGuard, Ownable {
         isVerified = market.isVerified;
         createdAt = market.createdAt;
         
-        // Current price to buy 1 claw
-        currentPrice = ((supply + 1) * (supply + 1) * 1 ether) / PRICE_DIVISOR;
+        // Current price to buy 1 claw (first claw = FREE)
+        currentPrice = (supply * supply * 1 ether) / PRICE_DIVISOR;
     }
     
     /**
@@ -509,6 +517,16 @@ contract Claws is ReentrancyGuard, Ownable {
         if (_treasury == address(0)) revert ZeroAddress();
         emit TreasuryUpdated(treasury, _treasury);
         treasury = _treasury;
+    }
+    
+    /// @notice Emergency pause - stops all trading
+    function pause() external onlyOwner {
+        _pause();
+    }
+    
+    /// @notice Resume trading after pause
+    function unpause() external onlyOwner {
+        _unpause();
     }
     
     // ============ Internal ============

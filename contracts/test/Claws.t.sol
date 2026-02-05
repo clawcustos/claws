@@ -144,9 +144,10 @@ contract ClawsTest is Test {
     }
     
     function test_BuyClawsRevertsInsufficientPayment() public {
+        // First claw is free, so test with 2 claws (which costs 0.0000625 ETH + fees)
         vm.prank(trader1);
         vm.expectRevert(Claws.InsufficientPayment.selector);
-        claws.buyClaws{value: 0.00001 ether}(HANDLE, 1);
+        claws.buyClaws{value: 0.00001 ether}(HANDLE, 2);
     }
     
     // ============ Sell Claws ============
@@ -205,23 +206,26 @@ contract ClawsTest is Test {
     // ============ Price Calculations ============
     
     function test_BondingCurvePricing() public view {
-        // First claw: (1)^2 / 16000 = 0.0000625 ETH
+        // First claw is FREE (friend.tech model): 0^2 / 16000 = 0
         uint256 price1 = claws.getBuyPriceByHandle(HANDLE, 1);
-        assertEq(price1, 0.0000625 ether);
+        assertEq(price1, 0);
         
-        // Price increases with supply
-        // After buying 10, next price should be higher
+        // Second claw: 1^2 / 16000 = 0.0000625 ETH
+        // Buying 2 claws = 0 + 0.0000625 = 0.0000625 ETH
+        uint256 price2 = claws.getBuyPriceByHandle(HANDLE, 2);
+        assertEq(price2, 0.0000625 ether);
     }
     
     function test_GetCurrentPrice() public {
-        assertEq(claws.getCurrentPrice(HANDLE), 0.0000625 ether); // (0+1)^2/16000
+        // At supply=0, next claw price = 0^2/16000 = 0 (FREE)
+        assertEq(claws.getCurrentPrice(HANDLE), 0);
         
-        // Buy 1 claw
-        (,,,uint256 cost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // Buy 1 claw (free)
         vm.prank(trader1);
-        claws.buyClaws{value: cost}(HANDLE, 1);
+        claws.buyClaws{value: 0}(HANDLE, 1);
         
-        assertEq(claws.getCurrentPrice(HANDLE), 0.00025 ether); // (1+1)^2/16000 = 4/16000
+        // At supply=1, next claw price = 1^2/16000 = 0.0000625 ETH
+        assertEq(claws.getCurrentPrice(HANDLE), 0.0000625 ether);
     }
     
     function test_GetBuyCostBreakdown() public view {
@@ -477,5 +481,105 @@ contract ClawsTest is Test {
         
         assertEq(supply1, 3);
         assertEq(supply2, 5);
+    }
+    
+    // ============ Pause Functionality ============
+    
+    function test_Pause() public {
+        vm.prank(owner);
+        claws.pause();
+        
+        assertTrue(claws.paused());
+    }
+    
+    function test_PauseBlocksBuying() public {
+        vm.prank(owner);
+        claws.pause();
+        
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.buyClaws{value: 1 ether}(HANDLE, 1);
+    }
+    
+    function test_PauseBlocksSelling() public {
+        // Buy first
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        
+        // Pause
+        vm.prank(owner);
+        claws.pause();
+        
+        // Try to sell
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.sellClaws(HANDLE, 2, 0);
+    }
+    
+    function test_Unpause() public {
+        vm.prank(owner);
+        claws.pause();
+        assertTrue(claws.paused());
+        
+        vm.prank(owner);
+        claws.unpause();
+        assertFalse(claws.paused());
+        
+        // Can trade again
+        vm.prank(trader1);
+        claws.buyClaws{value: 0}(HANDLE, 1);
+        assertEq(claws.getBalance(HANDLE, trader1), 1);
+    }
+    
+    function test_PauseOnlyOwner() public {
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.pause();
+    }
+    
+    // ============ Verified Agent Gets Free Claw ============
+    
+    function test_VerifiedAgentGetsFreeClawOnVerify() public {
+        // Buy some claws first (generates fees)
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        
+        (uint256 supplyBefore,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supplyBefore, 5);
+        
+        // Verify agent
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 99999;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+        
+        // Agent should have 1 free claw
+        assertEq(claws.getBalance(HANDLE, agentWallet), 1);
+        
+        // Supply should increase by 1
+        (uint256 supplyAfter,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supplyAfter, 6);
+    }
+    
+    // ============ First Claw Free ============
+    
+    function test_FirstClawIsFree() public {
+        // First claw should cost 0
+        (uint256 price,,,uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        assertEq(price, 0);
+        assertEq(totalCost, 0); // 0 + 0 fees = 0
+        
+        // Can buy with 0 ETH
+        vm.prank(trader1);
+        claws.buyClaws{value: 0}(HANDLE, 1);
+        
+        assertEq(claws.getBalance(HANDLE, trader1), 1);
     }
 }
