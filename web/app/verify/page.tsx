@@ -2,25 +2,84 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { signIn, signOut, useSession } from 'next-auth/react';
+import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
+
+// Whitelisted agents that can verify
+const WHITELISTED_AGENTS = [
+  'clawcustos', 'bankrbot', 'moltbook', 'clawdbotatg', 'clawnch_bot',
+  'KellyClaudeAI', 'starkbotai', 'moltenagentic', 'clawdvine', 'lobchanai',
+  'LordClegg', 'KronosAgentAI', 'AgentScarlett', 'NigelBitcoin', 
+  'MoonPengAgentX', 'agentjupiter', 'AIagent_Nova', 'loomlockai'
+];
 
 export default function VerifyPage() {
   const { address, isConnected } = useAccount();
-  const [handle, setHandle] = useState('');
-  const [step, setStep] = useState<'input' | 'tweet' | 'verify' | 'success'>('input');
+  const { data: session } = useSession();
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const verificationCode = address ? `claws-verify-${address.slice(0, 8)}` : '';
+  const xHandle = session?.twitterUsername;
+  const isWhitelisted = xHandle ? WHITELISTED_AGENTS.some(h => h.toLowerCase() === xHandle.toLowerCase()) : false;
 
-  const handleStartVerification = () => {
-    if (handle && isConnected) {
-      setStep('tweet');
+  const handleVerify = async () => {
+    if (!isConnected || !address || !xHandle) return;
+    
+    setVerifying(true);
+    setError(null);
+    
+    try {
+      // Get signed verification data from backend
+      const res = await fetch('/api/verify/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          handle: xHandle,
+          walletAddress: address 
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data.error || 'Failed to generate verification');
+        setVerifying(false);
+        return;
+      }
+      
+      if (data.alreadyVerified) {
+        setSuccess(true);
+        setVerifying(false);
+        return;
+      }
+      
+      // Call contract with signed data
+      const { handle, wallet, timestamp, nonce, signature } = data.verificationData;
+      
+      writeContract({
+        address: getContractAddress(8453),
+        abi: CLAWS_ABI,
+        functionName: 'verifyAndClaim',
+        args: [handle, wallet, BigInt(timestamp), BigInt(nonce), signature],
+      });
+      
+    } catch (err: any) {
+      setError(err.message || 'Verification failed');
+    } finally {
+      setVerifying(false);
     }
   };
 
-  const tweetText = encodeURIComponent(
-    `Verifying my agent @${handle} on @claws_tech\n\n${verificationCode}\n\nclaws.tech`
-  );
+  // Track success
+  if (isSuccess && !success) {
+    setSuccess(true);
+  }
 
   return (
     <>
@@ -28,27 +87,9 @@ export default function VerifyPage() {
       <header className="header">
         <div className="header-inner">
           <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <img 
-              src="/logo.jpg" 
-              alt="Claws" 
-              style={{ width: '36px', height: '36px', borderRadius: '50%' }}
-            />
-            <span className="logo-text">
-              <span style={{ color: 'var(--red)' }}>CLAWS</span>
-              <span style={{ color: 'white' }}>.TECH</span>
-            </span>
-            <span style={{
-              padding: '0.2rem 0.5rem',
-              background: 'rgba(220, 38, 38, 0.2)',
-              border: '1px solid var(--red)',
-              borderRadius: '4px',
-              color: 'var(--red)',
-              fontSize: '0.625rem',
-              fontWeight: 600,
-              letterSpacing: '0.05em',
-            }}>
-              BETA v0.0.1
-            </span>
+            <img src="/logo.jpg" alt="Claws" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
+            <span style={{ color: 'var(--red)', fontWeight: 700 }}>CLAWS</span>
+            <span style={{ color: 'white', fontWeight: 700 }}>.TECH</span>
           </Link>
           
           <ConnectButton.Custom>
@@ -71,198 +112,210 @@ export default function VerifyPage() {
         </div>
       </header>
 
-      <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
-        <section className="section" style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
-            <span className="text-red">Verify</span> Your Agent
-          </h1>
-          <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
-            Claim your agent and start earning 5% of all trades.
-          </p>
-          
-          {/* Steps indicator */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            marginBottom: '2rem',
-            padding: '1rem',
-            background: 'var(--black-surface)',
-            borderRadius: '8px',
-          }}>
-            {['Connect', 'Handle', 'Tweet', 'Verify'].map((s, i) => {
-              const stepIndex = ['input', 'input', 'tweet', 'verify'].indexOf(step);
-              const isActive = i <= stepIndex + 1;
-              return (
-                <div key={s} style={{ 
-                  textAlign: 'center',
-                  color: isActive ? 'var(--red)' : 'var(--grey-600)',
-                  fontSize: '0.8125rem',
-                  fontWeight: isActive ? 600 : 400,
-                }}>
-                  <div style={{ 
-                    width: '28px',
-                    height: '28px',
-                    background: isActive ? 'var(--red)' : 'var(--grey-800)',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 0.5rem',
-                    fontSize: '0.75rem',
-                    color: isActive ? 'white' : 'var(--grey-600)',
-                  }}>
-                    {i + 1}
-                  </div>
-                  {s}
-                </div>
-              );
-            })}
+      <main style={{ padding: '6rem 1.5rem', maxWidth: '500px', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
+          <span style={{ color: 'var(--red)' }}>Verify</span> Your Agent
+        </h1>
+        <p style={{ color: 'var(--grey-400)', marginBottom: '2rem' }}>
+          Prove you own the X account to claim your agent and earn 5% of all trades.
+        </p>
+
+        {/* Step 1: Connect Wallet */}
+        <div style={{
+          background: 'var(--black-surface)',
+          border: '1px solid var(--grey-800)',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          marginBottom: '1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: isConnected ? '#22c55e' : 'var(--red)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: '0.875rem',
+            }}>
+              {isConnected ? '✓' : '1'}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600 }}>Connect Wallet</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--grey-500)' }}>
+                {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Connect to receive fees'}
+              </div>
+            </div>
+          </div>
+          {!isConnected && <ConnectButton />}
+        </div>
+
+        {/* Step 2: Sign in with X */}
+        <div style={{
+          background: 'var(--black-surface)',
+          border: '1px solid var(--grey-800)',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          marginBottom: '1rem',
+          opacity: isConnected ? 1 : 0.5,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: xHandle ? '#22c55e' : 'var(--red)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: '0.875rem',
+            }}>
+              {xHandle ? '✓' : '2'}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600 }}>Sign in with X</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--grey-500)' }}>
+                {xHandle ? `@${xHandle}` : 'Prove you own the account'}
+              </div>
+            </div>
+          </div>
+          {isConnected && !xHandle && (
+            <button 
+              onClick={() => signIn('twitter')}
+              className="btn btn-red"
+              style={{ width: '100%' }}
+            >
+              Sign in with X
+            </button>
+          )}
+          {xHandle && (
+            <button 
+              onClick={() => signOut()}
+              className="btn btn-ghost"
+              style={{ width: '100%' }}
+            >
+              Sign out @{xHandle}
+            </button>
+          )}
+        </div>
+
+        {/* Step 3: Verify */}
+        <div style={{
+          background: 'var(--black-surface)',
+          border: '1px solid var(--grey-800)',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          marginBottom: '1rem',
+          opacity: xHandle ? 1 : 0.5,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: success ? '#22c55e' : 'var(--red)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: '0.875rem',
+            }}>
+              {success ? '✓' : '3'}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600 }}>Complete Verification</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--grey-500)' }}>
+                {success ? 'Verified!' : !isWhitelisted && xHandle ? 'Not on whitelist' : 'Claim your agent on-chain'}
+              </div>
+            </div>
           </div>
           
-          {/* Content */}
-          <div style={{ 
-            background: 'var(--black-surface)',
-            border: '1px solid var(--grey-800)',
-            borderRadius: '12px',
-            padding: '2rem',
-          }}>
-            {!isConnected ? (
-              <div style={{ textAlign: 'center' }}>
-                <h2 style={{ marginBottom: '1rem' }}>Connect Your Wallet</h2>
-                <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem' }}>
-                  First, connect the wallet that will receive your agent fees.
-                </p>
-                <ConnectButton.Custom>
-                  {({ openConnectModal }) => (
-                    <button onClick={openConnectModal} className="btn btn-red">
-                      Connect Wallet
-                    </button>
-                  )}
-                </ConnectButton.Custom>
-              </div>
-            ) : step === 'input' ? (
-              <div>
-                <h2 style={{ marginBottom: '1rem' }}>Enter Your X Handle</h2>
-                <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem' }}>
-                  Enter the X (Twitter) handle of your agent account.
-                </p>
-                
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    background: 'var(--black)',
-                    border: '1px solid var(--grey-700)',
-                    borderRadius: '8px',
-                    padding: '0 1rem',
-                  }}>
-                    <span style={{ color: 'var(--grey-500)' }}>@</span>
-                    <input
-                      type="text"
-                      value={handle}
-                      onChange={(e) => setHandle(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                      placeholder="your_agent"
-                      style={{
-                        flex: 1,
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '1rem 0.5rem',
-                        fontSize: '1rem',
-                        color: 'var(--white)',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                </div>
-                
-                <button 
-                  className="btn btn-red"
-                  style={{ width: '100%' }}
-                  disabled={!handle}
-                  onClick={handleStartVerification}
-                >
-                  Continue
-                </button>
-              </div>
-            ) : step === 'tweet' ? (
-              <div>
-                <h2 style={{ marginBottom: '1rem' }}>Tweet to Verify</h2>
-                <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem' }}>
-                  Post this tweet from @{handle} to prove ownership.
-                </p>
-                
-                <div style={{
-                  background: 'var(--black)',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  marginBottom: '1.5rem',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.875rem',
-                  wordBreak: 'break-all',
-                }}>
-                  <div style={{ color: 'var(--grey-500)', marginBottom: '0.5rem' }}>Verification code:</div>
-                  <div style={{ color: 'var(--red)' }}>{verificationCode}</div>
-                </div>
-                
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <a
-                    href={`https://twitter.com/intent/tweet?text=${tweetText}`}
+          {xHandle && !isWhitelisted && (
+            <div style={{ 
+              padding: '1rem', 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              borderRadius: '8px',
+              color: '#ef4444',
+              fontSize: '0.875rem',
+            }}>
+              @{xHandle} is not on the whitelist. Contact @claws_tech to get listed.
+            </div>
+          )}
+          
+          {xHandle && isWhitelisted && !success && (
+            <button 
+              onClick={handleVerify}
+              disabled={verifying || isPending || isConfirming}
+              className="btn btn-red"
+              style={{ width: '100%' }}
+            >
+              {isPending || isConfirming ? 'Confirming...' : verifying ? 'Preparing...' : `Verify @${xHandle}`}
+            </button>
+          )}
+          
+          {error && (
+            <div style={{ 
+              padding: '1rem', 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              borderRadius: '8px',
+              color: '#ef4444',
+              fontSize: '0.875rem',
+              marginTop: '1rem',
+            }}>
+              {error}
+            </div>
+          )}
+          
+          {success && (
+            <div style={{ 
+              padding: '1rem', 
+              background: 'rgba(34, 197, 94, 0.1)', 
+              borderRadius: '8px',
+              color: '#22c55e',
+              fontSize: '0.875rem',
+              marginTop: '1rem',
+            }}>
+              @{xHandle} verified! You now earn 5% on all trades.
+              {hash && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <a 
+                    href={`https://basescan.org/tx/${hash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn btn-red"
-                    style={{ flex: 1 }}
+                    style={{ color: '#22c55e', textDecoration: 'underline' }}
                   >
-                    Post Tweet
+                    View transaction →
                   </a>
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => setStep('verify')}
-                  >
-                    I've Tweeted
-                  </button>
                 </div>
-              </div>
-            ) : step === 'verify' ? (
-              <div style={{ textAlign: 'center' }}>
-                <h2 style={{ marginBottom: '1rem' }}>Verifying...</h2>
-                <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem' }}>
-                  We're checking for your verification tweet. This may take a moment.
-                </p>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  border: '3px solid var(--grey-800)',
-                  borderTopColor: 'var(--red)',
-                  borderRadius: '50%',
-                  margin: '0 auto',
-                  animation: 'spin 1s linear infinite',
-                }} />
-                <style jsx>{`
-                  @keyframes spin {
-                    to { transform: rotate(360deg); }
-                  }
-                `}</style>
-              </div>
-            ) : null}
-          </div>
-          
-          {/* Info */}
-          <div style={{ 
-            marginTop: '2rem',
-            padding: '1rem',
-            background: 'var(--black-surface)',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            color: 'var(--grey-500)',
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Why verify */}
+        <div style={{ 
+          marginTop: '2rem', 
+          padding: '1.5rem',
+          background: 'var(--black-surface)',
+          border: '1px solid var(--grey-800)',
+          borderRadius: '12px',
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: '0.75rem' }}>Why verify?</div>
+          <ul style={{ 
+            fontSize: '0.875rem', 
+            color: 'var(--grey-400)',
+            paddingLeft: '1.25rem',
+            margin: 0,
+            lineHeight: 1.8,
           }}>
-            <strong style={{ color: 'var(--white)' }}>Why verify?</strong>
-            <ul style={{ marginTop: '0.5rem', paddingLeft: '1.25rem' }}>
-              <li>Earn 5% of all trades on your agent</li>
-              <li>Get a verified badge on your profile</li>
-              <li>Claim accumulated fees at any time</li>
-            </ul>
-          </div>
-        </section>
+            <li>Earn 5% of all trades on your agent</li>
+            <li>Get 1 free claw on verification</li>
+            <li>Verified badge on your profile</li>
+          </ul>
+        </div>
       </main>
     </>
   );
