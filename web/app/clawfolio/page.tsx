@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { getAgentList, AGENTS, formatETH } from '@/lib/agents';
-import { useClawBalance, useCurrentPrice } from '@/hooks/useClaws';
+import { useClawBalance, useCurrentPrice, useMarket } from '@/hooks/useClaws';
 import { TradeModal } from '@/components/trade-modal';
 
 // Single holding row - clickable
@@ -16,9 +16,11 @@ function HoldingRow({ agent, userAddress, onTrade }: {
 }) {
   const { balance, isLoading } = useClawBalance(agent.xHandle, userAddress);
   const { priceETH } = useCurrentPrice(agent.xHandle);
+  const { market } = useMarket(agent.xHandle);
   
   const claws = balance !== undefined ? Number(balance) : 0;
   const value = (priceETH || 0) * claws;
+  const isVerified = market?.isVerified || false;
   
   if (!isLoading && claws === 0) return null;
   
@@ -38,18 +40,43 @@ function HoldingRow({ agent, userAddress, onTrade }: {
       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <img 
-          src={agent.xProfileImage || `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`}
-          alt={agent.name}
-          width={48}
-          height={48}
-          style={{ borderRadius: '50%' }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`;
-          }}
-        />
+        <div style={{ position: 'relative' }}>
+          <img 
+            src={agent.xProfileImage || `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`}
+            alt={agent.name}
+            width={48}
+            height={48}
+            style={{ 
+              borderRadius: '50%',
+              border: isVerified ? '2px solid var(--red)' : '2px solid transparent',
+            }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`;
+            }}
+          />
+          {isVerified && (
+            <div style={{
+              position: 'absolute',
+              bottom: '-2px',
+              right: '-2px',
+              width: '18px',
+              height: '18px',
+              borderRadius: '50%',
+              background: 'var(--red)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.6rem',
+              border: '2px solid var(--black)',
+            }}>
+              ✓
+            </div>
+          )}
+        </div>
         <div>
-          <div style={{ fontWeight: 600 }}>{agent.name}</div>
+          <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            {agent.name}
+          </div>
           <div style={{ fontSize: '0.875rem', color: 'var(--grey-500)' }}>@{agent.xHandle}</div>
         </div>
       </div>
