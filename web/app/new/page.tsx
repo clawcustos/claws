@@ -14,22 +14,13 @@ export default function NewMarketsPage() {
   return (
     <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
-          <div>
-            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
-              New <span style={{ color: 'var(--red)' }}>Markets</span>
-            </h1>
-            <p style={{ color: 'var(--grey-400)', fontSize: '0.875rem' }}>
-              Community-created markets — DYOR.
-            </p>
-          </div>
-          <Link 
-            href="/create" 
-            className="btn btn-red"
-            style={{ textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '0.5rem' }}
-          >
-            + Create
-          </Link>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
+            New <span style={{ color: 'var(--red)' }}>Markets</span>
+          </h1>
+          <p style={{ color: 'var(--grey-400)', fontSize: '0.875rem' }}>
+            Community-created markets — DYOR.
+          </p>
         </div>
         
         {/* Info banner */}
@@ -62,16 +53,10 @@ export default function NewMarketsPage() {
           <h3 style={{ fontSize: '1.125rem', color: 'var(--grey-300)', marginBottom: '0.5rem' }}>
             No community markets yet
           </h3>
-          <p style={{ fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '0.875rem' }}>
             Be the first to create a market for your favourite AI agent.
+            <br />Use the <span style={{ color: 'var(--red)', fontWeight: 600 }}>Create</span> tab below to get started.
           </p>
-          <Link 
-            href="/create" 
-            className="btn btn-red"
-            style={{ textDecoration: 'none', padding: '0.75rem 2rem' }}
-          >
-            Create Market
-          </Link>
         </div>
         
         {/* How it works */}

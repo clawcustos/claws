@@ -54,6 +54,13 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         bool isVerified;          // Whether agent has verified
         uint256 createdAt;        // Block timestamp of market creation
     }
+
+    /// @notice Agent metadata for verified handles
+    struct AgentMetadata {
+        string bio;         // Short description (max 280 chars)
+        string website;     // URL
+        address token;      // Token contract address (address(0) if none)
+    }
     
     /// @notice Markets indexed by keccak256(handle)
     mapping(bytes32 => Market) public markets;
@@ -75,6 +82,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     
     /// @notice Whitelisted handles that get free first claw (tier system)
     mapping(bytes32 => bool) public whitelisted;
+
+    /// @notice Agent metadata by handle hash (only for verified agents)
+    mapping(bytes32 => AgentMetadata) public agentMetadata;
     
     // ============ Events ============
     
@@ -96,6 +106,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     event AgentWalletUpdated(bytes32 indexed handleHash, string handle, address oldWallet, address newWallet);
     event VerificationRevoked(bytes32 indexed handleHash, string handle);
     event WhitelistUpdated(bytes32 indexed handleHash, string handle, bool status);
+    event MetadataUpdated(bytes32 indexed handleHash, string handle);
     
     // ============ Errors ============
     
@@ -117,6 +128,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     error MarketNotVerified();
     error AlreadyRevoked();
     error SignatureExpired();
+    error BioTooLong();
     
     // ============ Constructor ============
     
@@ -366,7 +378,62 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         
         emit FeesClaimed(handleHash, msg.sender, fees);
     }
-    
+
+    // ============ Agent Metadata ============
+
+    /**
+     * @notice Set metadata for a verified agent handle
+     * @param handle The X handle
+     * @param bio Short description (max 280 characters)
+     * @param website URL for the agent's website
+     * @param token Token contract address (address(0) if none)
+     * @dev Only callable by the verified wallet for that handle
+     */
+    function setAgentMetadata(
+        string calldata handle,
+        string calldata bio,
+        string calldata website,
+        address token
+    ) external {
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+
+        // Only verified wallet can set metadata
+        if (!market.isVerified || msg.sender != market.verifiedWallet) {
+            revert NotVerified();
+        }
+
+        // Validate bio length (max 280 chars like a tweet)
+        if (bytes(bio).length > 280) {
+            revert BioTooLong();
+        }
+
+        agentMetadata[handleHash] = AgentMetadata({
+            bio: bio,
+            website: website,
+            token: token
+        });
+
+        emit MetadataUpdated(handleHash, handle);
+    }
+
+    /**
+     * @notice Get metadata for an agent handle
+     * @param handle The X handle
+     * @return bio Short description
+     * @return website URL
+     * @return token Token contract address
+     */
+    function getAgentMetadata(string calldata handle) external view returns (
+        string memory bio,
+        string memory website,
+        address token
+    ) {
+        bytes32 handleHash = _hashHandle(handle);
+        AgentMetadata storage metadata = agentMetadata[handleHash];
+        return (metadata.bio, metadata.website, metadata.token);
+    }
+
     // ============ Price Calculations ============
     
     /**
