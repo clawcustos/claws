@@ -2,16 +2,18 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { formatEther } from 'viem';
 import { getAgentList, formatETH } from '@/lib/agents';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { TradeModal } from '@/components/trade-modal';
 
 // Single leaderboard row
-function LeaderboardRow({ agent, rank, onTrade }: { 
+function LeaderboardRow({ agent, rank, onTrade, ethUsd }: { 
   agent: ReturnType<typeof getAgentList>[0]; 
   rank: number;
   onTrade: (handle: string) => void;
+  ethUsd: number;
 }) {
   const { market, isLoading } = useMarket(agent.xHandle);
   const { priceETH } = useCurrentPrice(agent.xHandle);
@@ -19,6 +21,8 @@ function LeaderboardRow({ agent, rank, onTrade }: {
   const supply = market?.supply !== undefined ? Number(market.supply) : 0;
   const price = priceETH || 0;
   const isVerified = market?.isVerified || false;
+  const feesETH = market?.pendingFees ? parseFloat(formatEther(market.pendingFees)) : 0;
+  const feesUsd = feesETH * ethUsd;
   
   return (
     <div 
@@ -115,6 +119,24 @@ function LeaderboardRow({ agent, rank, onTrade }: {
         )}
       </div>
       
+      {/* Fees Earned */}
+      <div style={{ textAlign: 'right', fontSize: '0.8125rem', flexShrink: 0, minWidth: '54px' }}>
+        {isLoading ? '...' : feesETH === 0 ? (
+          <span style={{ color: 'var(--grey-600)' }}>—</span>
+        ) : (
+          <div>
+            <span className="mono" style={{ color: 'var(--green, #22c55e)' }}>
+              {feesETH < 0.0001 ? '<0.0001' : formatETH(feesETH)}
+            </span>
+            {feesUsd > 0.01 && (
+              <div style={{ fontSize: '0.625rem', color: 'var(--grey-500)' }}>
+                ${feesUsd < 1 ? feesUsd.toFixed(2) : feesUsd.toFixed(0)}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
       {/* Supply */}
       <div style={{ textAlign: 'right', color: 'var(--grey-400)', fontSize: '0.8125rem', width: '40px', flexShrink: 0 }}>
         {isLoading ? '...' : supply}
@@ -125,6 +147,7 @@ function LeaderboardRow({ agent, rank, onTrade }: {
 
 export default function LeaderboardPage() {
   const agents = useMemo(() => getAgentList(), []);
+  const { ethUsd } = useETHPrice();
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
@@ -142,6 +165,23 @@ export default function LeaderboardPage() {
         <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Live from the Claws contract on Base
         </p>
+
+        {/* $CLAWS Token Disclaimer */}
+        <div style={{
+          background: 'rgba(220,38,38,0.08)',
+          border: '1px solid rgba(220,38,38,0.25)',
+          borderRadius: '8px',
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+          fontSize: '0.8125rem',
+          color: 'var(--grey-300)',
+          lineHeight: 1.5,
+        }}>
+          <span style={{ color: 'var(--red)', fontWeight: 700 }}>⚠️ $CLAWS token is not yet live.</span>{' '}
+          Anyone claiming otherwise is a scam. Official information will only be posted on{' '}
+          <a href="https://x.com/claws_tech" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'underline' }}>@claws_tech</a>{' '}
+          and displayed on this site.
+        </div>
         
         {/* Table */}
         <div style={{ 
@@ -164,6 +204,7 @@ export default function LeaderboardPage() {
             <div style={{ width: '24px', textAlign: 'center' }}>#</div>
             <div style={{ flex: 1 }}>Agent</div>
             <div style={{ textAlign: 'right' }}>Price</div>
+            <div style={{ textAlign: 'right', minWidth: '54px' }}>Fees</div>
             <div style={{ textAlign: 'right', width: '40px' }}>Supply</div>
           </div>
           
@@ -174,6 +215,7 @@ export default function LeaderboardPage() {
               agent={agent} 
               rank={i + 1}
               onTrade={(handle) => setTradeModal({ isOpen: true, handle })}
+              ethUsd={ethUsd}
             />
           ))}
         </div>

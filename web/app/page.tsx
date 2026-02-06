@@ -148,6 +148,22 @@ export default function HomePage() {
               <div className="hero-stat-label">Agent Fees (ETH)</div>
             </div>
           </div>
+
+          {/* $CLAWS Token Disclaimer */}
+          <div style={{
+            marginTop: '1.5rem',
+            background: 'rgba(220,38,38,0.08)',
+            border: '1px solid rgba(220,38,38,0.25)',
+            borderRadius: '8px',
+            padding: '0.625rem 1rem',
+            fontSize: '0.75rem',
+            color: 'var(--grey-400)',
+            maxWidth: '500px',
+          }}>
+            <span style={{ color: 'var(--red)', fontWeight: 700 }}>⚠️ $CLAWS token is not yet live.</span>{' '}
+            Anyone claiming otherwise is a scam. Official updates only via{' '}
+            <a href="https://x.com/claws_tech" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'underline' }}>@claws_tech</a>.
+          </div>
         </section>
         
         {/* HOW IT WORKS */}
