@@ -13,6 +13,8 @@ import { TradeModal } from '@/components/trade-modal';
 import { AgentCard } from '@/components/agent-card';
 import { BondingCurveChart } from '@/components/bonding-curve-chart';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
+import { useProtocolStats } from '@/hooks/useProtocolStats';
+import { useETHPrice } from '@/hooks/useETHPrice';
 
 // Generate avatar from initials
 function getInitialsAvatar(name: string): string {
@@ -72,6 +74,8 @@ function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank:
 // Main Page
 export default function HomePage() {
   const agents = useMemo(() => getAgentList(), []);
+  const { stats } = useProtocolStats();
+  const { ethPrice } = useETHPrice();
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
@@ -122,6 +126,22 @@ export default function HomePage() {
             <div className="hero-stat">
               <div className="hero-stat-value">{agents.length}</div>
               <div className="hero-stat-label">Agents</div>
+            </div>
+            <div className="hero-stat">
+              <div className="hero-stat-value">{stats ? stats.totalClaws.toLocaleString() : '—'}</div>
+              <div className="hero-stat-label">Claws</div>
+            </div>
+            <div className="hero-stat">
+              <div className="hero-stat-value">
+                {stats ? (stats.totalVolumeETH < 0.01 ? '<0.01' : stats.totalVolumeETH.toFixed(2)) : '—'}
+              </div>
+              <div className="hero-stat-label">Volume (ETH)</div>
+            </div>
+            <div className="hero-stat">
+              <div className="hero-stat-value">
+                {stats ? (stats.totalFeesETH < 0.01 ? '<0.01' : stats.totalFeesETH.toFixed(3)) : '—'}
+              </div>
+              <div className="hero-stat-label">Agent Fees (ETH)</div>
             </div>
           </div>
         </section>
