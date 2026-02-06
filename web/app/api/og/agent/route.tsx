@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const agentHandle = agent?.xHandle || handle;
   const isVerified = agent?.isVerified || false;
 
-  return new ImageResponse(
+  const imageResponse = new ImageResponse(
     (
       <div
         style={{
@@ -148,4 +148,9 @@ export async function GET(request: Request) {
       height: 630,
     }
   );
+
+  // Add cache headers - OG images rarely change
+  imageResponse.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+
+  return imageResponse;
 }

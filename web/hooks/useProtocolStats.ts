@@ -29,8 +29,8 @@ export function useProtocolStats() {
     contracts,
     query: {
       enabled: contracts.length > 0 && contractAddress !== '0x0000000000000000000000000000000000000000',
-      staleTime: 30_000, // 30s cache
-      refetchInterval: 60_000, // refresh every 60s
+      staleTime: 60_000, // 60s cache - protocol stats don't need to be real-time
+      refetchInterval: 120_000, // refresh every 120s
     },
   });
 

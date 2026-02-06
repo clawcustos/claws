@@ -20,6 +20,7 @@ export function useMarket(handle: string) {
     args: [handle],
     query: {
       enabled: !!handle && contractAddress !== '0x0000000000000000000000000000000000000000',
+      staleTime: 15_000, // 15s cache - market data can be slightly stale for display
     },
   });
 
@@ -58,6 +59,7 @@ export function useClawBalance(handle: string, userAddress?: `0x${string}`) {
     args: [handle, userAddress!],
     query: {
       enabled: !!handle && !!userAddress && contractAddress !== '0x0000000000000000000000000000000000000000',
+      staleTime: 5_000, // 5s cache - users need accurate balance for trading
     },
   });
 
@@ -82,6 +84,7 @@ export function useBuyPrice(handle: string, amount: number) {
     args: [handle, BigInt(amount)],
     query: {
       enabled: !!handle && amount > 0 && contractAddress !== '0x0000000000000000000000000000000000000000',
+      staleTime: 5_000, // 5s cache - used in trade modal, keep relatively fresh
     },
   });
 
@@ -112,6 +115,7 @@ export function useSellPrice(handle: string, amount: number) {
     args: [handle, BigInt(amount)],
     query: {
       enabled: !!handle && amount > 0 && contractAddress !== '0x0000000000000000000000000000000000000000',
+      staleTime: 5_000, // 5s cache - used in trade modal, keep relatively fresh
     },
   });
 
@@ -201,6 +205,7 @@ export function useCurrentPrice(handle: string) {
     args: [handle],
     query: {
       enabled: !!handle && contractAddress !== '0x0000000000000000000000000000000000000000',
+      staleTime: 10_000, // 10s cache
     },
   });
 
