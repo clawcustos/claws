@@ -294,7 +294,7 @@ export default function AgentPage() {
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                   {onChainWebsite && (
                     <a 
-                      href={onChainWebsite}
+                      href={onChainWebsite.startsWith('http') ? onChainWebsite : `https://${onChainWebsite}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: 'var(--red)', fontSize: '0.8125rem', textDecoration: 'none' }}
