@@ -9,9 +9,9 @@ export function Header() {
   
   const navLinks = [
     { href: '/explore', label: 'Explore' },
-    { href: '/create', label: 'Create Market' },
+    { href: '/create', label: 'Create' },
     { href: '/leaderboard', label: 'Leaderboard' },
-    { href: '/verify', label: 'Verify Agent' },
+    { href: '/verify', label: 'Verify' },
   ];
 
   return (
@@ -38,8 +38,7 @@ export function Header() {
               <Link 
                 key={link.href}
                 href={link.href} 
-                className="header-link"
-                style={isActive ? { color: 'var(--white)', fontWeight: 600 } : undefined}
+                className={`header-link${isActive ? ' active' : ''}`}
               >
                 {link.label}
               </Link>

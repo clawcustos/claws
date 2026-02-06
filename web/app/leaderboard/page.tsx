@@ -32,7 +32,7 @@ function LeaderboardRow({ agent, rank, onTrade }: {
         cursor: 'pointer',
         transition: 'background 0.15s',
       }}
-      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--grey-900)'}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--black-hover)'}
       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
     >
       {/* Rank */}
@@ -106,7 +106,10 @@ function LeaderboardRow({ agent, rank, onTrade }: {
       {/* Price */}
       <div style={{ textAlign: 'right', fontSize: '0.8125rem', flexShrink: 0 }}>
         {isLoading ? '...' : supply === 0 ? (
-          <span style={{ color: 'var(--red)' }}>FREE</span>
+          <span style={{ 
+            color: 'var(--red)', background: 'rgba(220,38,38,0.15)', 
+            padding: '0.125rem 0.5rem', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: 700,
+          }}>FREE</span>
         ) : (
           <span className="mono">{price < 0.0001 ? '<0.0001' : formatETH(price)} ETH</span>
         )}
@@ -132,7 +135,7 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      <main style={{ padding: '5rem 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '600px', margin: '0 auto' }}>
+      <main style={{ padding: 'calc(var(--header-height) + 1rem) 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '700px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
           <span style={{ color: 'var(--red)' }}>Top</span> Agents
         </h1>

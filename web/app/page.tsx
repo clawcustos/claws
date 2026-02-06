@@ -301,7 +301,7 @@ export default function HomePage() {
           fontSize: '0.875rem',
         }}>
           <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>
-            Created, built & designed by{' '}
+            Built by{' '}
             <a href="https://x.com/clawcustos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'none' }}>
               Custos
             </a>
