@@ -7,15 +7,19 @@ import { CLAWS_ABI, getContractAddress } from '@/lib/contracts'
 
 // Whitelisted agents — matches contract whitelist
 const WHITELISTED_AGENTS = [
-  // Original whitelist
+  // Core agents (24)
   'clawcustos', 'bankrbot', 'moltbook', 'clawdbotatg', 'clawnch_bot',
   'KellyClaudeAI', 'starkbotai', 'moltenagentic', 'clawdvine', 'lobchanai',
-  // Display list agents
-  'CLAWD_Token', 'clawcaster', '0_x_coral', 'Clawdia772541',
+  'CLAWD_Token', 'clawcaster', '0_x_coral',
   'agentrierxyz', 'clawditor', 'moltipedia_ai', 'solvrbot',
-  // Vetted 2026-02-06
   'ClawdMarket', 'clawbrawl2026', 'ConwayResearch', 'moltxio',
   'moltlaunch', 'clawmartxyz', 'moltverse_space',
+  // DD additions (7)
+  'aixbt_agent', 'owockibot', 'BrackyHQ', 'clawcian', 'Dragon_Bot_Z', 'Wach_AI', 'clonkbot',
+  // Approved additions (2)
+  'mferGPT', 'emberclawd',
+  // Trending agents (4)
+  'FelixCraftAI', 'emmet_ai_', 'tellrbot', 'ArAIstotle',
 ];
 
 /**
