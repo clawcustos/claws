@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { getAgentList, AGENTS, formatETH } from '@/lib/agents';
+import { getAgentList, formatETH } from '@/lib/agents';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { TradeModal } from '@/components/trade-modal';
 
@@ -91,35 +90,6 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      {/* Header */}
-      <header className="header">
-        <div className="header-inner">
-          <Link href="/" className="header-logo">
-            <img src="/logo.jpg" alt="Claws" style={{ width: 32, height: 32, borderRadius: '50%' }} />
-            <span className="logo-text" style={{ color: 'var(--red)' }}>CLAWS</span>
-            <span className="logo-text" style={{ color: 'white' }}>.TECH</span>
-          </Link>
-          
-          <ConnectButton.Custom>
-            {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
-              const ready = mounted;
-              const connected = ready && account && chain;
-              return (
-                <div {...(!ready && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}>
-                  {!connected ? (
-                    <button onClick={openConnectModal} className="btn btn-red">Connect</button>
-                  ) : (
-                    <button onClick={openAccountModal} className="btn btn-ghost" style={{ fontFamily: 'monospace' }}>
-                      {account.displayName}
-                    </button>
-                  )}
-                </div>
-              );
-            }}
-          </ConnectButton.Custom>
-        </div>
-      </header>
-
       <main style={{ padding: '5rem 1rem 6rem', maxWidth: '600px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
           <span style={{ color: 'var(--red)' }}>Top</span> by Price
@@ -164,41 +134,6 @@ export default function LeaderboardPage() {
           ))}
         </div>
       </main>
-
-      {/* Bottom Nav */}
-      <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'var(--black-surface)',
-        borderTop: '1px solid var(--grey-800)',
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        padding: '0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom))',
-        zIndex: 100,
-      }}>
-        <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', color: 'var(--grey-400)', textDecoration: 'none', fontSize: '0.6875rem' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          </svg>
-          Home
-        </Link>
-        <Link href="/leaderboard" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', color: 'var(--red)', textDecoration: 'none', fontSize: '0.6875rem' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
-          </svg>
-          Trending
-        </Link>
-        <Link href="/clawfolio" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', color: 'var(--grey-400)', textDecoration: 'none', fontSize: '0.6875rem' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="2" y="4" width="20" height="16" rx="2"/>
-            <path d="M6 8h.01M6 12h.01M6 16h.01M10 8h8M10 12h8M10 16h8"/>
-          </svg>
-          Clawfolio
-        </Link>
-      </nav>
       
       {/* Trade Modal */}
       {selectedAgent && (

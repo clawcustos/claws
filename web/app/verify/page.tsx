@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { signIn, signOut, useSession } from 'next-auth/react';
+// Header + BottomNav provided by layout
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
 
 // Whitelisted agents that can verify
@@ -83,35 +84,6 @@ export default function VerifyPage() {
 
   return (
     <>
-      {/* Header */}
-      <header className="header">
-        <div className="header-inner">
-          <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <img src="/logo.jpg" alt="Claws" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
-            <span style={{ color: 'var(--red)', fontWeight: 700 }}>CLAWS</span>
-            <span style={{ color: 'white', fontWeight: 700 }}>.TECH</span>
-          </Link>
-          
-          <ConnectButton.Custom>
-            {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
-              const ready = mounted;
-              const connected = ready && account && chain;
-              return (
-                <div {...(!ready && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}>
-                  {!connected ? (
-                    <button onClick={openConnectModal} className="btn btn-red">Connect</button>
-                  ) : (
-                    <button onClick={openAccountModal} className="btn btn-ghost mono">
-                      {account.displayName}
-                    </button>
-                  )}
-                </div>
-              );
-            }}
-          </ConnectButton.Custom>
-        </div>
-      </header>
-
       <main style={{ padding: '6rem 1.5rem', maxWidth: '500px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
           <span style={{ color: 'var(--red)' }}>Verify</span> Your Agent

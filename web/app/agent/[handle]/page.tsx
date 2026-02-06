@@ -60,33 +60,6 @@ export default function AgentPage() {
 
   return (
     <>
-      {/* Header */}
-      <header className="header">
-        <div className="header-inner">
-          <Link href="/" className="logo">
-            <span className="logo-text">CLAWS</span>
-          </Link>
-          
-          <ConnectButton.Custom>
-            {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
-              const ready = mounted;
-              const connected = ready && account && chain;
-              return (
-                <div {...(!ready && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}>
-                  {!connected ? (
-                    <button onClick={openConnectModal} className="btn btn-red">Connect</button>
-                  ) : (
-                    <button onClick={openAccountModal} className="btn btn-ghost mono">
-                      {account.displayName}
-                    </button>
-                  )}
-                </div>
-              );
-            }}
-          </ConnectButton.Custom>
-        </div>
-      </header>
-
       <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
         <section className="section">
           {/* Breadcrumb */}

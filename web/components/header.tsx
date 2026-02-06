@@ -1,69 +1,67 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export function Header() {
+  const pathname = usePathname();
+  
+  const navLinks = [
+    { href: '/explore', label: 'Explore' },
+    { href: '/leaderboard', label: 'Leaderboard' },
+    { href: '/verify', label: 'Verify' },
+  ];
+
   return (
     <header className="header">
       <div className="header-inner">
-        <Link href="/" className="logo">
-          <div className="logo-mark">🦞</div>
-          <span className="logo-text">CLAWS</span>
-          <span className="logo-badge">Beta</span>
+        <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+          <img 
+            src="/logo.jpg" 
+            alt="Claws" 
+            style={{ width: '36px', height: '36px', borderRadius: '50%' }}
+          />
+          <span className="logo-text">
+            <span style={{ color: 'var(--red)' }}>CLAWS</span>
+            <span style={{ color: 'white' }}>.TECH</span>
+          </span>
+          <span style={{
+            padding: '0.2rem 0.5rem',
+            background: 'rgba(220, 38, 38, 0.2)',
+            border: '1px solid var(--red)',
+            borderRadius: '4px',
+            color: 'var(--red)',
+            fontSize: '0.625rem',
+            fontWeight: 600,
+            letterSpacing: '0.05em',
+          }}>
+            BETA v0.0.1
+          </span>
         </Link>
         
         {/* Desktop Navigation */}
-        <nav 
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '2rem',
-          }}
-          className="desktop-nav"
-        >
-          <Link 
-            href="/explore" 
-            style={{ 
-              color: 'var(--text-secondary)', 
-              textDecoration: 'none',
-              fontSize: '0.9375rem',
-              fontWeight: 500,
-              transition: 'color var(--transition-fast)',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-          >
-            Explore
-          </Link>
-          <Link 
-            href="/leaderboard" 
-            style={{ 
-              color: 'var(--text-secondary)', 
-              textDecoration: 'none',
-              fontSize: '0.9375rem',
-              fontWeight: 500,
-              transition: 'color var(--transition-fast)',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-          >
-            Leaderboard
-          </Link>
-          <Link 
-            href="/verify" 
-            style={{ 
-              color: 'var(--text-secondary)', 
-              textDecoration: 'none',
-              fontSize: '0.9375rem',
-              fontWeight: 500,
-              transition: 'color var(--transition-fast)',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-          >
-            Verify
-          </Link>
+        <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
+            return (
+              <Link 
+                key={link.href}
+                href={link.href} 
+                style={{ 
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', 
+                  textDecoration: 'none',
+                  fontSize: '0.9375rem',
+                  fontWeight: isActive ? 600 : 500,
+                  transition: 'color var(--transition-fast)',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
         
         {/* Wallet Connection */}
@@ -93,10 +91,7 @@ export function Header() {
                 {(() => {
                   if (!connected) {
                     return (
-                      <button 
-                        onClick={openConnectModal} 
-                        className="btn btn-primary"
-                      >
+                      <button onClick={openConnectModal} className="btn btn-red">
                         Connect
                       </button>
                     );

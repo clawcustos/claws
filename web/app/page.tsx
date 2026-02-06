@@ -89,155 +89,6 @@ function ActivityTicker() {
   );
 }
 
-// Bottom Navigation Component (Mobile)
-function BottomNav() {
-  return (
-    <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      background: 'var(--black-surface)',
-      borderTop: '1px solid var(--grey-800)',
-      display: 'flex',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-      padding: '0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom))',
-      zIndex: 100,
-    }}>
-      <Link href="/" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.25rem',
-        color: 'var(--grey-400)',
-        textDecoration: 'none',
-        fontSize: '0.6875rem',
-        padding: '0.5rem',
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          <polyline points="9,22 9,12 15,12 15,22"/>
-        </svg>
-        Home
-      </Link>
-      <a href="#agents" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.25rem',
-        color: 'var(--grey-400)',
-        textDecoration: 'none',
-        fontSize: '0.6875rem',
-        padding: '0.5rem',
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
-        </svg>
-        Agents
-      </a>
-      <a href="#leaderboard" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.25rem',
-        color: 'var(--grey-400)',
-        textDecoration: 'none',
-        fontSize: '0.6875rem',
-        padding: '0.5rem',
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
-          <polyline points="17,6 23,6 23,12"/>
-        </svg>
-        Trending
-      </a>
-      <Link href="/clawfolio" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.25rem',
-        color: 'var(--red)',
-        textDecoration: 'none',
-        fontSize: '0.6875rem',
-        padding: '0.5rem',
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="2" y="4" width="20" height="16" rx="2"/>
-          <path d="M6 8h.01M6 12h.01M6 16h.01"/>
-          <path d="M10 8h8M10 12h8M10 16h8"/>
-        </svg>
-        Clawfolio
-      </Link>
-    </nav>
-  );
-}
-
-// Header component
-function Header() {
-  return (
-    <header className="header">
-      <div className="header-inner">
-        <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <img 
-            src="/logo.jpg" 
-            alt="Claws" 
-            style={{ width: '36px', height: '36px', borderRadius: '50%' }}
-          />
-          <span className="logo-text">
-            <span style={{ color: 'var(--red)' }}>CLAWS</span>
-            <span style={{ color: 'white' }}>.TECH</span>
-          </span>
-          <span style={{
-            padding: '0.2rem 0.5rem',
-            background: 'rgba(220, 38, 38, 0.2)',
-            border: '1px solid var(--red)',
-            borderRadius: '4px',
-            color: 'var(--red)',
-            fontSize: '0.625rem',
-            fontWeight: 600,
-            letterSpacing: '0.05em',
-          }}>
-            BETA v0.0.1
-          </span>
-        </Link>
-        
-        <nav className="header-nav">
-          <a href="#agents" className="header-link">Agents</a>
-          <a href="#leaderboard" className="header-link">Leaderboard</a>
-          <Link href="/verify" className="header-link">Verify</Link>
-        </nav>
-        
-        <ConnectButton.Custom>
-          {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
-            const ready = mounted;
-            const connected = ready && account && chain;
-
-            return (
-              <div {...(!ready && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}>
-                {!connected ? (
-                  <button onClick={openConnectModal} className="btn btn-red">
-                    Connect
-                  </button>
-                ) : chain.unsupported ? (
-                  <button onClick={openChainModal} className="btn btn-ghost">
-                    Wrong Network
-                  </button>
-                ) : (
-                  <button onClick={openAccountModal} className="btn btn-ghost mono">
-                    {account.displayName}
-                  </button>
-                )}
-              </div>
-            );
-          }}
-        </ConnectButton.Custom>
-      </div>
-    </header>
-  );
-}
-
 // Generate avatar from initials
 function getInitialsAvatar(name: string): string {
   const initials = name.slice(0, 2).toUpperCase();
@@ -279,7 +130,7 @@ function AgentsSection({ agents, onTrade, onConnect }: {
     return result.sort((a, b) => {
       if (sortBy === 'price') return b.priceETH - a.priceETH;
       if (sortBy === 'trending') return b.priceChange24h - a.priceChange24h;
-      if (sortBy === 'new') return a.supply - b.supply; // Lower supply = newer
+      if (sortBy === 'new') return a.supply - b.supply;
       return 0;
     });
   }, [agents, search, sortBy, verifiedFilter]);
@@ -388,7 +239,7 @@ function AgentsSection({ agents, onTrade, onConnect }: {
             border: '1px solid var(--grey-800)',
           }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔍</div>
-            <div style={{ color: 'var(--grey-400)' }}>No agents found for "{search}"</div>
+            <div style={{ color: 'var(--grey-400)' }}>No agents found for &ldquo;{search}&rdquo;</div>
           </div>
         ) : (
           <div className="agents-grid">
@@ -449,7 +300,7 @@ function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank:
   );
 }
 
-// Main Page - Single flow
+// Main Page
 export default function HomePage() {
   const agents = useMemo(() => getAgentList(), []);
   
@@ -476,7 +327,6 @@ export default function HomePage() {
   
   return (
     <>
-      <Header />
       <ActivityTicker />
       
       <main className="main">
@@ -526,7 +376,7 @@ export default function HomePage() {
           </div>
         </section>
         
-        {/* HOW IT WORKS */}
+        {/* HOW IT WORKS — single consolidated section */}
         <section style={{
           padding: '3rem 1.5rem',
           background: 'var(--black-surface)',
@@ -649,43 +499,6 @@ export default function HomePage() {
           </div>
         </section>
         
-        {/* HOW IT WORKS */}
-        <section className="section" style={{ textAlign: 'center' }}>
-          <h2 className="section-title" style={{ marginBottom: '3rem' }}>
-            How It <span>Works</span>
-          </h2>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '2rem',
-            maxWidth: '900px',
-            margin: '0 auto',
-          }}>
-            <div>
-              <div style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--red)' }}>1</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>No Agent Tokens</h3>
-              <p style={{ color: 'var(--grey-500)' }}>
-                Claws aren't agent-issued tokens. No rug risk, no team allocations, no presales.
-              </p>
-            </div>
-            <div>
-              <div style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--red)' }}>2</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Bonding Curve</h3>
-              <p style={{ color: 'var(--grey-500)' }}>
-                Price determined by supply. Transparent mechanics, no market makers.
-              </p>
-            </div>
-            <div>
-              <div style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--red)' }}>3</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Fund Agents</h3>
-              <p style={{ color: 'var(--grey-500)' }}>
-                5% of trades go to verified agents. Support the builders directly.
-              </p>
-            </div>
-          </div>
-        </section>
-        
         {/* CTA */}
         <section className="section" style={{ 
           textAlign: 'center',
@@ -711,7 +524,6 @@ export default function HomePage() {
           color: 'var(--grey-600)',
           fontSize: '0.875rem',
         }}>
-          {/* Beta Badge */}
           <div style={{ 
             display: 'inline-block',
             padding: '0.25rem 0.75rem',
@@ -727,7 +539,6 @@ export default function HomePage() {
             BETA
           </div>
           
-          {/* Built by */}
           <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>
             Created, built & designed by{' '}
             <a 
@@ -740,7 +551,6 @@ export default function HomePage() {
             </a>
           </div>
           
-          {/* Links */}
           <div style={{ marginBottom: '1.5rem' }}>
             <a 
               href="https://x.com/claws_tech" 
@@ -760,34 +570,22 @@ export default function HomePage() {
             </a>
           </div>
           
-          {/* Platform */}
           <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>
             Built on Base
           </div>
           
-          {/* Legal Links */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <Link 
-              href="/terms"
-              style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}
-            >
+            <Link href="/terms" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>
               Terms
             </Link>
-            <Link 
-              href="/privacy"
-              style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}
-            >
+            <Link href="/privacy" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>
               Privacy
             </Link>
-            <Link 
-              href="/disclaimer"
-              style={{ color: 'var(--grey-500)', fontSize: '0.8125rem' }}
-            >
+            <Link href="/disclaimer" style={{ color: 'var(--grey-500)', fontSize: '0.8125rem' }}>
               Disclaimer
             </Link>
           </div>
           
-          {/* Short Disclaimer */}
           <div style={{ 
             maxWidth: '600px', 
             margin: '0 auto',
@@ -821,9 +619,6 @@ export default function HomePage() {
           initialMode={tradeModal.mode}
         />
       )}
-      
-      {/* Bottom Navigation (Mobile) */}
-      <BottomNav />
     </>
   );
 }

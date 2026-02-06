@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Source_Serif_4, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { Header } from '@/components/header';
+import { BottomNav } from '@/components/bottom-nav';
 
 const inter = Inter({ 
   subsets: ['latin'], 
@@ -63,7 +65,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable}`}
     >
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Header />
+          {children}
+          <BottomNav />
+        </Providers>
       </body>
     </html>
   );
