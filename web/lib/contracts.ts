@@ -1,5 +1,5 @@
 // Contract configuration
-// Using friend.tech formula: price = supply² / 16000 ETH
+// Bonding curve formula: price = supply² / 16000 ETH
 
 export const CONTRACTS = {
   baseSepolia: {

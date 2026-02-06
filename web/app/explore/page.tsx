@@ -16,28 +16,17 @@ export default function ExplorePage() {
     mode: 'buy' | 'sell';
   }>({ isOpen: false, handle: '', mode: 'buy' });
   
-  // Get agent list (handles + metadata for rendering cards)
   const allAgents = useMemo(() => getAgentList(), []);
   
+  // Only filter by search text — verified filter is handled by AgentCard using live contract data
   const filteredAgents = useMemo(() => {
-    let result = allAgents;
-    
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(a => 
-        a.name.toLowerCase().includes(q) || 
-        a.xHandle.toLowerCase().includes(q)
-      );
-    }
-    
-    if (verifiedFilter === 'verified') {
-      result = result.filter(a => a.clawsVerified);
-    } else if (verifiedFilter === 'unverified') {
-      result = result.filter(a => !a.clawsVerified);
-    }
-    
-    return result;
-  }, [allAgents, search, verifiedFilter]);
+    if (!search) return allAgents;
+    const q = search.toLowerCase();
+    return allAgents.filter(a => 
+      a.name.toLowerCase().includes(q) || 
+      a.xHandle.toLowerCase().includes(q)
+    );
+  }, [allAgents, search]);
 
   const selectedAgent = AGENTS[tradeModal.handle];
 
@@ -53,7 +42,7 @@ export default function ExplorePage() {
             <span style={{ color: 'var(--red)' }}>Explore</span> Agents
           </h1>
           <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
-            {allAgents.length} agents available for trading. All data live from the contract.
+            {allAgents.length} agents available. All data live from the contract.
           </p>
           
           {/* Search & Filter Bar */}
@@ -92,7 +81,7 @@ export default function ExplorePage() {
               </span>
             </div>
             
-            {/* Verified Filter */}
+            {/* Verified Filter — uses live contract data via AgentCard */}
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {(['all', 'verified', 'unverified'] as const).map((f) => (
                 <button
@@ -114,45 +103,29 @@ export default function ExplorePage() {
                     gap: '0.375rem',
                   }}
                 >
-                  {f === 'verified' && '✓'}
+                  {f === 'verified' && '✓ '}
                   {f}
                 </button>
               ))}
             </div>
-            
-            <div style={{ color: 'var(--grey-600)', fontSize: '0.875rem' }}>
-              {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
-            </div>
           </div>
           
-          {/* Agent Grid — uses AgentCard which pulls live contract data */}
-          {filteredAgents.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '4rem 2rem',
-              background: 'var(--black-surface)',
-              borderRadius: '12px',
-              border: '1px solid var(--grey-800)',
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔍</div>
-              <div style={{ color: 'var(--grey-400)' }}>No agents found for &ldquo;{search}&rdquo;</div>
-            </div>
-          ) : (
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
-                <div className="agents-grid">
-                  {filteredAgents.map((agent) => (
-                    <AgentCard 
-                      key={agent.address} 
-                      agent={agent} 
-                      onTrade={openTrade}
-                      onConnect={openConnectModal}
-                    />
-                  ))}
-                </div>
-              )}
-            </ConnectButton.Custom>
-          )}
+          {/* Agent Grid */}
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <div className="agents-grid">
+                {filteredAgents.map((agent) => (
+                  <AgentCard 
+                    key={agent.address} 
+                    agent={agent} 
+                    onTrade={openTrade}
+                    onConnect={openConnectModal}
+                    verifiedFilter={verifiedFilter}
+                  />
+                ))}
+              </div>
+            )}
+          </ConnectButton.Custom>
         </section>
       </main>
       

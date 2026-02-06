@@ -1,93 +1,17 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { 
   getAgentList, 
-  getTopByPrice, 
   AGENTS, 
   formatETH, 
-  formatUSD,
-  calculateCurrentPrice,
   type AgentListItem
 } from '@/lib/agents';
 import { TradeModal } from '@/components/trade-modal';
 import { AgentCard } from '@/components/agent-card';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
-
-// Fallback avatar for broken images
-const FALLBACK_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/><text x="50" y="60" text-anchor="middle" fill="%23666" font-size="40">?</text></svg>';
-
-// Mock activity data for ticker
-const MOCK_ACTIVITY = [
-  { type: 'buy', agent: 'bankrbot', amount: 3, price: 0.052, trader: '0x7a3...f2d' },
-  { type: 'sell', agent: 'moltbook', amount: 1, price: 0.127, trader: '0x3c1...a8e' },
-  { type: 'buy', agent: 'clawdbotatg', amount: 5, price: 0.089, trader: '0x9f2...b4c' },
-  { type: 'buy', agent: 'clawnch_bot', amount: 2, price: 0.062, trader: '0x2d8...e1f' },
-  { type: 'sell', agent: 'bankrbot', amount: 1, price: 0.176, trader: '0x5a7...c3d' },
-  { type: 'buy', agent: 'KellyClaudeAI', amount: 4, price: 0.044, trader: '0x8b3...f9a' },
-  { type: 'buy', agent: 'starkbotai', amount: 2, price: 0.033, trader: '0x1c5...d7e' },
-  { type: 'sell', agent: 'moltenagentic', amount: 3, price: 0.015, trader: '0x6e9...a2b' },
-  { type: 'buy', agent: 'clawdvine', amount: 6, price: 0.012, trader: '0x4f1...c8d' },
-  { type: 'buy', agent: 'lobchanai', amount: 2, price: 0.004, trader: '0xab2...e5f' },
-];
-
-// Activity Ticker Component
-function ActivityTicker() {
-  return (
-    <div style={{
-      background: 'var(--black-surface)',
-      borderBottom: '1px solid var(--grey-800)',
-      overflow: 'hidden',
-      whiteSpace: 'nowrap',
-    }}>
-      <div 
-        style={{
-          display: 'inline-flex',
-          animation: 'ticker 30s linear infinite',
-          gap: '2rem',
-          padding: '0.5rem 0',
-        }}
-      >
-        {[...MOCK_ACTIVITY, ...MOCK_ACTIVITY].map((activity, i) => (
-          <span key={i} style={{ 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '0.5rem',
-            fontSize: '0.8125rem',
-            color: 'var(--grey-400)',
-          }}>
-            <span style={{ 
-              color: activity.type === 'buy' ? '#22c55e' : '#ef4444',
-              fontWeight: 600,
-            }}>
-              {activity.type === 'buy' ? '↑' : '↓'}
-            </span>
-            <span style={{ color: 'var(--grey-500)' }}>{activity.trader}</span>
-            <span style={{ color: activity.type === 'buy' ? '#22c55e' : '#ef4444' }}>
-              {activity.type === 'buy' ? 'bought' : 'sold'}
-            </span>
-            <span style={{ color: 'white', fontWeight: 500 }}>
-              {activity.amount} @{activity.agent}
-            </span>
-            <span style={{ color: 'var(--grey-500)' }}>
-              for {activity.price.toFixed(3)} ETH
-            </span>
-          </span>
-        ))}
-      </div>
-      <style>{`
-        @keyframes ticker {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-      `}</style>
-    </div>
-  );
-}
 
 // Generate avatar from initials
 function getInitialsAvatar(name: string): string {
@@ -98,173 +22,14 @@ function getInitialsAvatar(name: string): string {
   return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23${bg}" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="white" font-family="system-ui" font-weight="600" font-size="36">${initials}</text></svg>`;
 }
 
-// Agents Section with Search
-function AgentsSection({ agents, onTrade, onConnect }: {
-  agents: AgentListItem[];
-  onTrade: (handle: string, mode: 'buy' | 'sell') => void;
-  onConnect: () => void;
-}) {
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'price' | 'trending' | 'new'>('price');
-  const [verifiedFilter, setVerifiedFilter] = useState<'all' | 'verified' | 'unverified'>('all');
-  
-  const filteredAgents = useMemo(() => {
-    let result = agents;
-    
-    // Search filter
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(a => 
-        a.name.toLowerCase().includes(q) || 
-        a.xHandle.toLowerCase().includes(q)
-      );
-    }
-    
-    // Verified filter
-    if (verifiedFilter === 'verified') {
-      result = result.filter(a => a.clawsVerified);
-    } else if (verifiedFilter === 'unverified') {
-      result = result.filter(a => !a.clawsVerified);
-    }
-    
-    return result.sort((a, b) => {
-      if (sortBy === 'price') return b.priceETH - a.priceETH;
-      if (sortBy === 'trending') return b.priceChange24h - a.priceChange24h;
-      if (sortBy === 'new') return a.supply - b.supply;
-      return 0;
-    });
-  }, [agents, search, sortBy, verifiedFilter]);
-
-  return (
-    <section id="agents" className="section agents-section section-full">
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Search & Filter Bar */}
-        <div style={{
-          display: 'flex',
-          gap: '1rem',
-          marginBottom: '2rem',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}>
-          <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="Search agents..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: '100%',
-                background: 'var(--black-surface)',
-                border: '1px solid var(--grey-800)',
-                borderRadius: '8px',
-                padding: '0.875rem 1rem 0.875rem 2.75rem',
-                color: 'var(--white)',
-                fontSize: '1rem',
-              }}
-            />
-            <span style={{
-              position: 'absolute',
-              left: '1rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--grey-600)',
-              fontSize: '1.125rem',
-            }}>
-              🔍
-            </span>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {(['price', 'trending', 'new'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setSortBy(s)}
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: sortBy === s ? 'var(--red)' : 'var(--black-surface)',
-                  border: '1px solid',
-                  borderColor: sortBy === s ? 'var(--red)' : 'var(--grey-800)',
-                  borderRadius: '8px',
-                  color: sortBy === s ? 'white' : 'var(--grey-400)',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          
-          {/* Verified Filter */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {(['all', 'verified', 'unverified'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setVerifiedFilter(f)}
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: verifiedFilter === f ? (f === 'verified' ? '#16a34a' : f === 'unverified' ? 'var(--grey-700)' : 'var(--red)') : 'var(--black-surface)',
-                  border: '1px solid',
-                  borderColor: verifiedFilter === f ? (f === 'verified' ? '#16a34a' : f === 'unverified' ? 'var(--grey-600)' : 'var(--red)') : 'var(--grey-800)',
-                  borderRadius: '8px',
-                  color: verifiedFilter === f ? 'white' : 'var(--grey-400)',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                }}
-              >
-                {f === 'verified' && '✓'}
-                {f}
-              </button>
-            ))}
-          </div>
-          
-          <div style={{ color: 'var(--grey-600)', fontSize: '0.875rem' }}>
-            {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
-          </div>
-        </div>
-        
-        {filteredAgents.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '4rem 2rem',
-            background: 'var(--black-surface)',
-            borderRadius: '12px',
-            border: '1px solid var(--grey-800)',
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔍</div>
-            <div style={{ color: 'var(--grey-400)' }}>No agents found for &ldquo;{search}&rdquo;</div>
-          </div>
-        ) : (
-          <div className="agents-grid">
-            {filteredAgents.map((agent) => (
-              <AgentCard 
-                key={agent.address} 
-                agent={agent} 
-                onTrade={onTrade}
-                onConnect={onConnect}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-// Leaderboard Item Component - fetches real data
+// Leaderboard Item — fetches real data from contract
 function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank: number; onTrade: (handle: string) => void }) {
   const [imgErr, setImgErr] = useState(false);
   const { market, isLoading } = useMarket(agent.xHandle);
   const { priceETH } = useCurrentPrice(agent.xHandle);
   
   const supply = market?.supply !== undefined ? Number(market.supply) : 0;
+  const isVerified = market?.isVerified || false;
   const price = priceETH || 0;
   
   return (
@@ -288,7 +53,10 @@ function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank:
           />
         </div>
         <div>
-          <div className="leaderboard-name">{agent.name}</div>
+          <div className="leaderboard-name">
+            {agent.name}
+            {isVerified && <span style={{ color: '#22c55e', marginLeft: '0.375rem' }}>✓</span>}
+          </div>
           <div className="leaderboard-handle">@{agent.xHandle}</div>
         </div>
       </div>
@@ -310,15 +78,6 @@ export default function HomePage() {
     mode: 'buy' | 'sell';
   }>({ isOpen: false, handle: '', mode: 'buy' });
   
-  const totalVolume = useMemo(() => 
-    Object.values(AGENTS).reduce((acc, a) => acc + a.lifetimeVolumeETH, 0), 
-    []
-  );
-  const totalHolders = useMemo(() => 
-    Object.values(AGENTS).reduce((acc, a) => acc + a.holders, 0), 
-    []
-  );
-  
   const selectedAgent = AGENTS[tradeModal.handle];
   
   const openTrade = (handle: string, mode: 'buy' | 'sell') => {
@@ -327,8 +86,6 @@ export default function HomePage() {
   
   return (
     <>
-      <ActivityTicker />
-      
       <main className="main">
         {/* HERO */}
         <section className="hero">
@@ -356,27 +113,19 @@ export default function HomePage() {
               Explore Agents
             </Link>
             <Link href="/verify" className="btn btn-ghost">
-              List Your Agent
+              Verify Agent
             </Link>
           </div>
           
           <div className="hero-stats">
             <div className="hero-stat">
-              <div className="hero-stat-value">{formatETH(totalVolume)} ETH</div>
-              <div className="hero-stat-label">Total Volume</div>
-            </div>
-            <div className="hero-stat">
               <div className="hero-stat-value">{agents.length}</div>
               <div className="hero-stat-label">Agents</div>
-            </div>
-            <div className="hero-stat">
-              <div className="hero-stat-value">{totalHolders}</div>
-              <div className="hero-stat-label">Traders</div>
             </div>
           </div>
         </section>
         
-        {/* HOW IT WORKS — single consolidated section */}
+        {/* HOW IT WORKS */}
         <section style={{
           padding: '3rem 1.5rem',
           background: 'var(--black-surface)',
@@ -401,51 +150,28 @@ export default function HomePage() {
               gap: '1.5rem',
             }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  fontSize: '2rem', 
-                  fontWeight: 700, 
-                  color: 'var(--red)',
-                  marginBottom: '0.5rem',
-                }}>1</div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>1</div>
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Start Any Market Free</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
                   The first claw on every agent costs nothing. Be first and pay zero.
                 </div>
               </div>
-              
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  fontSize: '2rem', 
-                  fontWeight: 700, 
-                  color: 'var(--red)',
-                  marginBottom: '0.5rem',
-                }}>2</div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>2</div>
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Bonding Curve Pricing</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
                   Price increases as more claws are bought. Early believers are rewarded.
                 </div>
               </div>
-              
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  fontSize: '2rem', 
-                  fontWeight: 700, 
-                  color: 'var(--red)',
-                  marginBottom: '0.5rem',
-                }}>3</div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>3</div>
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Sell Anytime</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
                   Instant liquidity. Sell back to the contract at market price whenever you want.
                 </div>
               </div>
-              
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  fontSize: '2rem', 
-                  fontWeight: 700, 
-                  color: 'var(--red)',
-                  marginBottom: '0.5rem',
-                }}>4</div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>4</div>
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Agents Earn 5%</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
                   Verified agents earn 5% of all trades on their claws, plus 1 free claw on verification.
@@ -456,7 +182,7 @@ export default function HomePage() {
             <div style={{ 
               marginTop: '2rem', 
               padding: '1rem', 
-              background: 'var(--black-bg)', 
+              background: 'var(--black)', 
               borderRadius: '8px',
               textAlign: 'center',
             }}>
@@ -470,19 +196,42 @@ export default function HomePage() {
           </div>
         </section>
         
-        {/* AGENTS */}
-        <ConnectButton.Custom>
-          {({ openConnectModal }) => (
-            <AgentsSection agents={agents} onTrade={openTrade} onConnect={openConnectModal} />
-          )}
-        </ConnectButton.Custom>
+        {/* FEATURED AGENTS — live data via AgentCard */}
+        <section className="section">
+          <div className="section-header">
+            <h2 className="section-title">
+              Featured <span>Agents</span>
+            </h2>
+            <Link href="/explore" style={{ color: 'var(--red)', textDecoration: 'none', fontSize: '0.875rem' }}>
+              View all →
+            </Link>
+          </div>
+          
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <div className="agents-grid">
+                {agents.slice(0, 6).map((agent) => (
+                  <AgentCard 
+                    key={agent.address} 
+                    agent={agent} 
+                    onTrade={openTrade}
+                    onConnect={openConnectModal}
+                  />
+                ))}
+              </div>
+            )}
+          </ConnectButton.Custom>
+        </section>
         
-        {/* LEADERBOARD */}
+        {/* LEADERBOARD — live data */}
         <section id="leaderboard" className="section">
           <div className="section-header">
             <h2 className="section-title">
               <span>Top</span> by Price
             </h2>
+            <Link href="/leaderboard" style={{ color: 'var(--red)', textDecoration: 'none', fontSize: '0.875rem' }}>
+              Full leaderboard →
+            </Link>
           </div>
           
           <div className="leaderboard">
@@ -524,91 +273,35 @@ export default function HomePage() {
           color: 'var(--grey-600)',
           fontSize: '0.875rem',
         }}>
-          <div style={{ 
-            display: 'inline-block',
-            padding: '0.25rem 0.75rem',
-            background: 'rgba(220, 38, 38, 0.2)',
-            border: '1px solid var(--red)',
-            borderRadius: '4px',
-            color: 'var(--red)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            letterSpacing: '0.05em',
-            marginBottom: '1.5rem',
-          }}>
-            BETA
-          </div>
-          
           <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>
             Created, built & designed by{' '}
-            <a 
-              href="https://x.com/clawcustos" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ color: 'var(--red)', textDecoration: 'none' }}
-            >
+            <a href="https://x.com/clawcustos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'none' }}>
               Custos
             </a>
           </div>
-          
           <div style={{ marginBottom: '1.5rem' }}>
-            <a 
-              href="https://x.com/claws_tech" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ color: 'var(--grey-400)', marginRight: '1.5rem' }}
-            >
-              Twitter
-            </a>
-            <a 
-              href="https://github.com/clawcustos/claws" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ color: 'var(--grey-400)' }}
-            >
-              GitHub
-            </a>
+            <a href="https://x.com/claws_tech" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--grey-400)', marginRight: '1.5rem' }}>Twitter</a>
+            <a href="https://github.com/clawcustos/claws" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--grey-400)' }}>GitHub</a>
           </div>
-          
-          <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>
-            Built on Base
-          </div>
-          
+          <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>Built on Base</div>
           <div style={{ marginBottom: '1.5rem' }}>
-            <Link href="/terms" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>
-              Terms
-            </Link>
-            <Link href="/privacy" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>
-              Privacy
-            </Link>
-            <Link href="/disclaimer" style={{ color: 'var(--grey-500)', fontSize: '0.8125rem' }}>
-              Disclaimer
-            </Link>
+            <Link href="/terms" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>Terms</Link>
+            <Link href="/privacy" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>Privacy</Link>
+            <Link href="/disclaimer" style={{ color: 'var(--grey-500)', fontSize: '0.8125rem' }}>Disclaimer</Link>
           </div>
-          
           <div style={{ 
-            maxWidth: '600px', 
-            margin: '0 auto',
-            padding: '1rem',
-            background: 'var(--black-surface)',
-            borderRadius: '8px',
-            fontSize: '0.75rem',
-            color: 'var(--grey-600)',
-            lineHeight: 1.5,
+            maxWidth: '600px', margin: '0 auto', padding: '1rem',
+            background: 'var(--black-surface)', borderRadius: '8px',
+            fontSize: '0.75rem', color: 'var(--grey-600)', lineHeight: 1.5,
           }}>
             <strong style={{ color: 'var(--grey-500)' }}>⚠️ Risk Warning:</strong> Claws is experimental beta software. 
-            Trading involves substantial risk of loss. Prices are volatile. 
-            DYOR. Not financial advice.{' '}
+            Trading involves substantial risk of loss. Prices are volatile. DYOR. Not financial advice.{' '}
             <Link href="/disclaimer" style={{ color: 'var(--red)' }}>Read full disclaimer →</Link>
           </div>
-          
-          <div style={{ marginTop: '1.5rem', fontSize: '0.75rem' }}>
-            © 2026 Claws. All rights reserved.
-          </div>
+          <div style={{ marginTop: '1.5rem', fontSize: '0.75rem' }}>© 2026 Claws. All rights reserved.</div>
         </footer>
       </main>
       
-      {/* Trade Modal */}
       {tradeModal.isOpen && selectedAgent && (
         <TradeModal
           isOpen={tradeModal.isOpen}

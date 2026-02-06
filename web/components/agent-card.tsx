@@ -19,9 +19,11 @@ interface AgentCardProps {
   agent: AgentListItem;
   onTrade: (handle: string, mode: 'buy' | 'sell') => void;
   onConnect: () => void;
+  /** Filter by live verified status: 'all' shows always, 'verified'/'unverified' hides if mismatch */
+  verifiedFilter?: 'all' | 'verified' | 'unverified';
 }
 
-export function AgentCard({ agent, onTrade, onConnect }: AgentCardProps) {
+export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }: AgentCardProps) {
   const { isConnected } = useAccount();
   const [imgError, setImgError] = useState(false);
   
@@ -33,6 +35,10 @@ export function AgentCard({ agent, onTrade, onConnect }: AgentCardProps) {
   const supply = market ? Number(market.supply) : 0;
   const isVerified = market?.isVerified || false;
   const currentPriceETH = priceETH || 0;
+  
+  // Filter by verified status (using live contract data)
+  if (!isLoading && verifiedFilter === 'verified' && !isVerified) return null;
+  if (!isLoading && verifiedFilter === 'unverified' && isVerified) return null;
   
   const handleBuy = () => {
     if (isConnected) {

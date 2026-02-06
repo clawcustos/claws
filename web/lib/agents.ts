@@ -1,6 +1,6 @@
 // Claws Agent Whitelist - 21 Curated Claw Ecosystem Agents
 // Source: docs/AGENT_WHITELIST.md (2026-02-05)
-// Prices calculated using friend.tech formula: price = (supply+1)² / 16000 ETH
+// Bonding curve pricing: price = supply² / 16000 ETH
 
 const ETH_PRICE_USD = 3000;
 

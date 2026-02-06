@@ -10,9 +10,9 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 /**
  * @title Claws
  * @notice Bonding curve speculation market for AI agents
- * @dev Handle-based markets using exact friend.tech pricing formula
+ * @dev Handle-based markets using bonding curve pricing
  * 
- * Formula: price = supply² / 16000 ETH (friend.tech parity)
+ * Formula: price = supply² / 16000 ETH (Claws bonding curve)
  * - 1st claw: FREE (viral onboarding hook)
  * - 10th claw: 0.00625 ETH (~$19)
  * - 100th claw: 0.625 ETH (~$1,875)
@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
  * 
  * WHOLE CLAWS ONLY: Minimum 1 claw per trade. No fractional purchases.
  * 
- * VERIFIED AGENTS: Receive 1 free claw upon verification (friend.tech model).
+ * VERIFIED AGENTS: Receive 1 free claw upon verification .
  */
 contract Claws is ReentrancyGuard, Ownable, Pausable {
     using ECDSA for bytes32;
@@ -37,7 +37,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     /// @notice Basis points denominator
     uint256 public constant BPS_DENOMINATOR = 10000;
     
-    /// @notice Price curve divisor (friend.tech formula)
+    /// @notice Price curve divisor (bonding curve formula)
     /// Formula: price = supply² / PRICE_DIVISOR
     uint256 public constant PRICE_DIVISOR = 16000;
     
@@ -314,7 +314,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         market.verifiedWallet = wallet;
         market.isVerified = true;
         
-        // Give verified agent 1 free claw (friend.tech model)
+        // Give verified agent 1 free claw 
         market.supply += 1;
         clawsBalance[handleHash][wallet] += 1;
         
@@ -391,12 +391,12 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     }
     
     /**
-     * @notice Calculate price using bonding curve (exact friend.tech formula)
+     * @notice Calculate price using bonding curve (exact bonding curve formula)
      * @dev First claw is FREE. Price = sum of squares from supply to supply+amount-1
-     *      Matches friend.tech FriendtechSharesV1.getPrice() exactly
+     *      Sum of squares bonding curve
      */
     function _getPrice(uint256 supply, uint256 amount) internal pure returns (uint256) {
-        // friend.tech formula: sum squares from supply to (supply + amount - 1)
+        // bonding curve formula: sum squares from supply to (supply + amount - 1)
         // Using sum of squares: n(n+1)(2n+1)/6 for 1 to n
         
         // sum1 = sum of squares from 1 to (supply - 1), or 0 if supply is 0
@@ -414,7 +414,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     
     /**
      * @notice Get current price for 1 claw (next buy price)
-     * @dev First claw is FREE (friend.tech model)
+     * @dev First claw is FREE 
      */
     function getCurrentPrice(string calldata handle) external view returns (uint256) {
         bytes32 handleHash = _hashHandle(handle);

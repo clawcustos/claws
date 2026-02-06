@@ -126,20 +126,29 @@ export function TradeModal({
   // Validation
   const insufficientETH = mode === 'buy' && !isFree && displayPrice > ethBalance;
   const insufficientClaws = mode === 'sell' && amountNum > userClaws;
-  // Check if market has real liquidity (ETH was actually deposited via paid buys)
-  const lifetimeVolume = market?.lifetimeVolume !== undefined ? Number(market.lifetimeVolume) : 0;
-  const noLiquidity = mode === 'sell' && lifetimeVolume === 0;
+  // Liquidity check: free claws have no ETH backing
+  // Verified agent = 2 free claws (1 first claim + 1 verification claim)
+  // Unverified = 1 free claw (first claim is always free)
+  const isVerified = market?.isVerified || false;
+  const freeClaws = isVerified ? 2 : 1;
+  const paidSupply = Math.max(0, supply - freeClaws); // claws backed by real ETH
+  const noLiquidity = mode === 'sell' && paidSupply === 0;
   
   const cantSellAll = mode === 'sell' && amountNum >= supply; // Contract: CannotSellLastClaw
+  // Can only sell up to the number of paid claws (free claws have no ETH backing)
+  const exceedsPaidSupply = mode === 'sell' && amountNum > paidSupply && paidSupply > 0;
   
   const canBuy = mode === 'buy' && amountNum > 0 && !insufficientETH;
-  const canSell = mode === 'sell' && amountNum > 0 && !insufficientClaws && !cantSellAll && !noLiquidity;
+  const canSell = mode === 'sell' && amountNum > 0 && !insufficientClaws && !cantSellAll && !noLiquidity && !exceedsPaidSupply;
   const canTrade = mode === 'buy' ? canBuy : canSell;
   
   // Human-readable error message
   const getErrorMessage = () => {
     if (mode === 'sell' && noLiquidity) {
-      return `No liquidity — all claws in this market were claimed for free. Someone needs to buy claws at market price before selling is possible.`;
+      return `No liquidity — all ${supply} claw${supply !== 1 ? 's' : ''} in this market were claimed for free. Someone needs to buy claws at market price before selling is possible.`;
+    }
+    if (mode === 'sell' && exceedsPaidSupply) {
+      return `Only ${paidSupply} claw${paidSupply !== 1 ? 's' : ''} have ETH backing. Max sellable: ${paidSupply}`;
     }
     if (insufficientETH) {
       const needed = (displayPrice - ethBalance).toFixed(4);
