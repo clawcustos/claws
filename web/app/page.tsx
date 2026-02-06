@@ -11,6 +11,7 @@ import {
 } from '@/lib/agents';
 import { TradeModal } from '@/components/trade-modal';
 import { AgentCard } from '@/components/agent-card';
+import { BondingCurveChart } from '@/components/bonding-curve-chart';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 
 // Generate avatar from initials
@@ -127,16 +128,16 @@ export default function HomePage() {
         
         {/* HOW IT WORKS */}
         <section style={{
-          padding: '3rem 1.5rem',
+          padding: '4rem 1.5rem',
           background: 'var(--black-surface)',
           borderTop: '1px solid var(--grey-800)',
           borderBottom: '1px solid var(--grey-800)',
         }}>
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <h2 style={{ 
-              fontSize: '1.5rem', 
+              fontSize: '1.75rem', 
               fontWeight: 700, 
-              marginBottom: '2rem',
+              marginBottom: '2.5rem',
               textAlign: 'center',
             }}>
               <span style={{ color: 'white' }}>How </span>
@@ -144,57 +145,83 @@ export default function HomePage() {
               <span style={{ color: 'white' }}> Works</span>
             </h2>
             
-            <div style={{
+            {/* Step cards */}
+            <div className="how-steps-grid" style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1.5rem',
+              gap: '1rem',
+              marginBottom: '3rem',
             }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>1</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Create Any Market</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
-                  Pick any AI agent. Buy their first claws to create a market — skin in the game from day one.
+              {[
+                { icon: '🔨', title: 'Create Any Market', desc: 'Pick any AI agent. Buy their first claws to create a market — skin in the game from day one.' },
+                { icon: '📈', title: 'Bonding Curve', desc: 'Price increases as more claws are bought. Early believers are rewarded. Fully on-chain.' },
+                { icon: '💰', title: 'Sell Anytime', desc: 'Instant liquidity. Sell back to the contract at market price whenever you want.' },
+                { icon: '🦞', title: 'Agents Earn 5%', desc: 'Verified agents earn 5% of all trades on their claws. Real revenue, not token inflation.' },
+              ].map((step, i) => (
+                <div key={i} style={{
+                  background: 'var(--black)',
+                  border: '1px solid var(--grey-800)',
+                  borderRadius: '12px',
+                  padding: '1.5rem 1.25rem',
+                  textAlign: 'center',
+                  transition: 'border-color 0.2s',
+                }}>
+                  <div style={{ fontSize: '1.75rem', marginBottom: '0.75rem' }}>{step.icon}</div>
+                  <div style={{ 
+                    fontSize: '0.8125rem', fontWeight: 700, color: 'var(--red)', 
+                    marginBottom: '0.25rem', letterSpacing: '0.05em',
+                  }}>
+                    STEP {i + 1}
+                  </div>
+                  <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9375rem' }}>
+                    {step.title}
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--grey-400)', lineHeight: 1.5 }}>
+                    {step.desc}
+                  </div>
                 </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>2</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Bonding Curve Pricing</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
-                  Price increases as more claws are bought. Early believers are rewarded.
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>3</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Sell Anytime</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
-                  Instant liquidity. Sell back to the contract at market price whenever you want.
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>4</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Agents Earn 5%</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
-                  Verified agents earn 5% of all trades on their claws. Real revenue, not token inflation.
-                </div>
-              </div>
+              ))}
             </div>
             
-            <div style={{ 
-              marginTop: '2rem', 
-              padding: '1rem', 
-              background: 'var(--black)', 
-              borderRadius: '8px',
-              textAlign: 'center',
+            {/* Interactive Bonding Curve */}
+            <div style={{
+              background: 'var(--black)',
+              border: '1px solid var(--grey-800)',
+              borderRadius: '12px',
+              padding: '1.5rem',
             }}>
-              <div style={{ fontFamily: 'monospace', fontSize: '1.125rem', marginBottom: '0.5rem' }}>
-                price = supply² ÷ 16000 ETH
+              <div style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                marginBottom: '1rem',
+              }}>
+                <div>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.25rem' }}>
+                    Pricing Curve
+                  </h3>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--grey-400)' }}>
+                    price = supply² ÷ 16000 ETH — hover to explore
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
+              <BondingCurveChart />
+              <div style={{ 
+                marginTop: '1rem', textAlign: 'center',
+                fontSize: '0.8125rem', color: 'var(--grey-500)',
+              }}>
                 Transparent pricing. No manipulation, no insiders, no agent-specific tokens.
               </div>
             </div>
           </div>
         </section>
+        
+        <style>{`
+          .how-steps-grid { grid-template-columns: repeat(4, 1fr); }
+          @media (max-width: 768px) {
+            .how-steps-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          }
+          @media (max-width: 480px) {
+            .how-steps-grid { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
         
         {/* FEATURED AGENTS — live data via AgentCard */}
         <section className="section">
