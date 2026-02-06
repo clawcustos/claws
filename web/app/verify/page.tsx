@@ -333,7 +333,19 @@ export default function VerifyPage() {
                   </div>
                 </div>
               </div>
-              {!isConnected && <ConnectButton />}
+              {!isConnected && (
+                <ConnectButton.Custom>
+                  {({ openConnectModal }) => (
+                    <button 
+                      onClick={openConnectModal}
+                      className="btn btn-red"
+                      style={{ width: '100%' }}
+                    >
+                      Connect Wallet
+                    </button>
+                  )}
+                </ConnectButton.Custom>
+              )}
             </div>
 
             {/* Step 2: Sign in with X */}

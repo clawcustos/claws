@@ -58,16 +58,21 @@ export function ActivityTicker() {
     },
   });
 
+  const tickerStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 'var(--header-height, 60px)',
+    left: 0,
+    right: 0,
+    zIndex: 40,
+    overflow: 'hidden',
+    borderBottom: '1px solid var(--grey-800)',
+    background: 'var(--black-elevated, #0a0a0a)',
+  };
+
   // If no live trades yet, show placeholder
   if (trades.length === 0) {
     return (
-      <div style={{
-        overflow: 'hidden',
-        borderTop: '1px solid var(--grey-800)',
-        borderBottom: '1px solid var(--grey-800)',
-        padding: '0.625rem 0',
-        background: 'var(--black-elevated)',
-      }}>
+      <div style={tickerStyle}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -75,6 +80,7 @@ export function ActivityTicker() {
           gap: '0.5rem',
           fontSize: '0.75rem',
           color: 'var(--grey-500)',
+          padding: '0.5rem 0',
         }}>
           <span style={{ 
             width: '6px', height: '6px', borderRadius: '50%', 
@@ -93,26 +99,25 @@ export function ActivityTicker() {
     );
   }
 
+  // Duplicate trades for seamless loop
+  const displayTrades = [...trades, ...trades];
+
   return (
-    <div style={{
-      overflow: 'hidden',
-      borderTop: '1px solid var(--grey-800)',
-      borderBottom: '1px solid var(--grey-800)',
-      background: 'var(--black-elevated)',
-    }}>
+    <div style={tickerStyle}>
       <div 
         ref={tickerRef}
         style={{
           display: 'flex',
           gap: '2rem',
-          padding: '0.625rem 1rem',
+          padding: '0.5rem 1rem',
           animation: 'scroll-left 30s linear infinite',
           whiteSpace: 'nowrap',
+          width: 'max-content',
         }}
       >
-        {trades.map((trade) => (
+        {displayTrades.map((trade, i) => (
           <div 
-            key={trade.id}
+            key={`${trade.id}-${i}`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -122,7 +127,7 @@ export function ActivityTicker() {
             }}
           >
             <span style={{ 
-              color: trade.isBuy ? 'var(--green)' : 'var(--red)',
+              color: trade.isBuy ? 'var(--green, #22c55e)' : 'var(--red)',
               fontWeight: 700,
             }}>
               {trade.isBuy ? '▲ BUY' : '▼ SELL'}

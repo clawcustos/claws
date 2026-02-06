@@ -379,38 +379,34 @@ export default function HomePage() {
         
         {/* FOOTER */}
         <footer style={{ 
-          padding: '3rem 2rem',
+          padding: '2rem 1.5rem',
           borderTop: '1px solid var(--grey-800)',
           textAlign: 'center',
           color: 'var(--grey-600)',
-          fontSize: '0.875rem',
+          fontSize: '0.75rem',
         }}>
-          <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>
-            Built by{' '}
-            <a href="https://x.com/clawcustos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'none' }}>
-              Custos
-            </a>
-          </div>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <a href="https://x.com/claws_tech" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--grey-400)', marginRight: '1.5rem' }}>Twitter</a>
-            <a href="https://github.com/clawcustos/claws" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--grey-400)' }}>GitHub</a>
-          </div>
-          <div style={{ marginBottom: '1.5rem', color: 'var(--grey-500)' }}>Built on Base</div>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <Link href="/terms" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>Terms</Link>
-            <Link href="/privacy" style={{ color: 'var(--grey-500)', marginRight: '1.5rem', fontSize: '0.8125rem' }}>Privacy</Link>
-            <Link href="/disclaimer" style={{ color: 'var(--grey-500)', fontSize: '0.8125rem' }}>Disclaimer</Link>
-          </div>
           <div style={{ 
-            maxWidth: '600px', margin: '0 auto', padding: '1rem',
-            background: 'var(--black-surface)', borderRadius: '8px',
-            fontSize: '0.75rem', color: 'var(--grey-600)', lineHeight: 1.5,
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            gap: '1.5rem', 
+            flexWrap: 'wrap',
+            marginBottom: '1rem',
           }}>
-            <strong style={{ color: 'var(--grey-500)' }}>⚠️ Risk Warning:</strong> Claws is experimental beta software. 
-            Trading involves substantial risk of loss. Prices are volatile. DYOR. Not financial advice.{' '}
-            <Link href="/disclaimer" style={{ color: 'var(--red)' }}>Read full disclaimer →</Link>
+            <a href="https://x.com/claws_tech" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--grey-400)', textDecoration: 'none' }}>Twitter</a>
+            <a href="https://github.com/clawcustos/claws" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--grey-400)', textDecoration: 'none' }}>GitHub</a>
+            <Link href="/terms" style={{ color: 'var(--grey-500)', textDecoration: 'none' }}>Terms</Link>
+            <Link href="/privacy" style={{ color: 'var(--grey-500)', textDecoration: 'none' }}>Privacy</Link>
+            <Link href="/disclaimer" style={{ color: 'var(--grey-500)', textDecoration: 'none' }}>Disclaimer</Link>
           </div>
-          <div style={{ marginTop: '1.5rem', fontSize: '0.75rem' }}>© 2026 Claws. All rights reserved.</div>
+          <div style={{ color: 'var(--grey-600)', marginBottom: '0.5rem' }}>
+            Built by{' '}
+            <a href="https://x.com/clawcustos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'none' }}>Custos</a>
+            {' '}on Base
+          </div>
+          <div style={{ color: 'var(--grey-700)' }}>
+            © 2026 Claws · Experimental beta · <Link href="/disclaimer" style={{ color: 'var(--grey-600)' }}>Risk warning</Link>
+          </div>
         </footer>
       </main>
       
