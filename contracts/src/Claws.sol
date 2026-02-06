@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /**
  * @title Claws
@@ -23,7 +24,7 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
  *
  * VERIFIED AGENTS: Earn 5% of all trade fees. No free claws on verification.
  */
-contract Claws is ReentrancyGuard, Ownable, Pausable {
+contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -46,6 +47,11 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     /// @notice Price curve divisor (bonding curve formula)
     /// Formula: price = supply² / PRICE_DIVISOR
     uint256 public constant PRICE_DIVISOR = 16000;
+    
+    /// @notice EIP-712 typehash for verification signatures
+    bytes32 public constant VERIFY_TYPEHASH = keccak256(
+        "Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)"
+    );
     
     // ============ State ============
     
@@ -142,11 +148,11 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     error NotPendingOwner();
     
     // ============ Constructor ============
-    
+
     constructor(
         address _verifier,
         address _treasury
-    ) Ownable(msg.sender) {
+    ) Ownable(msg.sender) EIP712("Claws", "1") {
         if (_verifier == address(0) || _treasury == address(0)) {
             revert ZeroAddress();
         }
@@ -161,10 +167,6 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
      * @param handle The X handle (without @)
      */
     function createMarket(string calldata handle) external {
-        if (bytes(handle).length == 0 || bytes(handle).length > 32) {
-            revert InvalidHandle();
-        }
-        
         bytes32 handleHash = _hashHandle(handle);
         
         if (markets[handleHash].createdAt != 0) {
@@ -192,10 +194,11 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
      * @notice Buy claws for a handle
      * @param handle The X handle
      * @param amount Number of whole claws to buy (minimum 1, no fractions)
+     * @param maxTotalCost Maximum total cost willing to pay (0 = no limit, for backwards compatibility)
      * @dev Whitelisted handles get 1 bonus claw on first buy (supply == 0)
      * @dev Non-whitelisted handles must buy >= 2 claws on first buy
      */
-    function buyClaws(string calldata handle, uint256 amount) external payable nonReentrant whenNotPaused {
+    function buyClaws(string calldata handle, uint256 amount, uint256 maxTotalCost) external payable nonReentrant whenNotPaused {
         if (amount == 0) revert InvalidAmount();
 
         bytes32 handleHash = _hashHandle(handle);
@@ -203,9 +206,6 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
 
         // Auto-create market if doesn't exist
         if (market.createdAt == 0) {
-            if (bytes(handle).length == 0 || bytes(handle).length > 32) {
-                revert InvalidHandle();
-            }
             market.createdAt = block.timestamp;
             handleStrings[handleHash] = handle;
             emit MarketCreated(handleHash, handle, msg.sender);
@@ -229,6 +229,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         uint256 protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
         uint256 agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         uint256 totalCost = price + protocolFee + agentFee;
+
+        // Slippage protection: if maxTotalCost is 0, treat as "no limit" (backwards compatibility)
+        if (maxTotalCost != 0 && totalCost > maxTotalCost) revert SlippageExceeded();
 
         if (msg.value < totalCost) revert InsufficientPayment();
 
@@ -319,7 +322,10 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
      * @param wallet The wallet to bind
      * @param timestamp Signature timestamp
      * @param nonce Unique nonce to prevent replay
-     * @param signature Verifier's signature
+     * @param signature Verifier's EIP-712 signature
+     * @dev Backend /api/verify/complete must sign with EIP-712: 
+     *      structHash = keccak256(abi.encode(VERIFY_TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce))
+     *      finalHash = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash))
      */
     function verifyAndClaim(
         string calldata handle,
@@ -330,27 +336,28 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     ) external nonReentrant {
         bytes32 handleHash = _hashHandle(handle);
         Market storage market = markets[handleHash];
-        
+
         if (market.createdAt == 0) revert MarketDoesNotExist();
         if (market.isVerified) revert AlreadyVerified();
-        
+
         // Signature must be less than 1 hour old
         if (block.timestamp > timestamp + 3600) revert SignatureExpired();
-        
-        // Verify signature from trusted verifier
-        bytes32 nonceHash = keccak256(abi.encodePacked(handle, wallet, timestamp, nonce));
+
+        // EIP-712 structured signing with domain separator
+        bytes32 nonceHash = keccak256(abi.encodePacked("\x19\x01", _domainSeparatorV4(),
+            keccak256(abi.encode(VERIFY_TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce))
+        ));
         if (usedNonces[nonceHash]) revert NonceAlreadyUsed();
-        
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(handle, wallet, timestamp, nonce)
-        );
-        bytes32 ethSignedHash = messageHash.toEthSignedMessageHash();
-        
-        if (ethSignedHash.recover(signature) != verifier) {
+
+        // Construct EIP-712 digest
+        bytes32 structHash = keccak256(abi.encode(VERIFY_TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce));
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        if (digest.recover(signature) != verifier) {
             revert InvalidSignature();
         }
-        
-        // Mark nonce as used
+
+        // Mark nonce as used (domain-bound to prevent cross-chain replay)
         usedNonces[nonceHash] = true;
         
         // Bind wallet and mark verified
@@ -741,15 +748,39 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     }
 
     // ============ Internal ============
-    
+
     function _hashHandle(string memory handle) internal pure returns (bytes32) {
-        // Normalize to lowercase for consistent hashing
         bytes memory handleBytes = bytes(handle);
-        for (uint256 i = 0; i < handleBytes.length; i++) {
-            if (handleBytes[i] >= 0x41 && handleBytes[i] <= 0x5A) {
-                handleBytes[i] = bytes1(uint8(handleBytes[i]) + 32);
+        uint256 length = handleBytes.length;
+
+        if (length == 0 || length > 32) revert InvalidHandle();
+
+        // Validate characters and normalize to lowercase
+        for (uint256 i = 0; i < length; i++) {
+            bytes1 char = handleBytes[i];
+
+            // Allow: a-z (already lowercase), 0-9, underscore
+            // Convert: A-Z -> a-z
+            bool isValid = false;
+
+            if (char >= 0x61 && char <= 0x7A) {
+                // a-z: already valid, no change needed
+                isValid = true;
+            } else if (char >= 0x41 && char <= 0x5A) {
+                // A-Z: convert to lowercase
+                handleBytes[i] = bytes1(uint8(char) + 32);
+                isValid = true;
+            } else if (char >= 0x30 && char <= 0x39) {
+                // 0-9: valid
+                isValid = true;
+            } else if (char == 0x5F) {
+                // underscore (_): valid
+                isValid = true;
             }
+
+            if (!isValid) revert InvalidHandle();
         }
+
         return keccak256(handleBytes);
     }
     

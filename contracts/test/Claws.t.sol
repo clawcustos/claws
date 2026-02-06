@@ -80,7 +80,7 @@ contract ClawsTest is Test {
         uint256 totalCost = price + (price * 1000 / 10000); // 10% fees
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1);
+        claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1, 0);
 
         assertTrue(claws.marketExists(HANDLE));
     }
@@ -117,7 +117,7 @@ contract ClawsTest is Test {
         uint256 treasuryBefore = treasury.balance;
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1);
+        claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1, 0);
 
         // Whitelisted: gets 1 bonus claw
         assertEq(claws.getBalance(HANDLE, trader1), 2);
@@ -130,10 +130,10 @@ contract ClawsTest is Test {
     
     function test_BuyMultipleClaws() public {
         (uint256 price,,,uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 5);
-        
+
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 5);
-        
+        claws.buyClaws{value: totalCost}(HANDLE, 5, 0);
+
         assertEq(claws.getBalance(HANDLE, trader1), 5);
         
         (uint256 supply,,,,,,,) = claws.getMarket(HANDLE);
@@ -151,7 +151,7 @@ contract ClawsTest is Test {
         uint256 balanceBefore = trader1.balance;
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost + excess}(HANDLE, 1);
+        claws.buyClaws{value: totalCost + excess}(HANDLE, 1, 0);
 
         assertEq(balanceBefore - trader1.balance, totalCost);
     }
@@ -159,14 +159,14 @@ contract ClawsTest is Test {
     function test_BuyClawsRevertsZeroAmount() public {
         vm.prank(trader1);
         vm.expectRevert(Claws.InvalidAmount.selector);
-        claws.buyClaws{value: 1 ether}(HANDLE, 0);
+        claws.buyClaws{value: 1 ether}(HANDLE, 0, 0);
     }
     
     function test_BuyClawsRevertsInsufficientPayment() public {
         // Test with 2 claws (which costs 0.0000625 ETH + fees)
         vm.prank(trader1);
         vm.expectRevert(Claws.InsufficientPayment.selector);
-        claws.buyClaws{value: 0.00001 ether}(HANDLE, 2);
+        claws.buyClaws{value: 0.00001 ether}(HANDLE, 2, 0);
     }
     
     // ============ Sell Claws ============
@@ -175,7 +175,7 @@ contract ClawsTest is Test {
         // First buy some claws
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
         
         // Then sell some
         (uint256 sellPrice,,, uint256 proceeds) = claws.getSellProceedsBreakdown(HANDLE, 2);
@@ -199,7 +199,7 @@ contract ClawsTest is Test {
 
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 1);
+        claws.buyClaws{value: buyCost}(HANDLE, 1, 0);
 
         // Has 2 claws (with bonus), try to sell 5
         vm.prank(trader1);
@@ -212,7 +212,7 @@ contract ClawsTest is Test {
         // Buy 3 claws (minimum 2 for first buy on non-whitelisted)
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 3);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 3);
+        claws.buyClaws{value: buyCost}(HANDLE, 3, 0);
 
         // Verify we have 3 claws
         assertEq(claws.getBalance(HANDLE, trader1), 3);
@@ -233,7 +233,7 @@ contract ClawsTest is Test {
     function test_SellClawsRevertsSlippageExceeded() public {
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
         
         vm.prank(trader1);
         vm.expectRevert(Claws.SlippageExceeded.selector);
@@ -263,7 +263,7 @@ contract ClawsTest is Test {
 
         // Buy 1 claw (free for whitelisted, gets bonus)
         vm.prank(trader1);
-        claws.buyClaws{value: 0}(HANDLE, 1);
+        claws.buyClaws{value: 0}(HANDLE, 1, 0);
 
         // At supply=2 (1 + 1 bonus), next claw price = 2^2/16000 = 0.00025 ETH
         assertEq(claws.getCurrentPrice(HANDLE), 0.00025 ether);
@@ -282,7 +282,7 @@ contract ClawsTest is Test {
         // Buy first
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
         
         (uint256 price, uint256 protocolFee, uint256 agentFee, uint256 proceeds) = 
             claws.getSellProceedsBreakdown(HANDLE, 2);
@@ -298,7 +298,7 @@ contract ClawsTest is Test {
         // Buy some claws first (generates fees)
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 10);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 10);
+        claws.buyClaws{value: buyCost}(HANDLE, 10, 0);
         
         (,uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
         assertGt(pendingFees, 0);
@@ -306,14 +306,21 @@ contract ClawsTest is Test {
         // Create verification signature
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+
+        // EIP-712 signature structure
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
-        
+
         uint256 walletBefore = agentWallet.balance;
-        
+
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
         
@@ -327,17 +334,23 @@ contract ClawsTest is Test {
     
     function test_VerifyRevertsInvalidSignature() public {
         claws.createMarket(HANDLE);
-        
+
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        
-        // Sign with wrong key
+
+        // Sign with wrong key using EIP-712
         uint256 wrongPk = 0xBAD;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
-        
+
         vm.prank(agentWallet);
         vm.expectRevert(Claws.InvalidSignature.selector);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -351,14 +364,20 @@ contract ClawsTest is Test {
         // First verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 1);
+        claws.buyClaws{value: buyCost}(HANDLE, 1, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
 
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -366,9 +385,15 @@ contract ClawsTest is Test {
 
         // Try to verify again
         uint256 newNonce = 99999;
-        messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, newNonce));
-        ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (v, r, s) = vm.sign(verifierPk, ethSignedHash);
+        structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            newNonce
+        ));
+        digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (v, r, s) = vm.sign(verifierPk, digest);
         signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -382,23 +407,29 @@ contract ClawsTest is Test {
         // Buy claws, verify, then buy more to generate new fees
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
-        
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
+
         // Verify
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
-        
+
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
-        
+
         // Buy more (generates new fees)
         (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader2);
-        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5, 0);
         
         (,uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
         assertGt(pendingFees, 0);
@@ -417,7 +448,7 @@ contract ClawsTest is Test {
     function test_ClaimFeesRevertsNotVerified() public {
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
         
         vm.prank(agentWallet);
         vm.expectRevert(Claws.NotVerified.selector);
@@ -428,13 +459,19 @@ contract ClawsTest is Test {
         // Buy and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -443,7 +480,7 @@ contract ClawsTest is Test {
         // Buy more
         (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader2);
-        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5, 0);
 
         // Wrong wallet tries to claim
         vm.prank(trader1);
@@ -457,13 +494,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -488,13 +531,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -522,13 +571,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -544,13 +599,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -569,13 +630,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -597,13 +664,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -628,13 +701,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -669,13 +748,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -718,13 +803,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -744,13 +835,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -767,13 +864,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -799,13 +902,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -824,13 +933,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -856,13 +971,19 @@ contract ClawsTest is Test {
         // Setup: Buy claws, verify, buy more to generate fees
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(HANDLE)),
+            agentWallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         vm.prank(agentWallet);
@@ -871,7 +992,7 @@ contract ClawsTest is Test {
         // Buy more to generate fees
         (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader2);
-        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5, 0);
 
         // Revoke verification
         vm.prank(owner);
