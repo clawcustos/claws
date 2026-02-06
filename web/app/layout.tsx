@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
+import { ServiceWorkerRegister } from '@/components/sw-register';
 
 const inter = Inter({ 
   subsets: ['latin'], 
@@ -29,11 +30,11 @@ export const metadata: Metadata = {
     default: 'Claws.tech — Speculate on AI Agents',
     template: '%s | Claws.tech',
   },
-  description: 'Speculate on AI agents with bonding curve trading on Base. No token launches, no presales — just transparent pricing and direct agent funding.',
+  description: 'Speculate on AI agents via bonding curves on Base',
   manifest: '/manifest.json',
   icons: {
-    icon: '/logo.jpg',
-    apple: '/logo.jpg',
+    icon: '/icon-192.png',
+    apple: '/icon-192.png',
   },
   appleWebApp: {
     capable: true,
@@ -77,7 +78,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#b91c1c',
+  themeColor: '#DC2626',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -93,6 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <BottomNav />
         </Providers>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

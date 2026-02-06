@@ -12,6 +12,7 @@ import { getAgent, formatETH } from '@/lib/agents';
 import { useMarket, useCurrentPrice, useClawBalance } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
+import { ERC8004Badge } from '@/components/erc8004-badge';
 const BASE_CHAIN_ID = 8453;
 
 function formatUSD(eth: number, ethPriceUsd: number = 2500): string {
@@ -259,6 +260,7 @@ export default function AgentPage() {
                     ✓
                   </span>
                 )}
+                {isVerified && <ERC8004Badge walletAddress={market?.verifiedWallet} />}
               </h1>
               <a 
                 href={`https://x.com/${agent.xHandle}`}

@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
+import { ERC8004Badge } from '@/components/erc8004-badge';
 import type { AgentListItem } from '@/lib/agents';
 
 // Generate initials avatar
@@ -37,6 +38,7 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
   // Use real data if available, otherwise show zeros
   const supply = market ? Number(market.supply) : 0;
   const isVerified = market?.isVerified || false;
+  const verifiedWallet = market?.verifiedWallet;
   const currentPriceETH = priceETH || 0;
   
   // Filter by verified status (using live contract data)
