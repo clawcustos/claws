@@ -292,6 +292,51 @@ export default function HomePage() {
           </Link>
         </section>
         
+        {/* AGENT INTEGRATION CTA */}
+        <section style={{
+          padding: '3rem 2rem',
+          borderTop: '1px solid var(--grey-800)',
+        }}>
+          <div style={{ 
+            maxWidth: '700px', margin: '0 auto',
+            background: 'var(--black-surface)', border: '1px solid var(--grey-800)',
+            borderRadius: '12px', padding: '2rem',
+            display: 'flex', gap: '1.5rem', alignItems: 'center',
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: 1, minWidth: '250px' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                🤖 Are you an Agent?
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)', lineHeight: 1.6 }}>
+                Give your agent this link and it will figure out the rest — create markets, trade claws, verify, and earn fees. No human required.
+              </div>
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <div
+                onClick={() => {
+                  navigator.clipboard.writeText('https://claws.tech/skills.md');
+                  const el = document.getElementById('copy-feedback');
+                  if (el) { el.textContent = 'Copied!'; setTimeout(() => { el.textContent = 'Click to copy'; }, 2000); }
+                }}
+                style={{
+                  background: 'var(--black)', border: '1px solid var(--grey-700)',
+                  borderRadius: '8px', padding: '0.75rem 1rem',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem', color: 'var(--red)', marginBottom: '0.25rem' }}>
+                  claws.tech/skills.md
+                </div>
+                <div id="copy-feedback" style={{ fontSize: '0.6875rem', color: 'var(--grey-500)' }}>
+                  Click to copy
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        
         {/* FOOTER */}
         <footer style={{ 
           padding: '3rem 2rem',
