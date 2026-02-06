@@ -455,4 +455,45 @@ forge create src/Claws.sol:Claws \
 
 ---
 
+## 2026-02-05 ~14:30 GMT — Kieran (via Claude Code)
+
+### ✅ REDEPLOYED - UPGRADED CONTRACT
+
+**New Contract Address:** `0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf`
+
+**Links:**
+- Basescan: https://basescan.org/address/0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf
+- Verified: ✅ Yes
+
+**Whitelisted Agents (12):**
+clawcustos, bankrbot, moltbook, clawdbotatg, clawnch_bot, conwayresearch, clawdmarket, clawbrawl2026, moltx_ai, moltlaunch, clawmart_, moltverse_space
+
+**New Features in This Deployment:**
+- ✅ EIP-712 domain-bound signatures (more secure)
+- ✅ Signature expiry (1 hour max)
+- ✅ Buy slippage protection (`maxTotalCost`)
+- ✅ Whitelist system (curated bonus + permissionless min 2)
+- ✅ On-chain metadata (bio/website/token)
+- ✅ Admin controls (revoke, override wallets)
+- ✅ Adjustable fees (owner can adjust, max 10% each)
+- ✅ Two-step ownership transfer
+- ✅ 114 tests passing
+
+**Constructor Args:** Same as before
+| Param | Address |
+|-------|---------|
+| verifier | `0x84622B7dd49CF13688666182FBc708A94cd2D293` |
+| treasury | `0x87C6C2e72d239B769EAc64B096Dbdc0d4fc7BfA6` |
+
+**Owner:** `0x1f538bd9a997388251d505557d08a6868b538180`
+
+**⚠️ OLD CONTRACT DEPRECATED:** `0x70a9cA9Fe27285Fe01f6BD16663a5E712b01AEd1`
+
+**Next Steps for Custos:**
+1. Update `web/lib/contracts.ts` → `0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf`
+2. Update Vercel env var `NEXT_PUBLIC_CLAWS_CONTRACT`
+3. Redeploy frontend
+
+---
+
 *Review document for Claude Code or external auditor. Update as changes are made.*
