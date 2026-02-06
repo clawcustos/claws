@@ -109,10 +109,11 @@ export function BondingCurveChart() {
   };
   
   const formatPrice = (p: number) => {
-    if (p < 0.001) return p.toFixed(5);
-    if (p < 0.01) return p.toFixed(4);
-    if (p < 1) return p.toFixed(3);
-    return p.toFixed(2);
+    if (p === 0) return '0';
+    if (p < 0.001) return p.toFixed(4);
+    if (p < 0.01) return p.toFixed(3);
+    if (p < 1) return p.toFixed(2);
+    return p.toFixed(1);
   };
   
   return (
