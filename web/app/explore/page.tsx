@@ -84,32 +84,39 @@ export default function ExplorePage() {
             </div>
             
             {/* Verified Filter — uses live contract data via AgentCard */}
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {(['all', 'trending', 'verified', 'unverified'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setVerifiedFilter(f)}
-                  style={{
-                    padding: '0.75rem 1rem',
-                    background: verifiedFilter === f ? 'var(--red)' : 'var(--black-surface)',
-                    border: '1px solid',
-                    borderColor: verifiedFilter === f ? 'var(--red)' : 'var(--grey-800)',
-                    borderRadius: '8px',
-                    color: verifiedFilter === f ? 'white' : 'var(--grey-400)',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textTransform: 'capitalize',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.375rem',
-                  }}
-                >
-                  {f === 'verified' && '✓ '}
-                  {f === 'trending' && '🔥 '}
-                  {f}
-                </button>
-              ))}
+            <div style={{ 
+              display: 'flex', 
+              gap: '0.375rem', 
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              flexShrink: 0,
+            }}>
+              {(['all', 'trending', 'verified', 'unverified'] as const).map((f) => {
+                const labels: Record<string, string> = { all: 'All', trending: '🔥 Hot', verified: '✓ Verified', unverified: 'New' };
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setVerifiedFilter(f)}
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      background: verifiedFilter === f ? 'var(--red)' : 'var(--black-surface)',
+                      border: '1px solid',
+                      borderColor: verifiedFilter === f ? 'var(--red)' : 'var(--grey-800)',
+                      borderRadius: '20px',
+                      color: verifiedFilter === f ? 'white' : 'var(--grey-400)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {labels[f]}
+                  </button>
+                );
+              })}
             </div>
           </div>
           

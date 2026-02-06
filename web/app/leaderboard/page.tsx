@@ -8,29 +8,34 @@ import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { TradeModal } from '@/components/trade-modal';
 
+// Individual row — exposes data for parent sorting
+function useAgentData(handle: string) {
+  const { market, isLoading } = useMarket(handle);
+  const { priceETH } = useCurrentPrice(handle);
+  
+  const supply = market?.supply !== undefined ? Number(market.supply) : 0;
+  const price = priceETH || 0;
+  const isVerified = market?.isVerified || false;
+  const lifetimeFeesETH = market?.lifetimeFees ? parseFloat(formatEther(market.lifetimeFees)) : 0;
+  
+  return { supply, price, isVerified, lifetimeFeesETH, isLoading };
+}
+
 function LeaderboardRow({ agent, rank, onTrade, ethUsd }: { 
   agent: ReturnType<typeof getAgentList>[0]; 
   rank: number;
   onTrade: (handle: string) => void;
   ethUsd: number;
 }) {
-  const { market, isLoading } = useMarket(agent.xHandle);
-  const { priceETH } = useCurrentPrice(agent.xHandle);
-  
-  const supply = market?.supply !== undefined ? Number(market.supply) : 0;
-  const price = priceETH || 0;
-  const isVerified = market?.isVerified || false;
-  const feesETH = market?.pendingFees ? parseFloat(formatEther(market.pendingFees)) : 0;
-  const feesUsd = feesETH * ethUsd;
-  
-  const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+  const { supply, price, isVerified, lifetimeFeesETH, isLoading } = useAgentData(agent.xHandle);
+  const feesUsd = lifetimeFeesETH * ethUsd;
   
   return (
     <div className="leaderboard-item" onClick={() => onTrade(agent.xHandle)}>
-      {/* Rank */}
-      <div className={`leaderboard-rank ${rankClass}`}>{rank}</div>
+      <div className={`leaderboard-rank ${rank <= 3 ? ['', 'gold', 'silver', 'bronze'][rank] : ''}`}>
+        {rank}
+      </div>
       
-      {/* Agent */}
       <div className="leaderboard-agent">
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <img 
@@ -38,28 +43,22 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
             alt={agent.name}
             width={36}
             height={36}
-            className={`leaderboard-avatar ${isVerified ? 'leaderboard-verified-ring' : ''}`}
-            style={{ borderRadius: '50%' }}
+            className={isVerified ? 'leaderboard-verified-ring' : ''}
+            style={{ borderRadius: '50%', width: 36, height: 36, objectFit: 'cover' }}
             onError={(e) => {
               (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`;
             }}
           />
-          {isVerified && (
-            <div className="leaderboard-verified-badge">✓</div>
-          )}
+          {isVerified && <div className="leaderboard-verified-badge">✓</div>}
         </div>
         <div style={{ minWidth: 0 }}>
           <Link 
             href={`/agent/${agent.xHandle}`}
             className="leaderboard-name"
             style={{ 
-              color: 'inherit', 
-              textDecoration: 'none',
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap',
-              display: 'block',
-              fontSize: '0.875rem',
+              color: 'inherit', textDecoration: 'none',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              display: 'block', fontSize: '0.875rem',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -69,7 +68,6 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
         </div>
       </div>
       
-      {/* Price */}
       <div className="leaderboard-price" style={{ fontSize: '0.8125rem' }}>
         {isLoading ? '...' : supply === 0 ? (
           <span className="badge-free">FREE</span>
@@ -78,14 +76,13 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
         )}
       </div>
       
-      {/* Fees */}
       <div className="leaderboard-fees">
-        {isLoading ? '...' : feesETH === 0 ? (
+        {isLoading ? '...' : lifetimeFeesETH === 0 ? (
           <span style={{ color: 'var(--grey-600)' }}>—</span>
         ) : (
           <div>
             <span className="leaderboard-fees-value">
-              {feesETH < 0.0001 ? '<0.0001' : formatETH(feesETH)}
+              {lifetimeFeesETH < 0.0001 ? '<0.0001' : formatETH(lifetimeFeesETH)}
             </span>
             {feesUsd > 0.01 && (
               <div className="leaderboard-fees-usd">
@@ -96,7 +93,6 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
         )}
       </div>
       
-      {/* Supply */}
       <div className="leaderboard-supply" style={{ fontSize: '0.8125rem' }}>
         {isLoading ? '...' : supply}
       </div>
@@ -104,9 +100,41 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
   );
 }
 
+type SortKey = 'rank' | 'price' | 'fees';
+type SortDir = 'asc' | 'desc';
+
+// Sortable header button
+function SortHeader({ label, sortKey, currentSort, currentDir, onSort, className, style }: {
+  label: string;
+  sortKey: SortKey;
+  currentSort: SortKey;
+  currentDir: SortDir;
+  onSort: (key: SortKey) => void;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const isActive = currentSort === sortKey;
+  return (
+    <div 
+      className={className}
+      style={{ 
+        ...style, 
+        cursor: 'pointer', 
+        userSelect: 'none',
+        color: isActive ? 'var(--red)' : undefined,
+      }}
+      onClick={() => onSort(sortKey)}
+    >
+      {label} {isActive ? (currentDir === 'desc' ? '↓' : '↑') : ''}
+    </div>
+  );
+}
+
 export default function LeaderboardPage() {
   const agents = useMemo(() => getAgentList(), []);
   const { ethPrice: ethUsd } = useETHPrice();
+  const [sortKey, setSortKey] = useState<SortKey>('rank');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
@@ -114,6 +142,15 @@ export default function LeaderboardPage() {
   }>({ isOpen: false, handle: '' });
   
   const selectedAgent = agents.find(a => a.xHandle === tradeModal.handle);
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortDir('desc'); // default to highest first
+    }
+  };
 
   return (
     <>
@@ -145,10 +182,10 @@ export default function LeaderboardPage() {
         {/* Table */}
         <div className="leaderboard">
           <div className="leaderboard-header">
-            <div style={{ textAlign: 'center' }}>#</div>
+            <SortHeader label="#" sortKey="rank" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'center' }} />
             <div>Agent</div>
-            <div style={{ textAlign: 'right' }}>Price</div>
-            <div style={{ textAlign: 'right' }}>Fees</div>
+            <SortHeader label="Price" sortKey="price" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'right' }} />
+            <SortHeader label="Fees" sortKey="fees" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'right' }} />
             <div className="leaderboard-supply">Supply</div>
           </div>
           
