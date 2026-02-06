@@ -106,7 +106,7 @@ export default function ClawfolioPage() {
 
   return (
     <>
-      <main style={{ padding: '5rem 1rem 6rem', maxWidth: '600px', margin: '0 auto' }}>
+      <main style={{ padding: '5rem 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '600px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
           Your <span style={{ color: 'var(--red)' }}>Clawfolio</span>
         </h1>

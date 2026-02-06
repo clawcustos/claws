@@ -13,6 +13,7 @@ import {
   useClawBalance,
   useETHBalance 
 } from '@/hooks/useClaws';
+import { useETHPrice } from '@/hooks/useETHPrice';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -23,11 +24,9 @@ interface TradeModalProps {
   initialMode?: 'buy' | 'sell';
 }
 
-const ETH_PRICE_USD = 3000;
-
-function formatUSD(eth: number): string {
+function formatUSDWithPrice(eth: number, ethPriceUsd: number): string {
   if (isNaN(eth) || eth === 0) return '$0';
-  const usd = eth * ETH_PRICE_USD;
+  const usd = eth * ethPriceUsd;
   if (usd < 0.01) return '<$0.01';
   if (usd < 1) return `$${usd.toFixed(2)}`;
   if (usd < 1000) return `$${usd.toFixed(0)}`;
@@ -54,6 +53,7 @@ export function TradeModal({
   const [amount, setAmount] = useState('1');
   const [imgError, setImgError] = useState(false);
   const { isConnected, address } = useAccount();
+  const { ethPrice } = useETHPrice();
   
   const amountNum = parseInt(amount) || 0;
   
@@ -127,10 +127,9 @@ export function TradeModal({
   const insufficientETH = mode === 'buy' && !isFree && displayPrice > ethBalance;
   const insufficientClaws = mode === 'sell' && amountNum > userClaws;
   // Liquidity check: free claws have no ETH backing
-  // Verified agent = 2 free claws (1 first claim + 1 verification claim)
-  // Unverified = 1 free claw (first claim is always free)
-  const isVerified = market?.isVerified || false;
-  const freeClaws = isVerified ? 2 : 1;
+  // First claw is always free for everyone (no ETH backing)
+  // Verification no longer gives a free claw
+  const freeClaws = 1;
   const paidSupply = Math.max(0, supply - freeClaws); // claws backed by real ETH
   const noLiquidity = mode === 'sell' && paidSupply === 0;
   
@@ -339,7 +338,13 @@ export function TradeModal({
             onError={() => setImgError(true)}
           />
           <div>
-            <h3 style={{ margin: 0, color: '#fff', fontSize: '20px' }}>{agentName}</h3>
+            <a 
+              href={`/agent/${agentHandle}`}
+              style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 700, textDecoration: 'none', display: 'block' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {agentName}
+            </a>
             <a 
               href={`https://x.com/${agentHandle}`}
               target="_blank"
@@ -419,7 +424,7 @@ export function TradeModal({
           <div style={{ ...summaryRowStyle, marginTop: '8px' }}>
             <span style={{ color: '#666', fontSize: '14px' }}>≈ USD</span>
             <span style={{ color: '#666', fontSize: '14px' }}>
-              {isPriceLoading ? '...' : formatUSD(displayPrice)}
+              {isPriceLoading ? '...' : formatUSDWithPrice(displayPrice, ethPrice)}
             </span>
           </div>
           {isFree && (

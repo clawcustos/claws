@@ -895,7 +895,7 @@ contract ClawsTest is Test {
     
     // ============ Verified Agent Gets Free Claw ============
     
-    function test_VerifiedAgentGetsFreeClawOnVerify() public {
+    function test_VerifiedAgentDoesNotGetFreeClawOnVerify() public {
         // Buy some claws first (generates fees)
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
@@ -915,12 +915,31 @@ contract ClawsTest is Test {
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
         
-        // Agent should have 1 free claw
-        assertEq(claws.getBalance(HANDLE, agentWallet), 1);
+        // Agent should NOT have any claws (no free claw on verification)
+        assertEq(claws.getBalance(HANDLE, agentWallet), 0);
         
-        // Supply should increase by 1
+        // Supply should remain unchanged
         (uint256 supplyAfter,,,,,,,) = claws.getMarket(HANDLE);
-        assertEq(supplyAfter, 6);
+        assertEq(supplyAfter, 5);
+    }
+    
+    function test_VerifyRevertsExpiredSignature() public {
+        claws.createMarket(HANDLE);
+        
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        // Warp forward 2 hours (past the 1-hour expiry)
+        vm.warp(block.timestamp + 7200);
+        
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.SignatureExpired.selector);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
     }
     
     // ============ First Claw Free ============

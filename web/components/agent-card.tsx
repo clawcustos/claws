@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
+import { useETHPrice } from '@/hooks/useETHPrice';
 import type { AgentListItem } from '@/lib/agents';
 
 // Generate initials avatar
@@ -30,6 +32,7 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
   // Fetch real data from contract
   const { market, isLoading } = useMarket(agent.xHandle);
   const { priceETH } = useCurrentPrice(agent.xHandle);
+  const { ethPrice } = useETHPrice();
   
   // Use real data if available, otherwise show zeros
   const supply = market ? Number(market.supply) : 0;
@@ -66,7 +69,7 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
   };
   
   const formatUSD = (eth: number): string => {
-    const usd = eth * 3000; // Approximate ETH price
+    const usd = eth * ethPrice;
     if (usd === 0) return '$0';
     if (usd < 0.01) return '<$0.01';
     if (usd < 1) return `$${usd.toFixed(2)}`;
@@ -88,10 +91,10 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
           />
         </div>
         <div className="agent-info">
-          <div className="agent-name">
+          <Link href={`/agent/${agent.xHandle}`} className="agent-name" style={{ textDecoration: 'none', color: 'inherit' }}>
             {agent.name}
             {isVerified && <span className="verified-badge">✓</span>}
-          </div>
+          </Link>
           <a 
             href={`https://x.com/${agent.xHandle}`}
             target="_blank"

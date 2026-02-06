@@ -10,13 +10,12 @@ import { formatEther } from 'viem';
 import { TradeModal } from '@/components/trade-modal';
 import { getAgent, formatETH } from '@/lib/agents';
 import { useMarket, useCurrentPrice, useClawBalance } from '@/hooks/useClaws';
+import { useETHPrice } from '@/hooks/useETHPrice';
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
-
-const ETH_PRICE_USD = 3000;
 const BASE_CHAIN_ID = 8453;
 
-function formatUSD(eth: number): string {
-  const usd = eth * ETH_PRICE_USD;
+function formatUSD(eth: number, ethPriceUsd: number = 2500): string {
+  const usd = eth * ethPriceUsd;
   if (usd < 0.01) return '<$0.01';
   if (usd < 1) return `$${usd.toFixed(2)}`;
   if (usd < 1000) return `$${usd.toFixed(0)}`;
@@ -166,6 +165,7 @@ export default function AgentPage() {
   const { isConnected, address } = useAccount();
   
   const agent = getAgent(handle);
+  const { ethPrice } = useETHPrice();
   
   // Fetch live market data from contract
   const { market, isLoading: marketLoading, refetch } = useMarket(handle);
@@ -310,7 +310,7 @@ export default function AgentPage() {
                 )}
               </div>
               <div style={{ color: 'var(--grey-500)' }}>
-                {liveSupply === 0 ? 'First claw is free!' : formatUSD(priceETH)}
+                {liveSupply === 0 ? 'First claw is free!' : formatUSD(priceETH, ethPrice)}
               </div>
             </div>
             
@@ -355,6 +355,7 @@ export default function AgentPage() {
             display: 'flex', 
             gap: '1rem', 
             maxWidth: '400px',
+            paddingBottom: '1rem',
           }}>
             {isConnected ? (
               <>

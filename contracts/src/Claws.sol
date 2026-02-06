@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
  * 
  * WHOLE CLAWS ONLY: Minimum 1 claw per trade. No fractional purchases.
  * 
- * VERIFIED AGENTS: Receive 1 free claw upon verification .
+ * VERIFIED AGENTS: Earn 5% of all trade fees. No free claws on verification.
  */
 contract Claws is ReentrancyGuard, Ownable, Pausable {
     using ECDSA for bytes32;
@@ -111,6 +111,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     error CannotSellLastClaw();
     error MarketNotVerified();
     error AlreadyRevoked();
+    error SignatureExpired();
     
     // ============ Constructor ============
     
@@ -175,6 +176,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         
         // Auto-create market if doesn't exist
         if (market.createdAt == 0) {
+            if (bytes(handle).length == 0 || bytes(handle).length > 32) {
+                revert InvalidHandle();
+            }
             market.createdAt = block.timestamp;
             handleStrings[handleHash] = handle;
             emit MarketCreated(handleHash, handle, msg.sender);
@@ -298,6 +302,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         if (market.createdAt == 0) revert MarketDoesNotExist();
         if (market.isVerified) revert AlreadyVerified();
         
+        // Signature must be less than 1 hour old
+        if (block.timestamp > timestamp + 3600) revert SignatureExpired();
+        
         // Verify signature from trusted verifier
         bytes32 nonceHash = keccak256(abi.encodePacked(handle, wallet, timestamp, nonce));
         if (usedNonces[nonceHash]) revert NonceAlreadyUsed();
@@ -317,10 +324,6 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         // Bind wallet and mark verified
         market.verifiedWallet = wallet;
         market.isVerified = true;
-        
-        // Give verified agent 1 free claw 
-        market.supply += 1;
-        clawsBalance[handleHash][wallet] += 1;
         
         emit AgentVerified(handleHash, handle, wallet);
         

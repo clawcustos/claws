@@ -41,6 +41,7 @@
   
   /* Spacing */
   --header-height: 64px;
+  --nav-height: 70px;
 }
 
 *, *::before, *::after {
@@ -215,6 +216,7 @@ body {
 
 .main {
   padding-top: var(--header-height);
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 1rem);
 }
 
 .section {
