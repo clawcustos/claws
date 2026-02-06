@@ -1,6 +1,5 @@
-// The official ERC-8004 Identity Registry on Base
-// NOTE: Address TBD - using placeholder until confirmed
-export const ERC8004_REGISTRY_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+// The official ERC-8004 Identity Registry on Base mainnet
+export const ERC8004_REGISTRY_ADDRESS = '0x8004a169fb4a3325136eb29fa0ceb6d2e539a432' as const;
 
 // Minimal ABI for read-only queries
 export const ERC8004_REGISTRY_ABI = [

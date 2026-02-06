@@ -93,7 +93,8 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: var(--header-height);
+  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--grey-800);
@@ -233,8 +234,8 @@ body {
    ============================================ */
 
 .main {
-  padding-top: var(--header-height);
-  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 1rem);
+  padding-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 1rem);
 }
 
 .section {

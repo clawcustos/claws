@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Claws',
+    title: 'CLAWS.TECH',
   },
   openGraph: {
     type: 'website',
