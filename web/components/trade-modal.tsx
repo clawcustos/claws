@@ -126,15 +126,21 @@ export function TradeModal({
   // Validation
   const insufficientETH = mode === 'buy' && !isFree && displayPrice > ethBalance;
   const insufficientClaws = mode === 'sell' && amountNum > userClaws;
+  // Check if market has real liquidity (ETH was actually deposited via paid buys)
+  const lifetimeVolume = market?.lifetimeVolume !== undefined ? Number(market.lifetimeVolume) : 0;
+  const noLiquidity = mode === 'sell' && lifetimeVolume === 0;
+  
   const cantSellAll = mode === 'sell' && amountNum >= supply; // Contract: CannotSellLastClaw
-  const sellProceedsZero = mode === 'sell' && amountNum > 0 && !sellPriceLoading && sellProceedsETH === 0 && !cantSellAll && !insufficientClaws;
   
   const canBuy = mode === 'buy' && amountNum > 0 && !insufficientETH;
-  const canSell = mode === 'sell' && amountNum > 0 && !insufficientClaws && !cantSellAll;
+  const canSell = mode === 'sell' && amountNum > 0 && !insufficientClaws && !cantSellAll && !noLiquidity;
   const canTrade = mode === 'buy' ? canBuy : canSell;
   
   // Human-readable error message
   const getErrorMessage = () => {
+    if (mode === 'sell' && noLiquidity) {
+      return `No liquidity — all claws in this market were claimed for free. Someone needs to buy claws at market price before selling is possible.`;
+    }
     if (insufficientETH) {
       const needed = (displayPrice - ethBalance).toFixed(4);
       return `Insufficient ETH. You need ${needed} more ETH.`;
@@ -143,9 +149,6 @@ export function TradeModal({
       return `You only have ${userClaws} claw${userClaws !== 1 ? 's' : ''} to sell.`;
     }
     if (cantSellAll) {
-      if (supply <= 2) {
-        return `Cannot sell — at least 1 claw must remain in the market. Supply is ${supply}, so selling ${amountNum} would empty it.`;
-      }
       return `Cannot sell all claws. Market must keep at least 1. Max sellable: ${supply - 1}`;
     }
     return null;
