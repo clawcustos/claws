@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getAgentList, formatETH } from '@/lib/agents';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
+import { useETHPrice } from '@/hooks/useETHPrice';
 import { TradeModal } from '@/components/trade-modal';
 
 // Single leaderboard row
@@ -23,8 +24,7 @@ function LeaderboardRow({ agent, rank, onTrade }: {
     <div 
       onClick={() => onTrade(agent.xHandle)}
       style={{
-        display: 'grid',
-        gridTemplateColumns: '32px 1fr 80px 60px',
+        display: 'flex',
         alignItems: 'center',
         padding: '0.875rem 1rem',
         borderBottom: '1px solid var(--grey-800)',
@@ -35,43 +35,85 @@ function LeaderboardRow({ agent, rank, onTrade }: {
       onMouseEnter={(e) => e.currentTarget.style.background = 'var(--grey-900)'}
       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
     >
+      {/* Rank */}
       <div style={{ 
         color: rank <= 3 ? 'var(--red)' : 'var(--grey-500)',
-        fontWeight: 600,
+        fontWeight: 700,
         fontSize: '0.875rem',
+        width: '24px',
+        textAlign: 'center',
+        flexShrink: 0,
       }}>
         {rank}
       </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0 }}>
-        <img 
-          src={agent.xProfileImage || `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`}
-          alt={agent.name}
-          width={36}
-          height={36}
-          style={{ borderRadius: '50%', flexShrink: 0 }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`;
-          }}
-        />
+      {/* Avatar + Name */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flex: 1, minWidth: 0 }}>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <img 
+            src={agent.xProfileImage || `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`}
+            alt={agent.name}
+            width={36}
+            height={36}
+            style={{ 
+              borderRadius: '50%',
+              border: isVerified ? '2px solid var(--red)' : '2px solid transparent',
+            }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`;
+            }}
+          />
+          {isVerified && (
+            <div style={{
+              position: 'absolute',
+              bottom: '-1px',
+              right: '-1px',
+              width: '14px',
+              height: '14px',
+              borderRadius: '50%',
+              background: 'var(--red)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.5rem',
+              border: '2px solid var(--black)',
+            }}>
+              ✓
+            </div>
+          )}
+        </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.name}</span>
-            {isVerified && <span style={{ color: '#22c55e', flexShrink: 0 }}>✓</span>}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)' }}>@{agent.xHandle}</div>
+          <Link 
+            href={`/agent/${agent.xHandle}`}
+            style={{ 
+              fontWeight: 600, 
+              fontSize: '0.875rem', 
+              color: 'inherit', 
+              textDecoration: 'none',
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap',
+              display: 'block',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {agent.name}
+          </Link>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)' }}>@{agent.xHandle}</div>
         </div>
       </div>
       
-      <div style={{ textAlign: 'right', fontSize: '0.875rem' }}>
+      {/* Price */}
+      <div style={{ textAlign: 'right', fontSize: '0.8125rem', flexShrink: 0 }}>
         {isLoading ? '...' : supply === 0 ? (
-          <span style={{ color: '#22c55e' }}>FREE</span>
+          <span style={{ color: 'var(--red)' }}>FREE</span>
         ) : (
-          <span>{price < 0.0001 ? '<0.0001' : formatETH(price)} ETH</span>
+          <span className="mono">{price < 0.0001 ? '<0.0001' : formatETH(price)} ETH</span>
         )}
       </div>
       
-      <div style={{ textAlign: 'right', color: 'var(--grey-400)', fontSize: '0.875rem' }}>
+      {/* Supply */}
+      <div style={{ textAlign: 'right', color: 'var(--grey-400)', fontSize: '0.8125rem', width: '40px', flexShrink: 0 }}>
         {isLoading ? '...' : supply}
       </div>
     </div>
@@ -90,9 +132,9 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      <main style={{ padding: '5rem 1rem 6rem', maxWidth: '600px', margin: '0 auto' }}>
+      <main style={{ padding: '5rem 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '600px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-          <span style={{ color: 'var(--red)' }}>Top</span> by Price
+          <span style={{ color: 'var(--red)' }}>Top</span> Agents
         </h1>
         <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Live from the Claws contract on Base
@@ -107,20 +149,19 @@ export default function LeaderboardPage() {
         }}>
           {/* Header */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '32px 1fr 80px 60px',
+            display: 'flex',
             padding: '0.625rem 1rem',
             borderBottom: '1px solid var(--grey-700)',
-            fontSize: '0.6875rem',
+            fontSize: '0.625rem',
             color: 'var(--grey-500)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             gap: '0.75rem',
           }}>
-            <div>#</div>
-            <div>Agent</div>
+            <div style={{ width: '24px', textAlign: 'center' }}>#</div>
+            <div style={{ flex: 1 }}>Agent</div>
             <div style={{ textAlign: 'right' }}>Price</div>
-            <div style={{ textAlign: 'right' }}>Supply</div>
+            <div style={{ textAlign: 'right', width: '40px' }}>Supply</div>
           </div>
           
           {/* Rows */}

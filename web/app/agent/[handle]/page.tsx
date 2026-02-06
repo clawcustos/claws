@@ -214,13 +214,13 @@ export default function AgentPage() {
           {/* Profile Header */}
           <div style={{ 
             display: 'flex', 
-            gap: '2rem', 
-            marginBottom: '2rem',
+            gap: '1.5rem', 
+            marginBottom: '1.5rem',
             flexWrap: 'wrap',
           }}>
             <div style={{
-              width: '120px',
-              height: '120px',
+              width: '100px',
+              height: '100px',
               borderRadius: '50%',
               overflow: 'hidden',
               border: isVerified ? '3px solid var(--red)' : '3px solid var(--grey-700)',
@@ -230,31 +230,31 @@ export default function AgentPage() {
               <Image 
                 src={agent.xProfileImage} 
                 alt={agent.name}
-                width={120}
-                height={120}
+                width={100}
+                height={100}
                 unoptimized
               />
             </div>
             
             <div style={{ flex: 1, minWidth: '200px' }}>
               <h1 style={{ 
-                fontSize: '2rem', 
-                marginBottom: '0.5rem',
+                fontSize: '1.75rem', 
+                marginBottom: '0.25rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.75rem',
+                gap: '0.5rem',
               }}>
                 {agent.name}
                 {isVerified && (
                   <span style={{
-                    width: '24px',
-                    height: '24px',
+                    width: '22px',
+                    height: '22px',
                     background: 'var(--red)',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '0.75rem',
+                    fontSize: '0.7rem',
                   }}>
                     ✓
                   </span>
@@ -264,111 +264,68 @@ export default function AgentPage() {
                 href={`https://x.com/${agent.xHandle}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: 'var(--grey-500)', textDecoration: 'none', fontSize: '1.125rem' }}
+                style={{ color: 'var(--grey-500)', textDecoration: 'none', fontSize: '1rem' }}
               >
                 @{agent.xHandle}
               </a>
-              <p style={{ color: 'var(--grey-400)', marginTop: '1rem', maxWidth: '500px' }}>
+              <p style={{ color: 'var(--grey-400)', marginTop: '0.75rem', fontSize: '0.9375rem' }}>
                 {agent.description}
               </p>
-              {isConnected && userClaws > 0 && (
-                <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--red)' }}>
-                  You hold {userClaws} claw{userClaws !== 1 ? 's' : ''}
-                </div>
-              )}
             </div>
           </div>
-          
-          {/* Verified Agent Dashboard */}
-          {isVerified && market && (
-            <AgentDashboard handle={handle} market={market as any} />
-          )}
-          
-          {/* Stats + Price */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1.5rem',
-            marginBottom: '2rem',
+
+          {/* Price + Trade Buttons — right below bio */}
+          <div style={{
+            background: 'var(--black-surface)',
+            border: '1px solid var(--grey-800)',
+            borderRadius: '12px',
+            padding: '1.25rem',
+            marginBottom: '1.5rem',
           }}>
-            {/* Price Card */}
-            <div style={{
-              background: 'var(--black-surface)',
-              border: '1px solid var(--grey-800)',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
-                Current Price
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Price
+                </div>
+                <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                  {marketLoading ? '...' : liveSupply === 0 ? (
+                    <span style={{ color: 'var(--red)' }}>FREE</span>
+                  ) : (
+                    `${formatETH(priceETH)} ETH`
+                  )}
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--grey-500)' }}>
+                  {liveSupply === 0 ? 'First claw is free!' : formatUSD(priceETH, ethPrice)}
+                </div>
               </div>
-              <div className="mono" style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-                {marketLoading ? '...' : liveSupply === 0 ? (
-                  <span style={{ color: '#22c55e' }}>FREE</span>
-                ) : (
-                  `${formatETH(priceETH)} ETH`
+              <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--grey-400)' }}>
+                <div style={{ textAlign: 'center', padding: '0 0.75rem' }}>
+                  <div className="mono" style={{ fontWeight: 700, color: 'var(--white)' }}>{marketLoading ? '...' : liveSupply}</div>
+                  <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', color: 'var(--grey-600)' }}>Supply</div>
+                </div>
+                {isConnected && userClaws > 0 && (
+                  <div style={{ textAlign: 'center', padding: '0 0.75rem' }}>
+                    <div className="mono" style={{ fontWeight: 700, color: 'var(--red)' }}>{userClaws}</div>
+                    <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', color: 'var(--grey-600)' }}>Yours</div>
+                  </div>
                 )}
               </div>
-              <div style={{ color: 'var(--grey-500)' }}>
-                {liveSupply === 0 ? 'First claw is free!' : formatUSD(priceETH, ethPrice)}
-              </div>
             </div>
-            
-            {/* Stats Card — live from contract */}
-            <div style={{
-              background: 'var(--black-surface)',
-              border: '1px solid var(--grey-800)',
-              borderRadius: '12px',
-              padding: '1.5rem',
-            }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
-                <div>
-                  <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                    {marketLoading ? '...' : liveSupply}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>Supply</div>
-                </div>
-                <div>
-                  <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                    {isVerified ? '✓' : '—'}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>Verified</div>
-                </div>
-                <div>
-                  <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                    {marketLoading ? '...' : `${formatETH(lifetimeVolumeETH)} ETH`}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>Volume</div>
-                </div>
-                <div>
-                  <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                    {marketLoading ? '...' : `${formatETH(lifetimeFeesETH)} ETH`}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>Agent Fees</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Trade Buttons */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '1rem', 
-            maxWidth: '400px',
-            paddingBottom: '1rem',
-          }}>
+
+            {/* Trade Buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
             {isConnected ? (
               <>
                 <button 
                   className="btn btn-buy" 
-                  style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}
+                  style={{ flex: 1, padding: '0.875rem', fontSize: '1rem' }}
                   onClick={() => openTrade('buy')}
                 >
                   BUY
                 </button>
                 <button 
                   className="btn btn-sell" 
-                  style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}
+                  style={{ flex: 1, padding: '0.875rem', fontSize: '1rem' }}
                   onClick={() => openTrade('sell')}
                 >
                   SELL
@@ -379,7 +336,7 @@ export default function AgentPage() {
                 {({ openConnectModal }) => (
                   <button 
                     className="btn btn-red" 
-                    style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}
+                    style={{ flex: 1, padding: '0.875rem', fontSize: '1rem' }}
                     onClick={openConnectModal}
                   >
                     Connect to Trade
@@ -387,6 +344,29 @@ export default function AgentPage() {
                 )}
               </ConnectButton.Custom>
             )}
+            </div>
+          </div>
+
+          {/* Verified Agent Dashboard */}
+          {isVerified && market && (
+            <AgentDashboard handle={handle} market={market as any} />
+          )}
+
+          {/* Market Stats */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '0.75rem',
+            marginBottom: '1.5rem',
+          }}>
+            <div style={{ background: 'var(--black-surface)', border: '1px solid var(--grey-800)', borderRadius: '12px', padding: '1rem' }}>
+              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>{marketLoading ? '...' : `${formatETH(lifetimeVolumeETH)} ETH`}</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>Volume</div>
+            </div>
+            <div style={{ background: 'var(--black-surface)', border: '1px solid var(--grey-800)', borderRadius: '12px', padding: '1rem' }}>
+              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>{marketLoading ? '...' : `${formatETH(lifetimeFeesETH)} ETH`}</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>Agent Fees</div>
+            </div>
           </div>
         </section>
       </main>
