@@ -9,7 +9,7 @@ import { TradeModal } from '@/components/trade-modal';
 
 export default function ExplorePage() {
   const [search, setSearch] = useState('');
-  const [verifiedFilter, setVerifiedFilter] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [verifiedFilter, setVerifiedFilter] = useState<'all' | 'verified' | 'unverified' | 'trending'>('all');
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
@@ -84,8 +84,8 @@ export default function ExplorePage() {
             </div>
             
             {/* Verified Filter — uses live contract data via AgentCard */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {(['all', 'verified', 'unverified'] as const).map((f) => (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {(['all', 'trending', 'verified', 'unverified'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setVerifiedFilter(f)}
@@ -106,6 +106,7 @@ export default function ExplorePage() {
                   }}
                 >
                   {f === 'verified' && '✓ '}
+                  {f === 'trending' && '🔥 '}
                   {f}
                 </button>
               ))}

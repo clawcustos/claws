@@ -149,7 +149,7 @@ export default function LeaderboardPage() {
             <div>Agent</div>
             <div style={{ textAlign: 'right' }}>Price</div>
             <div style={{ textAlign: 'right' }}>Fees</div>
-            <div style={{ textAlign: 'right' }}>Supply</div>
+            <div className="leaderboard-supply">Supply</div>
           </div>
           
           {agents.map((agent, i) => (

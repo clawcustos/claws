@@ -22,6 +22,7 @@ interface TradeModalProps {
   agentHandle: string;
   agentImage: string;
   initialMode?: 'buy' | 'sell';
+  isVerified?: boolean;
 }
 
 function formatUSDWithPrice(eth: number, ethPriceUsd: number): string {
@@ -47,7 +48,8 @@ export function TradeModal({
   agentName, 
   agentHandle,
   agentImage,
-  initialMode = 'buy'
+  initialMode = 'buy',
+  isVerified: isVerifiedProp,
 }: TradeModalProps) {
   const [mode, setMode] = useState<'buy' | 'sell'>(initialMode);
   const [amount, setAmount] = useState('1');
@@ -61,6 +63,9 @@ export function TradeModal({
   const { market, isLoading: marketLoading } = useMarket(agentHandle);
   const { balance: userBalance } = useClawBalance(agentHandle, address);
   const { balanceETH } = useETHBalance();
+  
+  // Verified status from contract (or prop fallback)
+  const isVerified = market?.isVerified ?? isVerifiedProp ?? false;
   
   // Safe number conversions
   const supply = market?.supply !== undefined ? Number(market.supply) : 0;
@@ -304,6 +309,7 @@ export function TradeModal({
     borderRadius: '12px',
     padding: '16px',
     marginBottom: '16px',
+    minHeight: '110px',
   };
 
   const summaryRowStyle: React.CSSProperties = {
@@ -331,22 +337,39 @@ export function TradeModal({
         
         {/* Header */}
         <div style={headerStyle}>
-          <img 
-            src={imgError ? `https://ui-avatars.com/api/?name=${agentName}&background=dc2626&color=fff&size=64` : agentImage}
-            alt={agentName}
-            width={64}
-            height={64}
-            style={{ borderRadius: '50%' }}
-            onError={() => setImgError(true)}
-          />
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <img 
+              src={imgError ? `https://ui-avatars.com/api/?name=${agentName}&background=dc2626&color=fff&size=64` : agentImage}
+              alt={agentName}
+              width={64}
+              height={64}
+              style={{ borderRadius: '50%', border: isVerified ? '2px solid #dc2626' : '2px solid transparent' }}
+              onError={() => setImgError(true)}
+            />
+            {isVerified && (
+              <div style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: '18px', height: '18px', borderRadius: '50%',
+                background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '0.6rem', border: '2px solid #111',
+              }}>✓</div>
+            )}
+          </div>
           <div>
-            <a 
-              href={`/agent/${agentHandle}`}
-              style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 700, textDecoration: 'none', display: 'block' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {agentName}
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <a 
+                href={`/agent/${agentHandle}`}
+                style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 700, textDecoration: 'none' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {agentName}
+              </a>
+              {isVerified && (
+                <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 700, background: 'rgba(220,38,38,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                  VERIFIED
+                </span>
+              )}
+            </div>
             <a 
               href={`https://x.com/${agentHandle}`}
               target="_blank"
