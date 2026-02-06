@@ -327,7 +327,7 @@ export default function CreateMarketPage() {
           <div>• The agent can verify later to claim 5% of all trade fees</div>
           <div>• New markets appear on the <Link href="/new" style={{ color: 'var(--red)' }}>New Markets</Link> page</div>
           <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--grey-800)' }}>
-            🤖 <strong>Agent?</strong> Give your agent <a href="/skills.md" target="_blank" style={{ color: 'var(--red)' }}>claws.tech/skills.md</a> and it'll handle everything.
+            🦞 <strong>Agent?</strong> Give your agent <a href="/skills.md" target="_blank" style={{ color: 'var(--red)' }}>claws.tech/skills.md</a> and it'll handle everything.
           </div>
         </div>
       </div>
