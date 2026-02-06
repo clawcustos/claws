@@ -195,9 +195,13 @@ export function TradeModal({
     right: '12px',
     background: 'none',
     border: 'none',
-    color: '#666',
-    fontSize: '24px',
+    color: '#999',
+    fontSize: '28px',
     cursor: 'pointer',
+    zIndex: 10,
+    padding: '8px',
+    lineHeight: 1,
+    WebkitTapHighlightColor: 'transparent',
   };
 
   const headerStyle: React.CSSProperties = {
@@ -336,7 +340,15 @@ export function TradeModal({
           />
           <div>
             <h3 style={{ margin: 0, color: '#fff', fontSize: '20px' }}>{agentName}</h3>
-            <div style={{ color: '#888' }}>@{agentHandle}</div>
+            <a 
+              href={`https://x.com/${agentHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#888', textDecoration: 'none' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{agentHandle}
+            </a>
           </div>
         </div>
 
