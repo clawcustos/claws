@@ -8,6 +8,7 @@ import { parseEther, formatEther } from 'viem';
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
 import { useMarket, useBuyPrice } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
+import { useValidateHandle } from '@/hooks/useValidateHandle';
 import { formatETH, AGENTS } from '@/lib/agents';
 
 const CONTRACT = getContractAddress(8453);
@@ -28,12 +29,18 @@ export default function CreateMarketPage() {
   const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase();
   const buyAmount = Math.max(2, parseInt(amount) || 2);
   
+  // Validate handle exists on X (debounced)
+  const { info: handleInfo, isLoading: validating } = useValidateHandle(cleanHandle);
+  
   // Check if market already exists
   const { market, isLoading: marketLoading } = useMarket(cleanHandle || 'placeholder');
   const marketExists = cleanHandle ? (market?.createdAt !== undefined && Number(market.createdAt) > 0) : false;
   
   // Check if it's in the curated list
   const isCurated = cleanHandle ? Object.keys(AGENTS).some(h => h.toLowerCase() === cleanHandle) : false;
+  
+  // Handle doesn't exist on X
+  const handleNotFound = cleanHandle && handleInfo && !handleInfo.exists && !validating;
   
   // Get buy price for the amount
   const { price, totalCost, totalCostETH, isLoading: priceLoading } = useBuyPrice(cleanHandle || 'placeholder', buyAmount);
@@ -64,6 +71,11 @@ export default function CreateMarketPage() {
     
     if (!isValidHandle(cleanHandle)) {
       setError('Invalid handle format. Use letters, numbers, and underscores only (max 15 chars)');
+      return false;
+    }
+    
+    if (handleNotFound) {
+      setError('@' + cleanHandle + ' doesn\'t exist on X');
       return false;
     }
     
@@ -182,13 +194,23 @@ export default function CreateMarketPage() {
                 fontFamily: 'inherit',
               }}
             />
-            {cleanHandle && !marketLoading && (
+            {cleanHandle && (
               <span style={{ 
                 fontSize: '0.75rem', 
-                color: marketExists ? '#ef4444' : isCurated ? 'var(--red)' : '#22c55e',
+                color: validating || marketLoading ? 'var(--grey-500)' 
+                  : marketExists ? '#ef4444' 
+                  : handleNotFound ? '#ef4444'
+                  : isCurated ? 'var(--red)' 
+                  : handleInfo?.exists ? '#22c55e' 
+                  : 'var(--grey-500)',
                 whiteSpace: 'nowrap',
               }}>
-                {marketExists ? 'Exists' : isCurated ? 'Curated ✓' : 'Available'}
+                {validating || marketLoading ? '...' 
+                  : marketExists ? 'Exists' 
+                  : handleNotFound ? 'Not found'
+                  : isCurated ? 'Curated ✓' 
+                  : handleInfo?.exists ? 'Available' 
+                  : ''}
               </span>
             )}
           </div>
@@ -200,6 +222,54 @@ export default function CreateMarketPage() {
             </div>
           )}
         </div>
+        
+        {/* X Profile Preview */}
+        {handleInfo?.exists && !marketExists && (
+          <div style={{ 
+            display: 'flex', alignItems: 'center', gap: '0.75rem',
+            background: 'var(--black-surface)', border: '1px solid var(--grey-800)',
+            borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem',
+          }}>
+            {handleInfo.avatar && (
+              <img 
+                src={handleInfo.avatar} 
+                alt={handleInfo.handle}
+                style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }}
+              />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {handleInfo.displayName || `@${handleInfo.handle}`}
+                </span>
+                <span style={{ color: 'var(--grey-500)', fontSize: '0.75rem', flexShrink: 0 }}>
+                  @{handleInfo.handle}
+                </span>
+              </div>
+              {handleInfo.bio && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--grey-400)', lineHeight: 1.4, marginTop: '0.125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {handleInfo.bio}
+                </div>
+              )}
+              {handleInfo.followers !== null && (
+                <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)', marginTop: '0.125rem' }}>
+                  {handleInfo.followers.toLocaleString()} followers
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Handle not found warning */}
+        {handleNotFound && (
+          <div style={{ 
+            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+            borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem',
+            fontSize: '0.8125rem', color: '#ef4444',
+          }}>
+            @{cleanHandle} doesn&apos;t exist on X. Check the handle and try again.
+          </div>
+        )}
         
         {/* Amount Input */}
         <div style={{ marginBottom: '1.25rem' }}>
@@ -303,11 +373,11 @@ export default function CreateMarketPage() {
         ) : (
           <button
             onClick={handleCreateMarket}
-            disabled={!cleanHandle || marketExists || buyAmount < 2 || isPending || isConfirming || priceLoading}
+            disabled={!cleanHandle || marketExists || !!handleNotFound || validating || buyAmount < 2 || isPending || isConfirming || priceLoading}
             className="btn btn-red"
             style={{ 
               width: '100%', padding: '1rem', fontSize: '1rem',
-              opacity: (!cleanHandle || marketExists || buyAmount < 2 || isPending || isConfirming) ? 0.5 : 1,
+              opacity: (!cleanHandle || marketExists || !!handleNotFound || validating || buyAmount < 2 || isPending || isConfirming) ? 0.5 : 1,
             }}
           >
             {isPending ? 'Confirm in wallet...' : isConfirming ? 'Creating market...' : `Create Market — Buy ${buyAmount} Claws`}
