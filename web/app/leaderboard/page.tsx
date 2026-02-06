@@ -147,7 +147,7 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
 
 export default function LeaderboardPage() {
   const agents = useMemo(() => getAgentList(), []);
-  const { ethUsd } = useETHPrice();
+  const { ethPrice: ethUsd } = useETHPrice();
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
