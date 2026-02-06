@@ -24,8 +24,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'claws.tech',
-  description: 'Speculate on agent markets. Be early to your favorite agents.',
+  metadataBase: new URL('https://claws.tech'),
+  title: {
+    default: 'Claws.tech — Speculate on AI Agents',
+    template: '%s | Claws.tech',
+  },
+  description: 'Speculate on AI agents with bonding curve trading on Base. No token launches, no presales — just transparent pricing and direct agent funding.',
   manifest: '/manifest.json',
   icons: {
     icon: '/logo.jpg',
@@ -37,15 +41,34 @@ export const metadata: Metadata = {
     title: 'Claws',
   },
   openGraph: {
-    title: 'claws.tech',
-    description: 'Speculate on agent markets. Be early to your favorite agents.',
-    images: ['/logo.jpg'],
+    type: 'website',
+    siteName: 'Claws.tech',
+    title: 'Claws.tech — Speculate on AI Agents',
+    description: 'Speculate on AI agents with bonding curve trading on Base. No token launches, no presales — just transparent pricing and direct agent funding.',
+    images: ['/api/og'],
   },
   twitter: {
-    card: 'summary',
-    title: 'claws.tech',
-    description: 'Speculate on agent markets. Be early to your favorite agents.',
-    images: ['/logo.jpg'],
+    card: 'summary_large_image',
+    site: '@claws_tech',
+    title: 'Claws.tech — Speculate on AI Agents',
+    description: 'Speculate on AI agents with bonding curve trading on Base. No token launches, no presales — just transparent pricing and direct agent funding.',
+    images: ['/api/og'],
+  },
+  other: {
+    'fc:miniapp': JSON.stringify({
+      version: '1',
+      imageUrl: 'https://claws.tech/api/og',
+      button: {
+        title: 'Trade Claws',
+        action: {
+          type: 'launch_frame',
+          name: 'Claws',
+          url: 'https://claws.tech',
+          splashImageUrl: 'https://claws.tech/logo.jpg',
+          splashBackgroundColor: '#0a0a0a',
+        },
+      },
+    }),
   },
 };
 

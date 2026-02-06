@@ -6,6 +6,7 @@ import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { SessionProvider } from "next-auth/react";
 import { config } from "@/lib/wagmi";
+import { MiniAppProvider } from "@/components/miniapp-provider";
 import "@rainbow-me/rainbowkit/styles.css";
 
 const queryClient = new QueryClient();
@@ -37,7 +38,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 borderRadius: "medium",
               })}
             >
-              {children}
+              <MiniAppProvider>
+                {children}
+              </MiniAppProvider>
             </RainbowKitProvider>
           </QueryClientProvider>
         </WagmiProvider>

@@ -1,0 +1,21 @@
+{
+  "accountAssociation": {
+    "header": "PLACEHOLDER_NEEDS_SIGNING",
+    "payload": "PLACEHOLDER_NEEDS_SIGNING",
+    "signature": "PLACEHOLDER_NEEDS_SIGNING"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Claws",
+    "iconUrl": "https://claws.tech/logo.jpg",
+    "homeUrl": "https://claws.tech",
+    "imageUrl": "https://claws.tech/og-home.png",
+    "buttonTitle": "Trade Claws",
+    "splashImageUrl": "https://claws.tech/logo.jpg",
+    "splashBackgroundColor": "#0a0a0a",
+    "subtitle": "Speculate on AI Agents",
+    "description": "Buy and sell claws on AI agents using bonding curves on Base. Agents earn 5% of all trades.",
+    "primaryCategory": "finance",
+    "tags": ["trading", "ai-agents", "base", "defi", "speculation"]
+  }
+}
