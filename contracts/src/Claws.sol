@@ -29,14 +29,19 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
 
     // ============ Constants ============
     
-    /// @notice Protocol fee: 5% (500 basis points)
-    uint256 public constant PROTOCOL_FEE_BPS = 500;
-    
-    /// @notice Agent fee: 5% (500 basis points)  
-    uint256 public constant AGENT_FEE_BPS = 500;
+    /// @notice Maximum fee: 10% (1000 basis points)
+    uint256 public constant MAX_FEE_BPS = 1000;
     
     /// @notice Basis points denominator
     uint256 public constant BPS_DENOMINATOR = 10000;
+    
+    // ============ Fee State ============
+    
+    /// @notice Protocol fee: 5% (500 basis points) initially
+    uint256 public protocolFeeBps = 500;
+    
+    /// @notice Agent fee: 5% (500 basis points) initially
+    uint256 public agentFeeBps = 500;
     
     /// @notice Price curve divisor (bonding curve formula)
     /// Formula: price = supply² / PRICE_DIVISOR
@@ -86,6 +91,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     /// @notice Agent metadata by handle hash (only for verified agents)
     mapping(bytes32 => AgentMetadata) public agentMetadata;
     
+    /// @notice Pending owner for two-step ownership transfer
+    address public pendingOwner;
+    
     // ============ Events ============
     
     event MarketCreated(bytes32 indexed handleHash, string handle, address creator);
@@ -107,6 +115,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     event VerificationRevoked(bytes32 indexed handleHash, string handle);
     event WhitelistUpdated(bytes32 indexed handleHash, string handle, bool status);
     event MetadataUpdated(bytes32 indexed handleHash, string handle);
+    event ProtocolFeeUpdated(uint256 oldBps, uint256 newBps);
+    event AgentFeeUpdated(uint256 oldBps, uint256 newBps);
+    event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
     
     // ============ Errors ============
     
@@ -215,8 +226,8 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         }
 
         uint256 price = getBuyPrice(handleHash, amount);
-        uint256 protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
+        uint256 agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         uint256 totalCost = price + protocolFee + agentFee;
 
         if (msg.value < totalCost) revert InsufficientPayment();
@@ -266,8 +277,8 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         if (market.supply == amount) revert CannotSellLastClaw();
         
         uint256 price = getSellPrice(handleHash, amount);
-        uint256 protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
+        uint256 agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         uint256 proceeds = price - protocolFee - agentFee;
         
         if (proceeds < minProceeds) revert SlippageExceeded();
@@ -522,8 +533,8 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     ) {
         bytes32 handleHash = _hashHandle(handle);
         price = getBuyPrice(handleHash, amount);
-        protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
-        agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
+        protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
+        agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         totalCost = price + protocolFee + agentFee;
     }
     
@@ -541,8 +552,8 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     ) {
         bytes32 handleHash = _hashHandle(handle);
         price = getSellPrice(handleHash, amount);
-        protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
-        agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
+        protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
+        agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         proceeds = price - protocolFee - agentFee;
     }
     
