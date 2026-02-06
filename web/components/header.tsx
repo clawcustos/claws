@@ -96,7 +96,13 @@ export function Header() {
                       <button 
                         onClick={openAccountModal}
                         className="btn btn-ghost mono"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                       >
+                        {account.displayBalance && (
+                          <span style={{ color: 'var(--grey-400)', fontSize: '0.75rem' }}>
+                            {account.displayBalance}
+                          </span>
+                        )}
                         {account.displayName}
                       </button>
                     );

@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useAccount } from 'wagmi';
+import { useAccount, useBalance } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { formatEther } from 'viem';
 import { getAgentList, AGENTS, formatETH } from '@/lib/agents';
 import { useClawBalance, useCurrentPrice, useMarket } from '@/hooks/useClaws';
+import { useETHPrice } from '@/hooks/useETHPrice';
 import { TradeModal } from '@/components/trade-modal';
 
 // Single holding row - clickable
@@ -96,6 +98,11 @@ function HoldingRow({ agent, userAddress, onTrade }: {
 export default function ClawfolioPage() {
   const { address, isConnected } = useAccount();
   const agents = useMemo(() => getAgentList(), []);
+  const { data: ethBalance } = useBalance({ address, query: { enabled: isConnected } });
+  const { ethPrice } = useETHPrice();
+  
+  const ethBalanceNum = ethBalance ? parseFloat(formatEther(ethBalance.value)) : 0;
+  const ethBalanceUSD = ethBalanceNum * ethPrice;
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
@@ -108,9 +115,42 @@ export default function ClawfolioPage() {
     <>
       <main style={{ padding: 'calc(var(--header-height) + 1rem) 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '700px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-          Your <span style={{ color: 'var(--red)' }}>Clawfolio</span>
+          Your <span style={{ color: 'var(--red)' }}>Clawfolio</span> 🦞
         </h1>
-        <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
+        
+        {isConnected && ethBalance && (
+          <div style={{
+            background: 'var(--black-surface)',
+            border: '1px solid var(--grey-800)',
+            borderRadius: '12px',
+            padding: '1rem 1.25rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Wallet Balance
+              </div>
+              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                {formatETH(ethBalanceNum)} ETH
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--grey-500)' }}>
+                ≈ ${ethBalanceUSD < 1 ? ethBalanceUSD.toFixed(2) : ethBalanceUSD < 1000 ? ethBalanceUSD.toFixed(0) : `${(ethBalanceUSD / 1000).toFixed(1)}K`}
+              </div>
+            </div>
+            <div style={{ 
+              fontSize: '0.75rem', 
+              color: 'var(--grey-500)',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              {address?.slice(0, 6)}...{address?.slice(-4)}
+            </div>
+          </div>
+        )}
+        
+        <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Tap any agent to buy or sell
         </p>
         

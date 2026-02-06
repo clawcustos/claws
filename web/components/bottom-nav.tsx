@@ -47,13 +47,9 @@ const NAV_ITEMS = [
   },
   { 
     href: '/clawfolio', 
-    label: 'Portfolio',
+    label: 'Clawfolio',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="2" y="4" width="20" height="16" rx="2"/>
-        <path d="M6 8h.01M6 12h.01M6 16h.01"/>
-        <path d="M10 8h8M10 12h8M10 16h8"/>
-      </svg>
+      <span style={{ fontSize: '18px', lineHeight: 1 }}>🦞</span>
     ),
   },
 ];
