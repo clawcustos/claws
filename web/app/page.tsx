@@ -16,6 +16,7 @@ import { ActivityTicker } from '@/components/activity-ticker';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useProtocolStats } from '@/hooks/useProtocolStats';
 import { useETHPrice } from '@/hooks/useETHPrice';
+import { useAgentRankings, type RankedAgent } from '@/hooks/useAgentRankings';
 
 function formatUSD(eth: number, ethPriceUsd: number = 2500): string {
   const usd = eth * ethPriceUsd;
@@ -35,15 +36,12 @@ function getInitialsAvatar(name: string): string {
   return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23${bg}" width="100" height="100"/><text x="50" y="62" text-anchor="middle" fill="white" font-family="system-ui" font-weight="600" font-size="36">${initials}</text></svg>`;
 }
 
-// Leaderboard Item — fetches real data from contract
-function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank: number; onTrade: (handle: string) => void }) {
+// Ranked leaderboard item — uses pre-fetched data from useAgentRankings
+function RankedItem({ agent, rank, mode, onTrade, ethPrice }: { 
+  agent: RankedAgent; rank: number; mode: 'price' | 'volume'; 
+  onTrade: (handle: string) => void; ethPrice: number;
+}) {
   const [imgErr, setImgErr] = useState(false);
-  const { market, isLoading } = useMarket(agent.xHandle);
-  const { priceETH } = useCurrentPrice(agent.xHandle);
-  
-  const supply = market?.supply !== undefined ? Number(market.supply) : 0;
-  const isVerified = market?.isVerified || false;
-  const price = priceETH || 0;
   
   return (
     <div 
@@ -68,15 +66,26 @@ function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank:
         <div>
           <div className="leaderboard-name">
             {agent.name}
-            {isVerified && <span style={{ color: 'var(--red)', marginLeft: '0.375rem', fontSize: '0.75rem', background: 'rgba(220,38,38,0.2)', borderRadius: '50%', width: '16px', height: '16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>}
+            {agent.isVerified && <span style={{ color: 'var(--red)', marginLeft: '0.375rem', fontSize: '0.75rem', background: 'rgba(220,38,38,0.2)', borderRadius: '50%', width: '16px', height: '16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>}
           </div>
           <div className="leaderboard-handle">@{agent.xHandle}</div>
         </div>
       </div>
-      <div className="leaderboard-price">
-        {isLoading ? '...' : supply === 0 ? <span style={{ color: '#22c55e' }}>FREE</span> : `${formatETH(price)} ETH`}
-      </div>
-      <div className="leaderboard-supply">{isLoading ? '...' : supply}</div>
+      {mode === 'price' ? (
+        <>
+          <div className="leaderboard-price">
+            {agent.supply === 0 ? <span style={{ color: '#22c55e' }}>FREE</span> : `${formatETH(agent.priceETH)} ETH`}
+          </div>
+          <div className="leaderboard-supply">{agent.supply}</div>
+        </>
+      ) : (
+        <>
+          <div className="leaderboard-price">
+            {formatUSD(agent.volumeETH, ethPrice)}
+          </div>
+          <div className="leaderboard-supply">{agent.supply}</div>
+        </>
+      )}
     </div>
   );
 }
@@ -86,6 +95,7 @@ export default function HomePage() {
   const agents = useMemo(() => getAgentList(), []);
   const { stats } = useProtocolStats();
   const { ethPrice } = useETHPrice();
+  const { byPrice, byVolume, isLoading: rankingsLoading } = useAgentRankings();
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;
@@ -299,30 +309,61 @@ export default function HomePage() {
           </ConnectButton.Custom>
         </section>
         
-        {/* LEADERBOARD — live data */}
+        {/* LEADERBOARDS — side by side on desktop */}
         <section id="leaderboard" className="section">
-          <div style={{ maxWidth: '640px' }}>
-          <div className="section-header">
+          <div className="section-header" style={{ marginBottom: '1.5rem' }}>
             <h2 className="section-title">
-              <span>Top</span> by Price
+              <span>Leaderboards</span>
             </h2>
             <Link href="/leaderboard" style={{ color: 'var(--red)', textDecoration: 'none', fontSize: '0.875rem' }}>
               Full leaderboard →
             </Link>
           </div>
           
-          <div className="leaderboard home-leaderboard">
-            <div className="leaderboard-header">
-              <div>#</div>
-              <div>Agent</div>
-              <div style={{ textAlign: 'right' }}>Price</div>
-              <div style={{ textAlign: 'right' }}>Supply</div>
+          <div className="home-leaderboards-grid">
+            {/* Top by Price */}
+            <div className="home-leaderboard-col">
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--grey-300)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ color: 'var(--red)' }}>📈</span> Top by Price
+              </div>
+              <div className="leaderboard home-leaderboard">
+                <div className="leaderboard-header">
+                  <div>#</div>
+                  <div>Agent</div>
+                  <div style={{ textAlign: 'right' }}>Price</div>
+                  <div style={{ textAlign: 'right' }}>Supply</div>
+                </div>
+                {rankingsLoading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--grey-500)', fontSize: '0.8125rem' }}>Loading...</div>
+                ) : (
+                  byPrice.slice(0, 5).map((agent, i) => (
+                    <RankedItem key={agent.xHandle} agent={agent} rank={i} mode="price" onTrade={(handle) => openTrade(handle, 'buy')} ethPrice={ethPrice} />
+                  ))
+                )}
+              </div>
             </div>
-            
-            {agents.slice(0, 5).map((agent, i) => (
-              <LeaderboardItem key={agent.xHandle} agent={agent} rank={i} onTrade={(handle) => openTrade(handle, 'buy')} />
-            ))}
-          </div>
+
+            {/* Top by Volume */}
+            <div className="home-leaderboard-col">
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--grey-300)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ color: 'var(--red)' }}>🔥</span> Top by Volume
+              </div>
+              <div className="leaderboard home-leaderboard">
+                <div className="leaderboard-header">
+                  <div>#</div>
+                  <div>Agent</div>
+                  <div style={{ textAlign: 'right' }}>Volume</div>
+                  <div style={{ textAlign: 'right' }}>Supply</div>
+                </div>
+                {rankingsLoading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--grey-500)', fontSize: '0.8125rem' }}>Loading...</div>
+                ) : (
+                  byVolume.slice(0, 5).map((agent, i) => (
+                    <RankedItem key={agent.xHandle} agent={agent} rank={i} mode="volume" onTrade={(handle) => openTrade(handle, 'buy')} ethPrice={ethPrice} />
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </section>
         

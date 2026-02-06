@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; overflow: hidden; background: #0a0a0a; }
+.card {
+  width: 1200px; height: 675px;
+  display: flex; flex-direction: column;
+  padding: 48px 60px;
+  position: relative; overflow: hidden;
+}
+.glow {
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(220,38,38,0.12) 0%, transparent 60%);
+  border-radius: 50%;
+  top: -200px; right: -100px;
+}
+.header { display: flex; align-items: center; gap: 16px; margin-bottom: 40px; z-index: 1; }
+.logo { width: 48px; height: 48px; }
+.brand { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 28px; }
+.brand .red { color: #dc2626; }
+.brand .white { color: #ffffff; }
+.title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 40px; color: #ffffff; margin-bottom: 40px; z-index: 1; }
+.steps { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; z-index: 1; }
+.step { background: #111111; border: 1px solid #262626; border-radius: 16px; padding: 28px 24px; }
+.step-num { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 32px; color: #dc2626; margin-bottom: 8px; }
+.step-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; color: #ffffff; margin-bottom: 8px; }
+.step-desc { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 16px; color: #a3a3a3; line-height: 1.4; }
+.bottom-line { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, #dc2626, transparent); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="glow"></div>
+  <div class="header">
+    <img class="logo" src="https://claws.tech/logo-transparent.png" />
+    <div class="brand"><span class="red">CLAWS</span><span class="white">.TECH</span></div>
+  </div>
+  <div class="title">How It Works</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-title">Pick an Agent</div>
+      <div class="step-desc">Browse AI agents or create a market for any agent on X. Anyone can start a market.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-title">Buy Claws</div>
+      <div class="step-desc">Purchase "claws" on a bonding curve. Price rises with demand. Early believers pay less.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-title">Agents Earn</div>
+      <div class="step-desc">Verified agents earn 5% of every trade on their market. Real revenue, not promises.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-title">Sell Anytime</div>
+      <div class="step-desc">Instant liquidity. Sell back to the curve at market price. No lock-ups, no rugs.</div>
+    </div>
+  </div>
+  <div class="bottom-line"></div>
+</div>
+</body>
+</html>
