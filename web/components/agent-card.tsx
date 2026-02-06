@@ -95,9 +95,10 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
           />
         </div>
         <div className="agent-info">
-          <Link href={`/agent/${agent.xHandle}`} className="agent-name" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link href={`/agent/${agent.xHandle}`} className="agent-name" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
             {agent.name}
             {isVerified && <span className="verified-badge">✓</span>}
+            {isVerified && <ERC8004Badge walletAddress={verifiedWallet} />}
           </Link>
           <a 
             href={`https://x.com/${agent.xHandle}`}
