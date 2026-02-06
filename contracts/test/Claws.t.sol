@@ -426,26 +426,276 @@ contract ClawsTest is Test {
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
         claws.buyClaws{value: buyCost}(HANDLE, 5);
-        
+
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
         bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
         bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
         bytes memory signature = abi.encodePacked(r, s, v);
-        
+
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
-        
+
         // Buy more
         (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader2);
         claws.buyClaws{value: buyCost2}(HANDLE, 5);
-        
+
         // Wrong wallet tries to claim
         vm.prank(trader1);
         vm.expectRevert(Claws.NotVerified.selector);
         claws.claimFees(HANDLE);
+    }
+
+    // ============ Agent Metadata ============
+
+    function test_SetAgentMetadata() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Set metadata as verified agent
+        string memory bio = "AI agent for crypto trading";
+        string memory website = "https://myagent.xyz";
+        address token = address(0x123);
+
+        vm.prank(agentWallet);
+        claws.setAgentMetadata(HANDLE, bio, website, token);
+
+        // Verify metadata was set
+        (string memory storedBio, string memory storedWebsite, address storedToken) = claws.getAgentMetadata(HANDLE);
+        assertEq(storedBio, bio);
+        assertEq(storedWebsite, website);
+        assertEq(storedToken, token);
+    }
+
+    function test_SetAgentMetadataEmitsEvent() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Expect MetadataUpdated event
+        vm.expectEmit(true, false, false, true);
+        emit Claws.MetadataUpdated(keccak256(abi.encodePacked(HANDLE)), HANDLE);
+
+        vm.prank(agentWallet);
+        claws.setAgentMetadata(HANDLE, "Bio", "https://example.com", address(0));
+    }
+
+    function test_SetAgentMetadataRevertsNotVerified() public {
+        // Create market but don't verify
+        claws.createMarket(HANDLE);
+
+        // Non-verified agent tries to set metadata
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.NotVerified.selector);
+        claws.setAgentMetadata(HANDLE, "Bio", "https://example.com", address(0));
+    }
+
+    function test_SetAgentMetadataRevertsWrongWallet() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Wrong wallet tries to set metadata
+        vm.prank(trader1);
+        vm.expectRevert(Claws.NotVerified.selector);
+        claws.setAgentMetadata(HANDLE, "Bio", "https://example.com", address(0));
+    }
+
+    function test_SetAgentMetadataRevertsBioTooLong() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Create bio with 281 characters (too long)
+        string memory longBio = string(new bytes(281));
+
+        // Try to set metadata with long bio
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.BioTooLong.selector);
+        claws.setAgentMetadata(HANDLE, longBio, "https://example.com", address(0));
+    }
+
+    function test_SetAgentMetadataMaxBioLength() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Create bio with exactly 280 characters (max allowed)
+        string memory maxBio = string(new bytes(280));
+
+        // Should succeed
+        vm.prank(agentWallet);
+        claws.setAgentMetadata(HANDLE, maxBio, "https://example.com", address(0));
+
+        // Verify metadata was set
+        (string memory storedBio,,) = claws.getAgentMetadata(HANDLE);
+        assertEq(bytes(storedBio).length, 280);
+    }
+
+    function test_GetAgentMetadataReturnsCorrectData() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Set metadata
+        string memory bio = "AI agent for crypto trading";
+        string memory website = "https://myagent.xyz";
+        address token = address(0xABC);
+
+        vm.prank(agentWallet);
+        claws.setAgentMetadata(HANDLE, bio, website, token);
+
+        // Get metadata and verify all fields
+        (string memory storedBio, string memory storedWebsite, address storedToken) = claws.getAgentMetadata(HANDLE);
+        assertEq(storedBio, bio);
+        assertEq(storedWebsite, website);
+        assertEq(storedToken, token);
+    }
+
+    function test_AgentMetadataCanBeUpdated() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Set initial metadata
+        vm.prank(agentWallet);
+        claws.setAgentMetadata(HANDLE, "Initial bio", "https://initial.com", address(0x111));
+
+        // Update metadata
+        vm.prank(agentWallet);
+        claws.setAgentMetadata(HANDLE, "Updated bio", "https://updated.com", address(0x222));
+
+        // Verify metadata was updated
+        (string memory storedBio, string memory storedWebsite, address storedToken) = claws.getAgentMetadata(HANDLE);
+        assertEq(storedBio, "Updated bio");
+        assertEq(storedWebsite, "https://updated.com");
+        assertEq(storedToken, address(0x222));
+    }
+
+    function test_GetAgentMetadataEmptyReturnsDefaults() public {
+        // Query metadata for handle that hasn't set any metadata
+        (string memory bio, string memory website, address token) = claws.getAgentMetadata(HANDLE);
+
+        // Should return empty strings and zero address
+        assertEq(bio, "");
+        assertEq(website, "");
+        assertEq(token, address(0));
+    }
+
+    function test_AgentMetadataAfterRevocation() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Set metadata
+        vm.prank(agentWallet);
+        claws.setAgentMetadata(HANDLE, "My bio", "https://example.com", address(0x123));
+
+        // Revoke verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        // Original wallet can no longer set metadata
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.NotVerified.selector);
+        claws.setAgentMetadata(HANDLE, "New bio", "https://new.com", address(0x456));
+
+        // But metadata remains stored (not cleared on revocation)
+        (string memory bio, string memory website, address token) = claws.getAgentMetadata(HANDLE);
+        assertEq(bio, "My bio");
+        assertEq(website, "https://example.com");
+        assertEq(token, address(0x123));
     }
     
     // ============ Handle Normalization ============
