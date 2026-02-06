@@ -1,22 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { isAddress, createWalletClient, http, createPublicClient, encodePacked, keccak256 } from 'viem'
+import { isAddress, createPublicClient, http, keccak256, toBytes, encodePacked } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base } from 'viem/chains'
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts'
 
-// Whitelisted agents
+// Whitelisted agents — matches contract whitelist
 const WHITELISTED_AGENTS = [
+  // Original whitelist
   'clawcustos', 'bankrbot', 'moltbook', 'clawdbotatg', 'clawnch_bot',
   'KellyClaudeAI', 'starkbotai', 'moltenagentic', 'clawdvine', 'lobchanai',
-  'LordClegg', 'KronosAgentAI', 'AgentScarlett', 'NigelBitcoin', 
-  'MoonPengAgentX', 'agentjupiter', 'AIagent_Nova', 'loomlockai'
+  // Display list agents
+  'CLAWD_Token', 'clawcaster', '0_x_coral', 'Clawdia772541',
+  'agentrierxyz', 'clawditor', 'moltipedia_ai', 'solvrbot',
+  // Vetted 2026-02-06
+  'ClawdMarket', 'clawbrawl2026', 'ConwayResearch', 'moltxio',
+  'moltlaunch', 'clawmartxyz', 'moltverse_space',
 ];
+
+// EIP-712 domain for the Claws contract
+const CLAWS_DOMAIN = {
+  name: 'Claws',
+  version: '1',
+  chainId: 8453,
+  verifyingContract: getContractAddress(8453),
+} as const;
+
+// EIP-712 types — must match VERIFY_TYPEHASH in contract
+// Note: the contract encodes handle as keccak256(bytes(handle)), 
+// but in signTypedData we pass the raw string and handle encoding manually
+const VERIFY_TYPES = {
+  Verify: [
+    { name: 'wallet', type: 'address' },
+    { name: 'handle', type: 'string' },
+    { name: 'timestamp', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+  ],
+} as const;
 
 /**
  * POST /api/verify/complete
  * 
- * Verify an agent by generating a signed proof and calling the contract
+ * Generate EIP-712 signed verification proof for agent verification
  */
 export async function POST(req: NextRequest) {
   try {
@@ -46,7 +71,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check whitelist
+    // Check whitelist (case-insensitive)
     const isWhitelisted = WHITELISTED_AGENTS.some(
       h => h.toLowerCase() === handle.toLowerCase()
     )
@@ -76,7 +101,7 @@ export async function POST(req: NextRequest) {
       transport: http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL),
     })
 
-    // Check if already verified
+    // Check if already verified on-chain
     const market = await publicClient.readContract({
       address: contractAddress,
       abi: CLAWS_ABI,
@@ -92,24 +117,26 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Generate signature for verifyAndClaim
+    // Generate EIP-712 signature for verifyAndClaim
     const timestamp = BigInt(Math.floor(Date.now() / 1000))
     const nonce = BigInt(Math.floor(Math.random() * 1000000000))
     
-    // Sign the message: keccak256(abi.encodePacked(handle, wallet, timestamp, nonce))
-    const messageHash = keccak256(
-      encodePacked(
-        ['string', 'address', 'uint256', 'uint256'],
-        [handle, walletAddress as `0x${string}`, timestamp, nonce]
-      )
-    )
-    
-    const signature = await verifierAccount.signMessage({
-      message: { raw: messageHash },
+    // Sign using EIP-712 typed data
+    // The contract's VERIFY_TYPEHASH is:
+    //   keccak256("Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)")
+    // And the struct hash uses keccak256(bytes(handle)) for the string
+    const signature = await verifierAccount.signTypedData({
+      domain: CLAWS_DOMAIN,
+      types: VERIFY_TYPES,
+      primaryType: 'Verify',
+      message: {
+        wallet: walletAddress as `0x${string}`,
+        handle: handle,
+        timestamp: timestamp,
+        nonce: nonce,
+      },
     })
 
-    // Now we need the user to call verifyAndClaim with this signature
-    // Return the data they need
     return NextResponse.json({
       success: true,
       message: `Signature generated. Please submit the verification transaction.`,
