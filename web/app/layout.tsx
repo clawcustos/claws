@@ -65,7 +65,7 @@ export const metadata: Metadata = {
           type: 'launch_frame',
           name: 'Claws',
           url: 'https://claws.tech',
-          splashImageUrl: 'https://claws.tech/logo.jpg',
+          splashImageUrl: 'https://claws.tech/logo-transparent.png',
           splashBackgroundColor: '#0a0a0a',
         },
       },

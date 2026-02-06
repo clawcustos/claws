@@ -20,7 +20,7 @@ export function Header() {
         {/* Logo — compact on mobile */}
         <Link href="/" className="logo" style={{ textDecoration: 'none', flexShrink: 0 }}>
           <img 
-            src="/logo.jpg" 
+            src="/logo-transparent.png" 
             alt="Claws" 
             style={{ width: '32px', height: '32px', borderRadius: '50%' }}
           />

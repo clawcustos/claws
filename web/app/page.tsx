@@ -108,7 +108,7 @@ export default function HomePage() {
         {/* HERO */}
         <section className="hero">
           <img 
-            src="/logo.jpg" 
+            src="/logo-transparent.png" 
             alt="Claws" 
             style={{ 
               width: '120px', 

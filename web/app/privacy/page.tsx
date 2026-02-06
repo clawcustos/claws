@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         <div className="header-inner">
           <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <img 
-              src="/logo.jpg" 
+              src="/logo-transparent.png" 
               alt="Claws" 
               style={{ width: '36px', height: '36px', borderRadius: '50%' }}
             />

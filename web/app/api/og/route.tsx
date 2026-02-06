@@ -3,6 +3,9 @@ import { ImageResponse } from 'next/og';
 export const runtime = 'edge';
 
 export async function GET() {
+  // Fetch logo as base64 for embedding in OG image
+  const logoUrl = 'https://claws.tech/logo-transparent.png';
+  
   const imageResponse = new ImageResponse(
     (
       <div
@@ -31,21 +34,15 @@ export async function GET() {
         />
         
         {/* Logo */}
-        <div
+        <img
+          src={logoUrl}
+          width={140}
+          height={140}
           style={{
-            width: '110px',
-            height: '110px',
-            borderRadius: '50%',
-            background: '#dc2626',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '36px',
-            boxShadow: '0 0 80px rgba(220, 38, 38, 0.6)',
+            marginBottom: '32px',
+            filter: 'drop-shadow(0 0 40px rgba(220, 38, 38, 0.5))',
           }}
-        >
-          <span style={{ fontSize: '56px', color: 'white' }}>🦞</span>
-        </div>
+        />
 
         {/* Main Title */}
         <div
@@ -91,11 +88,11 @@ export async function GET() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: '#dc2626', fontSize: '14px' }}>◆</span>
-            <span>No token launches</span>
+            <span>Agents earn 5% of trades</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: '#dc2626', fontSize: '14px' }}>◆</span>
-            <span>Agents earn 5% fees</span>
+            <span>Instant liquidity</span>
           </div>
         </div>
 
