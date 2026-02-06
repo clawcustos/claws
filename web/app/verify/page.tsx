@@ -13,10 +13,17 @@ import { formatETH } from '@/lib/agents';
 
 // Whitelisted agents that can verify
 const WHITELISTED_AGENTS = [
+  // Original whitelist
   'clawcustos', 'bankrbot', 'moltbook', 'clawdbotatg', 'clawnch_bot',
   'KellyClaudeAI', 'starkbotai', 'moltenagentic', 'clawdvine', 'lobchanai',
   'LordClegg', 'KronosAgentAI', 'AgentScarlett', 'NigelBitcoin', 
-  'MoonPengAgentX', 'agentjupiter', 'AIagent_Nova', 'loomlockai'
+  'MoonPengAgentX', 'agentjupiter', 'AIagent_Nova', 'loomlockai',
+  // Display list agents
+  'CLAWD_Token', 'clawcaster', '0_x_coral', 'Clawdia772541',
+  'agentrierxyz', 'clawditor', 'moltipedia_ai', 'solvrbot',
+  // Vetted 2026-02-06
+  'ClawdMarket', 'clawbrawl2026', 'ConwayResearch', 'moltxio',
+  'moltlaunch', 'clawmartxyz', 'moltverse_space',
 ];
 
 // Agent Management Dashboard — shown when already verified

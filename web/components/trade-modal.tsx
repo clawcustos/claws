@@ -55,7 +55,7 @@ export function TradeModal({
   const { isConnected, address } = useAccount();
   const { ethPrice } = useETHPrice();
   
-  const amountNum = parseInt(amount) || 0;
+  const amountNum = parseInt(amount) || (amount === '' ? 0 : 0);
   
   // Fetch real data from contract
   const { market, isLoading: marketLoading } = useMarket(agentHandle);
@@ -99,11 +99,13 @@ export function TradeModal({
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');
-    const num = parseInt(value) || 0;
+    // Strip leading zeros
+    const cleaned = value.replace(/^0+/, '') || '';
+    const num = parseInt(cleaned) || 0;
     if (mode === 'sell' && num > userClaws) {
       setAmount(Math.max(0, userClaws).toString());
     } else {
-      setAmount(value || '0');
+      setAmount(cleaned);
     }
   };
 
