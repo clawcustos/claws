@@ -17,6 +17,14 @@ import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useProtocolStats } from '@/hooks/useProtocolStats';
 import { useETHPrice } from '@/hooks/useETHPrice';
 
+function formatUSD(eth: number, ethPriceUsd: number = 2500): string {
+  const usd = eth * ethPriceUsd;
+  if (usd < 0.01) return '<$0.01';
+  if (usd < 1) return `$${usd.toFixed(2)}`;
+  if (usd < 1000) return `$${usd.toFixed(0)}`;
+  return `$${(usd / 1000).toFixed(1)}K`;
+}
+
 // Generate avatar from initials
 function getInitialsAvatar(name: string): string {
   const initials = name.slice(0, 2).toUpperCase();
@@ -137,15 +145,15 @@ export default function HomePage() {
             </div>
             <div className="hero-stat">
               <div className="hero-stat-value">
-                {stats ? (stats.totalVolumeETH < 0.01 ? '<0.01' : stats.totalVolumeETH.toFixed(2)) : '—'}
+                {stats ? formatUSD(stats.totalVolumeETH, ethPrice) : '—'}
               </div>
-              <div className="hero-stat-label">Volume (ETH)</div>
+              <div className="hero-stat-label">Volume</div>
             </div>
             <div className="hero-stat">
               <div className="hero-stat-value">
-                {stats ? (stats.totalFeesETH < 0.01 ? '<0.01' : stats.totalFeesETH.toFixed(3)) : '—'}
+                {stats ? formatUSD(stats.totalFeesETH, ethPrice) : '—'}
               </div>
-              <div className="hero-stat-label">Agent Fees (ETH)</div>
+              <div className="hero-stat-label">Agent Fees</div>
             </div>
           </div>
 

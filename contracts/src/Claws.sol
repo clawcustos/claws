@@ -343,22 +343,18 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
         // Signature must be less than 1 hour old
         if (block.timestamp > timestamp + 3600) revert SignatureExpired();
 
-        // EIP-712 structured signing with domain separator
-        bytes32 nonceHash = keccak256(abi.encodePacked("\x19\x01", _domainSeparatorV4(),
-            keccak256(abi.encode(VERIFY_TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce))
-        ));
-        if (usedNonces[nonceHash]) revert NonceAlreadyUsed();
-
-        // Construct EIP-712 digest
+        // Construct EIP-712 digest (domain-bound to prevent cross-chain replay)
         bytes32 structHash = keccak256(abi.encode(VERIFY_TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce));
         bytes32 digest = _hashTypedDataV4(structHash);
+
+        if (usedNonces[digest]) revert NonceAlreadyUsed();
 
         if (digest.recover(signature) != verifier) {
             revert InvalidSignature();
         }
 
-        // Mark nonce as used (domain-bound to prevent cross-chain replay)
-        usedNonces[nonceHash] = true;
+        // Mark nonce as used
+        usedNonces[digest] = true;
         
         // Bind wallet and mark verified
         market.verifiedWallet = wallet;
@@ -450,6 +446,15 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
         bytes32 handleHash = _hashHandle(handle);
         AgentMetadata storage metadata = agentMetadata[handleHash];
         return (metadata.bio, metadata.website, metadata.token);
+    }
+
+    // ============ EIP-712 ============
+
+    /**
+     * @notice Returns the EIP-712 domain separator for this contract
+     */
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return _domainSeparatorV4();
     }
 
     // ============ Price Calculations ============

@@ -35,6 +35,21 @@ contract ClawsTest is Test {
         vm.deal(agentWallet, 1 ether);
     }
     
+    // ============ Helpers ============
+
+    function _signVerification(string memory handle, address wallet, uint256 timestamp, uint256 nonce) internal view returns (bytes memory) {
+        bytes32 structHash = keccak256(abi.encode(
+            claws.VERIFY_TYPEHASH(),
+            keccak256(bytes(handle)),
+            wallet,
+            timestamp,
+            nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
     // ============ Deployment ============
     
     function test_Deployment() public view {
@@ -307,17 +322,7 @@ contract ClawsTest is Test {
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
 
-        // EIP-712 signature structure
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         uint256 walletBefore = agentWallet.balance;
 
@@ -348,8 +353,8 @@ contract ClawsTest is Test {
             nonce
         ));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        (uint8 vWrong, bytes32 rWrong, bytes32 sWrong) = vm.sign(wrongPk, digest);
+        bytes memory signature = abi.encodePacked(rWrong, sWrong, vWrong);
 
         vm.prank(agentWallet);
         vm.expectRevert(Claws.InvalidSignature.selector);
@@ -369,32 +374,14 @@ contract ClawsTest is Test {
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
 
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
 
         // Try to verify again
         uint256 newNonce = 99999;
-        structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            newNonce
-        ));
-        digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (v, r, s) = vm.sign(verifierPk, digest);
-        signature = abi.encodePacked(r, s, v);
+        signature = _signVerification(HANDLE, agentWallet, timestamp, newNonce);
 
         vm.prank(agentWallet);
         vm.expectRevert(Claws.AlreadyVerified.selector);
@@ -412,16 +399,7 @@ contract ClawsTest is Test {
         // Verify
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -498,16 +476,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -535,16 +504,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -575,16 +535,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -603,16 +554,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -1008,7 +950,7 @@ contract ClawsTest is Test {
         // Setup: Buy claws, verify, buy more to generate fees
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
@@ -1023,7 +965,7 @@ contract ClawsTest is Test {
         // Buy more to generate fees
         (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader2);
-        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5, 0);
 
         // Check pending fees
         (,uint256 pendingFeesBefore,,,,,,) = claws.getMarket(HANDLE);
@@ -1042,7 +984,7 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
@@ -1073,7 +1015,7 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
@@ -1109,7 +1051,7 @@ contract ClawsTest is Test {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
@@ -1146,7 +1088,7 @@ contract ClawsTest is Test {
         // Setup: Buy claws, verify, buy more to generate fees
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
@@ -1161,7 +1103,7 @@ contract ClawsTest is Test {
         // Buy more to generate fees
         (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader2);
-        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5, 0);
 
         // Track pending fees before revocation
         (,uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
@@ -1225,7 +1167,7 @@ contract ClawsTest is Test {
     function test_LifetimeVolumeTracking() public {
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
         
         (,,uint256 lifetimeFees, uint256 lifetimeVolume,,,,) = claws.getMarket(HANDLE);
         assertGt(lifetimeFees, 0);
@@ -1239,10 +1181,10 @@ contract ClawsTest is Test {
         (,,,uint256 cost2) = claws.getBuyCostBreakdown(HANDLE2, 5);
         
         vm.prank(trader1);
-        claws.buyClaws{value: cost1}(HANDLE, 3);
+        claws.buyClaws{value: cost1}(HANDLE, 3, 0);
         
         vm.prank(trader1);
-        claws.buyClaws{value: cost2}(HANDLE2, 5);
+        claws.buyClaws{value: cost2}(HANDLE2, 5, 0);
         
         assertEq(claws.getBalance(HANDLE, trader1), 3);
         assertEq(claws.getBalance(HANDLE2, trader1), 5);
@@ -1269,14 +1211,14 @@ contract ClawsTest is Test {
         
         vm.prank(trader1);
         vm.expectRevert();
-        claws.buyClaws{value: 1 ether}(HANDLE, 1);
+        claws.buyClaws{value: 1 ether}(HANDLE, 1, 0);
     }
     
     function test_PauseBlocksSelling() public {
         // Buy first
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
         
         // Pause
         vm.prank(owner);
@@ -1303,7 +1245,7 @@ contract ClawsTest is Test {
 
         // Can trade again (whitelisted gets bonus)
         vm.prank(trader1);
-        claws.buyClaws{value: 0}(HANDLE, 1);
+        claws.buyClaws{value: 0}(HANDLE, 1, 0);
         assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
     }
     
@@ -1319,7 +1261,7 @@ contract ClawsTest is Test {
         // Buy some claws first (generates fees)
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
         
         (uint256 supplyBefore,,,,,,,) = claws.getMarket(HANDLE);
         assertEq(supplyBefore, 5);
@@ -1431,7 +1373,7 @@ contract ClawsTest is Test {
         assertEq(price, 0); // Still 0 at supply 0
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 1);
+        claws.buyClaws{value: totalCost}(HANDLE, 1, 0);
 
         // Should have 2 claws (1 paid + 1 bonus)
         assertEq(claws.getBalance(HANDLE, trader1), 2);
@@ -1450,7 +1392,7 @@ contract ClawsTest is Test {
         (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 3);
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 3);
+        claws.buyClaws{value: totalCost}(HANDLE, 3, 0);
 
         // Should have 4 claws (3 paid + 1 bonus)
         assertEq(claws.getBalance(HANDLE, trader1), 4);
@@ -1467,7 +1409,7 @@ contract ClawsTest is Test {
         // First buy of 1 claw should revert (must buy >= 2)
         vm.prank(trader1);
         vm.expectRevert(Claws.InvalidAmount.selector);
-        claws.buyClaws{value: 1 ether}(HANDLE, 1);
+        claws.buyClaws{value: 1 ether}(HANDLE, 1, 0);
     }
 
     function test_NonWhitelistedFirstBuyTwoClawsWorks() public {
@@ -1478,7 +1420,7 @@ contract ClawsTest is Test {
         (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 2);
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 2);
+        claws.buyClaws{value: totalCost}(HANDLE, 2, 0);
 
         // Should have exactly 2 claws (no bonus)
         assertEq(claws.getBalance(HANDLE, trader1), 2);
@@ -1496,7 +1438,7 @@ contract ClawsTest is Test {
         (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 5);
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 5);
+        claws.buyClaws{value: totalCost}(HANDLE, 5, 0);
 
         // Should have exactly 5 claws (no bonus)
         assertEq(claws.getBalance(HANDLE, trader1), 5);
@@ -1510,13 +1452,13 @@ contract ClawsTest is Test {
         // First buy on whitelisted market (gets bonus)
         (,,, uint256 whitelistedCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
-        claws.buyClaws{value: whitelistedCost}(HANDLE, 1);
+        claws.buyClaws{value: whitelistedCost}(HANDLE, 1, 0);
         assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
 
         // First buy on non-whitelisted market (no bonus)
         (,,, uint256 nonWhitelistedCost) = claws.getBuyCostBreakdown(HANDLE2, 2);
         vm.prank(trader2);
-        claws.buyClaws{value: nonWhitelistedCost}(HANDLE2, 2);
+        claws.buyClaws{value: nonWhitelistedCost}(HANDLE2, 2, 0);
         assertEq(claws.getBalance(HANDLE2, trader2), 2);
 
         // Now both markets have supply >= 2
@@ -1526,13 +1468,13 @@ contract ClawsTest is Test {
         (uint256 wPriceBefore,,,) = claws.getBuyCostBreakdown(HANDLE, 3);
         (,,, uint256 wCost) = claws.getBuyCostBreakdown(HANDLE, 3);
         vm.prank(trader1);
-        claws.buyClaws{value: wCost}(HANDLE, 3);
+        claws.buyClaws{value: wCost}(HANDLE, 3, 0);
 
         // Buy 3 more on non-whitelisted market
         (uint256 nwPriceBefore,,,) = claws.getBuyCostBreakdown(HANDLE2, 3);
         (,,, uint256 nwCost) = claws.getBuyCostBreakdown(HANDLE2, 3);
         vm.prank(trader2);
-        claws.buyClaws{value: nwCost}(HANDLE2, 3);
+        claws.buyClaws{value: nwCost}(HANDLE2, 3, 0);
 
         // Prices should be the same (supply is 2 in both markets, buying 3)
         assertEq(wPriceBefore, nwPriceBefore);
@@ -1565,7 +1507,7 @@ contract ClawsTest is Test {
 
         (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 1);
+        claws.buyClaws{value: totalCost}(HANDLE, 1, 0);
 
         // Unwhitelist
         vm.prank(owner);
@@ -1579,7 +1521,7 @@ contract ClawsTest is Test {
         // New purchases should work normally (no first buy restriction since supply > 0)
         (,,, uint256 cost2) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader2);
-        claws.buyClaws{value: cost2}(HANDLE, 1);
+        claws.buyClaws{value: cost2}(HANDLE, 1, 0);
         assertEq(claws.getBalance(HANDLE, trader2), 1);
     }
 
@@ -1612,12 +1554,12 @@ contract ClawsTest is Test {
         claws.setWhitelisted(HANDLE, true);
         (,,, uint256 wCost1) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
-        claws.buyClaws{value: wCost1}(HANDLE, 1);
+        claws.buyClaws{value: wCost1}(HANDLE, 1, 0);
 
         // Set up non-whitelisted market
         (,,, uint256 nwCost1) = claws.getBuyCostBreakdown(HANDLE2, 2);
         vm.prank(trader2);
-        claws.buyClaws{value: nwCost1}(HANDLE2, 2);
+        claws.buyClaws{value: nwCost1}(HANDLE2, 2, 0);
 
         // Both markets now have supply 2
         // Price for buying 1 more claw should be identical
@@ -1665,7 +1607,7 @@ contract ClawsTest is Test {
 
         // Can buy with 0 ETH and get bonus claw
         vm.prank(trader1);
-        claws.buyClaws{value: 0}(HANDLE, 1);
+        claws.buyClaws{value: 0}(HANDLE, 1, 0);
 
         assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
     }
@@ -1677,7 +1619,7 @@ contract ClawsTest is Test {
         // First claw is NOT free - can't buy just 1
         vm.prank(trader1);
         vm.expectRevert(Claws.InvalidAmount.selector);
-        claws.buyClaws{value: 0}(HANDLE, 1);
+        claws.buyClaws{value: 0}(HANDLE, 1, 0);
 
         // Must buy at least 2
         (uint256 price,,,) = claws.getBuyCostBreakdown(HANDLE, 2);
@@ -1790,7 +1732,7 @@ contract ClawsTest is Test {
         uint256 treasuryBefore = treasury.balance;
 
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 5);
+        claws.buyClaws{value: totalCost}(HANDLE, 5, 0);
 
         // Treasury should receive 3% of price
         assertEq(treasury.balance - treasuryBefore, expectedProtocolFee);
@@ -1814,7 +1756,7 @@ contract ClawsTest is Test {
 
         // Execute the trade and verify
         vm.prank(trader1);
-        claws.buyClaws{value: totalCost}(HANDLE, 5);
+        claws.buyClaws{value: totalCost}(HANDLE, 5, 0);
 
         (, uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
 
@@ -1844,7 +1786,7 @@ contract ClawsTest is Test {
         // First buy some claws with default fees
         (,,, uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 5);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
 
         // Change fees
         vm.prank(owner);
