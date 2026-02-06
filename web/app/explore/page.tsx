@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { getAgentList, AGENTS } from '@/lib/agents';
 import { AgentCard } from '@/components/agent-card';
@@ -42,7 +43,8 @@ export default function ExplorePage() {
             <span style={{ color: 'var(--red)' }}>Explore</span> Agents
           </h1>
           <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
-            {allAgents.length} agents available. All data live from the contract.
+            {allAgents.length} curated agents. All data live from the contract.
+            {' '}<Link href="/new" style={{ color: 'var(--red)' }}>View community markets →</Link>
           </p>
           
           {/* Search & Filter Bar */}
@@ -89,9 +91,9 @@ export default function ExplorePage() {
                   onClick={() => setVerifiedFilter(f)}
                   style={{
                     padding: '0.75rem 1rem',
-                    background: verifiedFilter === f ? (f === 'verified' ? '#16a34a' : f === 'unverified' ? 'var(--grey-700)' : 'var(--red)') : 'var(--black-surface)',
+                    background: verifiedFilter === f ? 'var(--red)' : 'var(--black-surface)',
                     border: '1px solid',
-                    borderColor: verifiedFilter === f ? (f === 'verified' ? '#16a34a' : f === 'unverified' ? 'var(--grey-600)' : 'var(--red)') : 'var(--grey-800)',
+                    borderColor: verifiedFilter === f ? 'var(--red)' : 'var(--grey-800)',
                     borderRadius: '8px',
                     color: verifiedFilter === f ? 'white' : 'var(--grey-400)',
                     fontSize: '0.875rem',

@@ -229,7 +229,7 @@ export function BondingCurveChart() {
               Price: <span style={{ color: '#dc2626', fontWeight: 600 }}>{formatPrice(hoverPrice)} ETH</span>
             </div>
             <div style={{ color: 'var(--grey-400)' }}>
-              ≈ <span style={{ color: 'white' }}>${hoverUSD !== null ? (hoverUSD < 0.01 ? '<$0.01' : `$${hoverUSD.toFixed(2)}`) : '...'}</span>
+              ≈ <span style={{ color: 'white' }}>{hoverUSD !== null ? (hoverUSD < 0.01 ? '<$0.01' : `$${hoverUSD.toFixed(2)}`) : '...'}</span>
             </div>
           </div>
         )}

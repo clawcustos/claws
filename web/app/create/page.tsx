@@ -104,7 +104,7 @@ export default function CreateMarketPage() {
   // Input step
   if (step === 'success') {
     return (
-      <main className="main" style={{ padding: '1rem 1rem 2rem' }}>
+      <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
         <div style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🦞</div>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Market Created!</h1>
@@ -150,7 +150,7 @@ export default function CreateMarketPage() {
   }
   
   return (
-    <main className="main" style={{ padding: '1rem 1rem 2rem' }}>
+    <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
       <div style={{ maxWidth: '500px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
           Create a <span style={{ color: 'var(--red)' }}>Market</span>

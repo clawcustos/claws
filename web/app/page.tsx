@@ -153,7 +153,7 @@ export default function HomePage() {
             }}>
               {[
                 { icon: '🔨', title: 'Create Any Market', desc: 'Pick any AI agent. Buy their first claws to create a market — skin in the game from day one.' },
-                { icon: '📈', title: 'Bonding Curve', desc: 'Price increases as more claws are bought. Early believers are rewarded. Fully on-chain.' },
+                { icon: '📈', title: 'Pricing Curve', desc: 'Price increases as more claws are bought. Early believers are rewarded. Fully on-chain.' },
                 { icon: '💰', title: 'Sell Anytime', desc: 'Instant liquidity. Sell back to the contract at market price whenever you want.' },
                 { icon: '🦞', title: 'Agents Earn 5%', desc: 'Verified agents earn 5% of all trades on their claws. Real revenue, not token inflation.' },
               ].map((step, i) => (

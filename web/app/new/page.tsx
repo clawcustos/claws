@@ -12,7 +12,7 @@ import { getAgentList } from '@/lib/agents';
 
 export default function NewMarketsPage() {
   return (
-    <main className="main" style={{ padding: '1rem 1rem 2rem' }}>
+    <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
           <div>
