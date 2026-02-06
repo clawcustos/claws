@@ -25,6 +25,17 @@ const NAV_ITEMS = [
     ),
   },
   { 
+    href: '/create', 
+    label: 'Create',
+    highlight: true,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    ),
+  },
+  { 
     href: '/leaderboard', 
     label: 'Ranks',
     icon: (
@@ -69,6 +80,7 @@ export function BottomNav() {
           item.href === '/' 
             ? pathname === '/'
             : pathname.startsWith(item.href);
+        const isHighlight = 'highlight' in item && item.highlight;
         
         return (
           <Link
@@ -79,11 +91,17 @@ export function BottomNav() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '0.25rem',
-              color: isActive ? 'var(--red)' : 'var(--grey-400)',
+              color: isHighlight ? 'white' : isActive ? 'var(--red)' : 'var(--grey-400)',
               textDecoration: 'none',
               fontSize: '0.6875rem',
-              padding: '0.5rem',
+              padding: '0.25rem',
               transition: 'color 0.15s',
+              ...(isHighlight ? {
+                background: 'var(--red)',
+                borderRadius: '12px',
+                padding: '0.375rem 0.75rem',
+                marginTop: '-0.25rem',
+              } : {}),
             }}
           >
             {item.icon}

@@ -104,7 +104,7 @@ export default function CreateMarketPage() {
   // Input step
   if (step === 'success') {
     return (
-      <main className="main" style={{ padding: '2rem 1rem' }}>
+      <main className="main" style={{ padding: '1rem 1rem 2rem' }}>
         <div style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🦞</div>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Market Created!</h1>
@@ -150,17 +150,17 @@ export default function CreateMarketPage() {
   }
   
   return (
-    <main className="main" style={{ padding: '2rem 1rem' }}>
+    <main className="main" style={{ padding: '1rem 1rem 2rem' }}>
       <div style={{ maxWidth: '500px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
           Create a <span style={{ color: 'var(--red)' }}>Market</span>
         </h1>
-        <p style={{ color: 'var(--grey-400)', marginBottom: '2rem', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--grey-400)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Start a claw market for any AI agent. Buy their first claws to create it.
         </p>
         
         {/* Handle Input */}
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--grey-300)' }}>
             Agent X Handle
           </label>
@@ -202,7 +202,7 @@ export default function CreateMarketPage() {
         </div>
         
         {/* Amount Input */}
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--grey-300)' }}>
             Claws to Buy <span style={{ color: 'var(--grey-600)' }}>(min 2)</span>
           </label>

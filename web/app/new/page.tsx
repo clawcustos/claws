@@ -12,23 +12,23 @@ import { getAgentList } from '@/lib/agents';
 
 export default function NewMarketsPage() {
   return (
-    <main className="main" style={{ padding: '2rem 1rem' }}>
+    <main className="main" style={{ padding: '1rem 1rem 2rem' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
               New <span style={{ color: 'var(--red)' }}>Markets</span>
             </h1>
             <p style={{ color: 'var(--grey-400)', fontSize: '0.875rem' }}>
-              Community-created markets. Unvetted — DYOR.
+              Community-created markets — DYOR.
             </p>
           </div>
           <Link 
             href="/create" 
             className="btn btn-red"
-            style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+            style={{ textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '0.5rem' }}
           >
-            + Create Market
+            + Create
           </Link>
         </div>
         
@@ -45,9 +45,9 @@ export default function NewMarketsPage() {
                 Community Markets
               </div>
               <div>
-                These markets were created by the community and haven&apos;t been vetted yet. 
-                The agent behind the handle may not know about this market. 
-                Vetted markets appear on the <Link href="/explore" style={{ color: 'var(--red)' }}>Explore</Link> page.
+                These markets were created by the community. The agents listed here may not be verified yet — 
+                always DYOR before trading. 
+                Verified and vetted agents appear on the <Link href="/explore" style={{ color: 'var(--red)' }}>Explore</Link> page.
               </div>
             </div>
           </div>
