@@ -67,14 +67,18 @@ contract ClawsTest is Test {
     }
     
     function test_CreateMarketAutoCreatesOnBuy() public {
+        // Whitelist handle for free first claw (legacy behavior)
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
         assertFalse(claws.marketExists(HANDLE));
-        
+
         uint256 price = claws.getBuyPriceByHandle(HANDLE, 1);
         uint256 totalCost = price + (price * 1000 / 10000); // 10% fees
-        
+
         vm.prank(trader1);
         claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1);
-        
+
         assertTrue(claws.marketExists(HANDLE));
     }
     
@@ -98,20 +102,25 @@ contract ClawsTest is Test {
     // ============ Buy Claws ============
     
     function test_BuyClaws() public {
+        // Whitelist handle for free first claw (legacy behavior)
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
         uint256 price = claws.getBuyPriceByHandle(HANDLE, 1);
         uint256 protocolFee = price * 500 / 10000;
         uint256 agentFee = price * 500 / 10000;
         uint256 totalCost = price + protocolFee + agentFee;
-        
+
         uint256 treasuryBefore = treasury.balance;
-        
+
         vm.prank(trader1);
         claws.buyClaws{value: totalCost + 0.01 ether}(HANDLE, 1);
-        
-        assertEq(claws.getBalance(HANDLE, trader1), 1);
-        
+
+        // Whitelisted: gets 1 bonus claw
+        assertEq(claws.getBalance(HANDLE, trader1), 2);
+
         (uint256 supply, uint256 pendingFees,,,,,, ) = claws.getMarket(HANDLE);
-        assertEq(supply, 1);
+        assertEq(supply, 2); // 1 + 1 bonus
         assertEq(pendingFees, agentFee);
         assertEq(treasury.balance - treasuryBefore, protocolFee);
     }
@@ -129,14 +138,18 @@ contract ClawsTest is Test {
     }
     
     function test_BuyClawsRefundsExcess() public {
+        // Whitelist handle for free first claw (legacy behavior)
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
         (,,,uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         uint256 excess = 1 ether;
-        
+
         uint256 balanceBefore = trader1.balance;
-        
+
         vm.prank(trader1);
         claws.buyClaws{value: totalCost + excess}(HANDLE, 1);
-        
+
         assertEq(balanceBefore - trader1.balance, totalCost);
     }
     
@@ -177,20 +190,38 @@ contract ClawsTest is Test {
     }
     
     function test_SellClawsRevertsInsufficientBalance() public {
+        // Whitelist handle for free first claw
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
         claws.buyClaws{value: buyCost}(HANDLE, 1);
-        
+
+        // Has 2 claws (with bonus), try to sell 5
         vm.prank(trader1);
         vm.expectRevert(Claws.InsufficientBalance.selector);
         claws.sellClaws(HANDLE, 5, 0);
     }
     
     function test_SellClawsRevertsCannotSellLast() public {
-        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // Create market with non-whitelisted handle to avoid bonus claw complications
+        // Buy 3 claws (minimum 2 for first buy on non-whitelisted)
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 3);
         vm.prank(trader1);
-        claws.buyClaws{value: buyCost}(HANDLE, 1);
-        
+        claws.buyClaws{value: buyCost}(HANDLE, 3);
+
+        // Verify we have 3 claws
+        assertEq(claws.getBalance(HANDLE, trader1), 3);
+
+        // Sell 2, leaving 1
+        vm.prank(trader1);
+        claws.sellClaws(HANDLE, 2, 0);
+
+        // Verify we have 1 claw left
+        assertEq(claws.getBalance(HANDLE, trader1), 1);
+
+        // Now try to sell the last one - should revert
         vm.prank(trader1);
         vm.expectRevert(Claws.CannotSellLastClaw.selector);
         claws.sellClaws(HANDLE, 1, 0);
@@ -310,29 +341,33 @@ contract ClawsTest is Test {
     }
     
     function test_VerifyRevertsAlreadyVerified() public {
+        // Whitelist handle for free first claw
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
         // First verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         vm.prank(trader1);
         claws.buyClaws{value: buyCost}(HANDLE, 1);
-        
+
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        
+
         bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
         bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
         bytes memory signature = abi.encodePacked(r, s, v);
-        
+
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
-        
+
         // Try to verify again
         uint256 newNonce = 99999;
         messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, newNonce));
         ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
         (v, r, s) = vm.sign(verifierPk, ethSignedHash);
         signature = abi.encodePacked(r, s, v);
-        
+
         vm.prank(agentWallet);
         vm.expectRevert(Claws.AlreadyVerified.selector);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, newNonce, signature);
