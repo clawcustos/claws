@@ -8,6 +8,7 @@ import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { TradeModal } from '@/components/trade-modal';
 import { getAgent, formatETH, calculateCurrentPrice, AGENTS } from '@/lib/agents';
+import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 
 const ETH_PRICE_USD = 3000;
 
@@ -28,6 +29,14 @@ export default function AgentPage() {
   
   const agent = getAgent(handle);
   
+  // Fetch live market data from contract
+  const { market, isLoading: marketLoading } = useMarket(handle);
+  const { priceETH: livePriceETH } = useCurrentPrice(handle);
+  
+  // Use live data for verification status
+  const isVerified = market?.isVerified || false;
+  const liveSupply = market ? Number(market.supply) : agent?.supply || 0;
+  
   if (!agent) {
     return (
       <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
@@ -42,7 +51,7 @@ export default function AgentPage() {
     );
   }
 
-  const priceETH = agent.priceETH;
+  const priceETH = livePriceETH || agent.priceETH;
 
   const openTrade = (mode: 'buy' | 'sell') => {
     setTradeMode(mode);
@@ -99,8 +108,8 @@ export default function AgentPage() {
               height: '120px',
               borderRadius: '50%',
               overflow: 'hidden',
-              border: agent.isVerified ? '3px solid var(--red)' : '3px solid var(--grey-700)',
-              boxShadow: agent.isVerified ? '0 0 40px var(--red-glow)' : 'none',
+              border: isVerified ? '3px solid var(--red)' : '3px solid var(--grey-700)',
+              boxShadow: isVerified ? '0 0 40px var(--red-glow)' : 'none',
               flexShrink: 0,
             }}>
               <Image 
@@ -121,7 +130,7 @@ export default function AgentPage() {
                 gap: '0.75rem',
               }}>
                 {agent.name}
-                {agent.isVerified && (
+                {isVerified && (
                   <span style={{
                     width: '24px',
                     height: '24px',
@@ -185,7 +194,7 @@ export default function AgentPage() {
             }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
                 <div>
-                  <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{agent.supply}</div>
+                  <div className="mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{marketLoading ? '...' : liveSupply}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', textTransform: 'uppercase' }}>Supply</div>
                 </div>
                 <div>
