@@ -46,6 +46,21 @@ export function Header() {
           })}
         </nav>
         
+        {/* Mobile Verify link — visible only on small screens */}
+        <Link 
+          href="/verify" 
+          className="mobile-verify-link"
+          style={{
+            display: 'none',
+            fontSize: '0.75rem',
+            color: pathname === '/verify' ? 'var(--red)' : 'var(--grey-400)',
+            textDecoration: 'none',
+            fontWeight: 600,
+          }}
+        >
+          Verify
+        </Link>
+        
         {/* Wallet Connection */}
         <div style={{ flexShrink: 0 }}>
           <ConnectButton.Custom>

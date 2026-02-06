@@ -1008,6 +1008,9 @@ body {
   .header-nav {
     display: none;
   }
+  .mobile-verify-link {
+    display: block !important;
+  }
 }
 
 /* ============================================

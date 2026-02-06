@@ -19,6 +19,7 @@ import { useETHPrice } from '@/hooks/useETHPrice';
 
 function formatUSD(eth: number, ethPriceUsd: number = 2500): string {
   const usd = eth * ethPriceUsd;
+  if (usd === 0 || eth === 0) return '$0';
   if (usd < 0.01) return '<$0.01';
   if (usd < 1) return `$${usd.toFixed(2)}`;
   if (usd < 1000) return `$${usd.toFixed(0)}`;
