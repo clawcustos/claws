@@ -6,6 +6,9 @@ import {Claws} from "../src/Claws.sol";
 
 contract ClawsTest is Test {
     Claws public claws;
+
+    // Events to test
+    event WhitelistUpdated(bytes32 indexed handleHash, string handle, bool status);
     
     address public owner = address(1);
     address public verifier = address(2);
@@ -144,7 +147,7 @@ contract ClawsTest is Test {
     }
     
     function test_BuyClawsRevertsInsufficientPayment() public {
-        // First claw is free, so test with 2 claws (which costs 0.0000625 ETH + fees)
+        // Test with 2 claws (which costs 0.0000625 ETH + fees)
         vm.prank(trader1);
         vm.expectRevert(Claws.InsufficientPayment.selector);
         claws.buyClaws{value: 0.00001 ether}(HANDLE, 2);
@@ -206,26 +209,30 @@ contract ClawsTest is Test {
     // ============ Price Calculations ============
     
     function test_BondingCurvePricing() public view {
-        // First claw is FREE (friend.tech model): 0^2 / 16000 = 0
+        // At supply=0, buying 1 claw: sum of squares from 0 to 0 = 0^2 = 0
         uint256 price1 = claws.getBuyPriceByHandle(HANDLE, 1);
         assertEq(price1, 0);
-        
-        // Second claw: 1^2 / 16000 = 0.0000625 ETH
-        // Buying 2 claws = 0 + 0.0000625 = 0.0000625 ETH
+
+        // At supply=0, buying 2 claws: sum of squares from 0 to 1 = 0^2 + 1^2 = 1
+        // Price = 1 * 1 ether / 16000 = 0.0000625 ETH
         uint256 price2 = claws.getBuyPriceByHandle(HANDLE, 2);
         assertEq(price2, 0.0000625 ether);
     }
     
     function test_GetCurrentPrice() public {
-        // At supply=0, next claw price = 0^2/16000 = 0 (FREE)
+        // Whitelist handle for free first claw behavior
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        // At supply=0, next claw price = 0^2/16000 = 0
         assertEq(claws.getCurrentPrice(HANDLE), 0);
-        
-        // Buy 1 claw (free)
+
+        // Buy 1 claw (free for whitelisted, gets bonus)
         vm.prank(trader1);
         claws.buyClaws{value: 0}(HANDLE, 1);
-        
-        // At supply=1, next claw price = 1^2/16000 = 0.0000625 ETH
-        assertEq(claws.getCurrentPrice(HANDLE), 0.0000625 ether);
+
+        // At supply=2 (1 + 1 bonus), next claw price = 2^2/16000 = 0.00025 ETH
+        assertEq(claws.getCurrentPrice(HANDLE), 0.00025 ether);
     }
     
     function test_GetBuyCostBreakdown() public view {
@@ -873,18 +880,22 @@ contract ClawsTest is Test {
     }
     
     function test_Unpause() public {
+        // Whitelist handle for free first claw
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
         vm.prank(owner);
         claws.pause();
         assertTrue(claws.paused());
-        
+
         vm.prank(owner);
         claws.unpause();
         assertFalse(claws.paused());
-        
-        // Can trade again
+
+        // Can trade again (whitelisted gets bonus)
         vm.prank(trader1);
         claws.buyClaws{value: 0}(HANDLE, 1);
-        assertEq(claws.getBalance(HANDLE, trader1), 1);
+        assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
     }
     
     function test_PauseOnlyOwner() public {
@@ -942,18 +953,325 @@ contract ClawsTest is Test {
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
     }
     
-    // ============ First Claw Free ============
-    
-    function test_FirstClawIsFree() public {
-        // First claw should cost 0
-        (uint256 price,,,uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+    // ============ Whitelist Tier System ============
+
+    function test_SetWhitelisted() public {
+        // Owner can whitelist
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        assertTrue(claws.isWhitelisted(HANDLE));
+        assertTrue(claws.whitelisted(keccak256(abi.encodePacked(HANDLE))));
+
+        // Owner can unwhitelist
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, false);
+
+        assertFalse(claws.isWhitelisted(HANDLE));
+    }
+
+    function test_SetWhitelistedRevertsNotOwner() public {
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.setWhitelisted(HANDLE, true);
+    }
+
+    function test_SetWhitelistedBatch() public {
+        string[] memory handles = new string[](3);
+        handles[0] = HANDLE;
+        handles[1] = HANDLE2;
+        handles[2] = "thirdhandle";
+
+        vm.prank(owner);
+        claws.setWhitelistedBatch(handles, true);
+
+        assertTrue(claws.isWhitelisted(HANDLE));
+        assertTrue(claws.isWhitelisted(HANDLE2));
+        assertTrue(claws.isWhitelisted("thirdhandle"));
+    }
+
+    function test_SetWhitelistedBatchRevertsNotOwner() public {
+        string[] memory handles = new string[](2);
+        handles[0] = HANDLE;
+        handles[1] = HANDLE2;
+
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.setWhitelistedBatch(handles, true);
+    }
+
+    function test_IsWhitelisted() public {
+        assertFalse(claws.isWhitelisted(HANDLE));
+
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        assertTrue(claws.isWhitelisted(HANDLE));
+    }
+
+    function test_WhitelistedFirstBuyGetsBonusClaw() public {
+        // Whitelist the handle
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        // First buy: pay for 1 claw, receive 2 (bonus)
+        (uint256 price, uint256 protocolFee, uint256 agentFee, uint256 totalCost) =
+            claws.getBuyCostBreakdown(HANDLE, 1);
+
+        // Price for 1 claw at supply 0
+        assertEq(price, 0); // Still 0 at supply 0
+
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 1);
+
+        // Should have 2 claws (1 paid + 1 bonus)
+        assertEq(claws.getBalance(HANDLE, trader1), 2);
+
+        // Supply should be 2
+        (uint256 supply,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supply, 2);
+    }
+
+    function test_WhitelistedFirstBuyMultipleGetsBonusClaw() public {
+        // Whitelist the handle
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        // Buy 3 claws: pay for 3, receive 4 (1 bonus)
+        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 3);
+
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 3);
+
+        // Should have 4 claws (3 paid + 1 bonus)
+        assertEq(claws.getBalance(HANDLE, trader1), 4);
+
+        // Supply should be 4
+        (uint256 supply,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supply, 4);
+    }
+
+    function test_NonWhitelistedFirstBuyOneClawReverts() public {
+        // Not whitelisted
+        assertFalse(claws.isWhitelisted(HANDLE));
+
+        // First buy of 1 claw should revert (must buy >= 2)
+        vm.prank(trader1);
+        vm.expectRevert(Claws.InvalidAmount.selector);
+        claws.buyClaws{value: 1 ether}(HANDLE, 1);
+    }
+
+    function test_NonWhitelistedFirstBuyTwoClawsWorks() public {
+        // Not whitelisted
+        assertFalse(claws.isWhitelisted(HANDLE));
+
+        // First buy of 2 claws should work
+        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 2);
+
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 2);
+
+        // Should have exactly 2 claws (no bonus)
+        assertEq(claws.getBalance(HANDLE, trader1), 2);
+
+        // Supply should be 2
+        (uint256 supply,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supply, 2);
+    }
+
+    function test_NonWhitelistedFirstBuyFiveClawsWorks() public {
+        // Not whitelisted
+        assertFalse(claws.isWhitelisted(HANDLE));
+
+        // First buy of 5 claws should work
+        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 5);
+
+        // Should have exactly 5 claws (no bonus)
+        assertEq(claws.getBalance(HANDLE, trader1), 5);
+    }
+
+    function test_AfterFirstBuyBothTiersBehaveIdentically() public {
+        // Whitelist HANDLE, not HANDLE2
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        // First buy on whitelisted market (gets bonus)
+        (,,, uint256 whitelistedCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        vm.prank(trader1);
+        claws.buyClaws{value: whitelistedCost}(HANDLE, 1);
+        assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
+
+        // First buy on non-whitelisted market (no bonus)
+        (,,, uint256 nonWhitelistedCost) = claws.getBuyCostBreakdown(HANDLE2, 2);
+        vm.prank(trader2);
+        claws.buyClaws{value: nonWhitelistedCost}(HANDLE2, 2);
+        assertEq(claws.getBalance(HANDLE2, trader2), 2);
+
+        // Now both markets have supply >= 2
+        // Buying more should behave the same
+
+        // Buy 3 more on whitelisted market
+        (uint256 wPriceBefore,,,) = claws.getBuyCostBreakdown(HANDLE, 3);
+        (,,, uint256 wCost) = claws.getBuyCostBreakdown(HANDLE, 3);
+        vm.prank(trader1);
+        claws.buyClaws{value: wCost}(HANDLE, 3);
+
+        // Buy 3 more on non-whitelisted market
+        (uint256 nwPriceBefore,,,) = claws.getBuyCostBreakdown(HANDLE2, 3);
+        (,,, uint256 nwCost) = claws.getBuyCostBreakdown(HANDLE2, 3);
+        vm.prank(trader2);
+        claws.buyClaws{value: nwCost}(HANDLE2, 3);
+
+        // Prices should be the same (supply is 2 in both markets, buying 3)
+        assertEq(wPriceBefore, nwPriceBefore);
+
+        // No more bonus claws on either market
+        assertEq(claws.getBalance(HANDLE, trader1), 5); // 2 + 3
+        assertEq(claws.getBalance(HANDLE2, trader2), 5); // 2 + 3
+    }
+
+    function test_WhitelistCanBeToggled() public {
+        // Whitelist then unwhitelist
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+        assertTrue(claws.isWhitelisted(HANDLE));
+
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, false);
+        assertFalse(claws.isWhitelisted(HANDLE));
+
+        // Can whitelist again
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+        assertTrue(claws.isWhitelisted(HANDLE));
+    }
+
+    function test_WhitelistRemovedDoesNotAffectExistingMarkets() public {
+        // Whitelist and create market
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 1);
+
+        // Unwhitelist
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, false);
+
+        // Existing supply and balances unchanged
+        (uint256 supply,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(supply, 2); // 1 + 1 bonus
+        assertEq(claws.getBalance(HANDLE, trader1), 2);
+
+        // New purchases should work normally (no first buy restriction since supply > 0)
+        (,,, uint256 cost2) = claws.getBuyCostBreakdown(HANDLE, 1);
+        vm.prank(trader2);
+        claws.buyClaws{value: cost2}(HANDLE, 1);
+        assertEq(claws.getBalance(HANDLE, trader2), 1);
+    }
+
+    function test_WhitelistPriceIsCorrect() public {
+        // Price for whitelisted first buy (1 claw)
+        // Should be 0 since supply=0
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        uint256 price = claws.getBuyPriceByHandle(HANDLE, 1);
+        assertEq(price, 0);
+
+        // Current price for next claw
+        uint256 currentPrice = claws.getCurrentPrice(HANDLE);
+        assertEq(currentPrice, 0);
+    }
+
+    function test_NonWhitelistedPriceIsCorrect() public {
+        // Price for non-whitelisted must be calculated for 2 claws
+        // At supply=0, buying 2 claws: sum of squares from 0 to 1
+        // = 0² + 1² = 0 + 1 = 1
+        // Price = 1 * 1 ether / 16000 = 0.0000625 ether
+        uint256 price = claws.getBuyPriceByHandle(HANDLE, 2);
+        assertEq(price, 0.0000625 ether);
+    }
+
+    function test_PriceAfterFirstBuySameForBoth() public {
+        // Set up whitelisted market
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+        (,,, uint256 wCost1) = claws.getBuyCostBreakdown(HANDLE, 1);
+        vm.prank(trader1);
+        claws.buyClaws{value: wCost1}(HANDLE, 1);
+
+        // Set up non-whitelisted market
+        (,,, uint256 nwCost1) = claws.getBuyCostBreakdown(HANDLE2, 2);
+        vm.prank(trader2);
+        claws.buyClaws{value: nwCost1}(HANDLE2, 2);
+
+        // Both markets now have supply 2
+        // Price for buying 1 more claw should be identical
+        uint256 wPrice = claws.getBuyPriceByHandle(HANDLE, 1);
+        uint256 nwPrice = claws.getBuyPriceByHandle(HANDLE2, 1);
+        assertEq(wPrice, nwPrice);
+
+        // Current price should also be identical
+        uint256 wCurrent = claws.getCurrentPrice(HANDLE);
+        uint256 nwCurrent = claws.getCurrentPrice(HANDLE2);
+        assertEq(wCurrent, nwCurrent);
+    }
+
+    function test_WhitelistedEventEmitted() public {
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, true);
+        emit WhitelistUpdated(keccak256(abi.encodePacked(HANDLE)), HANDLE, true);
+        claws.setWhitelisted(HANDLE, true);
+    }
+
+    function test_BatchWhitelistEventsEmitted() public {
+        string[] memory handles = new string[](2);
+        handles[0] = HANDLE;
+        handles[1] = HANDLE2;
+
+        vm.prank(owner);
+        // Expect 2 events to be emitted
+        vm.expectEmit(true, false, false, true);
+        emit WhitelistUpdated(keccak256(abi.encodePacked(HANDLE)), HANDLE, true);
+        vm.expectEmit(true, false, false, true);
+        emit WhitelistUpdated(keccak256(abi.encodePacked(HANDLE2)), HANDLE2, true);
+
+        claws.setWhitelistedBatch(handles, true);
+    }
+
+    function test_FirstClawIsFreeForWhitelisted() public {
+        // Whitelist the handle
+        vm.prank(owner);
+        claws.setWhitelisted(HANDLE, true);
+
+        // First claw should cost 0 (whitelisted)
+        (uint256 price,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
         assertEq(price, 0);
         assertEq(totalCost, 0); // 0 + 0 fees = 0
-        
-        // Can buy with 0 ETH
+
+        // Can buy with 0 ETH and get bonus claw
         vm.prank(trader1);
         claws.buyClaws{value: 0}(HANDLE, 1);
-        
-        assertEq(claws.getBalance(HANDLE, trader1), 1);
+
+        assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
+    }
+
+    function test_FirstClawNotFreeForNonWhitelisted() public {
+        // Not whitelisted
+        assertFalse(claws.isWhitelisted(HANDLE));
+
+        // First claw is NOT free - can't buy just 1
+        vm.prank(trader1);
+        vm.expectRevert(Claws.InvalidAmount.selector);
+        claws.buyClaws{value: 0}(HANDLE, 1);
+
+        // Must buy at least 2
+        (uint256 price,,,) = claws.getBuyCostBreakdown(HANDLE, 2);
+        assertGt(price, 0);
     }
 }

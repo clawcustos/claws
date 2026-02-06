@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseEther, formatEther } from 'viem';
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
@@ -23,7 +23,7 @@ export default function CreateMarketPage() {
   const [amount, setAmount] = useState('2');
   const [step, setStep] = useState<'input' | 'confirm' | 'success'>('input');
   const [error, setError] = useState('');
-  const ethPrice = useETHPrice();
+  const { ethPrice } = useETHPrice();
   
   const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase();
   const buyAmount = Math.max(2, parseInt(amount) || 2);
@@ -36,11 +36,12 @@ export default function CreateMarketPage() {
   const isCurated = cleanHandle ? Object.keys(AGENTS).some(h => h.toLowerCase() === cleanHandle) : false;
   
   // Get buy price for the amount
-  const { priceETH, isLoading: priceLoading } = useBuyPrice(cleanHandle || 'placeholder', buyAmount);
+  const { price, totalCost, totalCostETH, isLoading: priceLoading } = useBuyPrice(cleanHandle || 'placeholder', buyAmount);
   
-  // Estimate total cost (price + 10% fees)
-  const estimatedCost = priceETH ? priceETH * 1.1 : 0;
-  const estimatedUSD = estimatedCost * ethPrice;
+  // Price in ETH (before fees) and total cost (with fees)
+  const priceETH = price ? parseFloat(formatEther(price)) : 0;
+  const feesETH = totalCostETH - priceETH;
+  const estimatedUSD = totalCostETH * ethPrice;
   
   // Write contract
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
@@ -81,19 +82,19 @@ export default function CreateMarketPage() {
   
   const handleCreateMarket = useCallback(() => {
     if (!handleValidate()) return;
-    if (!priceETH) return;
+    if (!totalCost) return;
     
     // Add 5% buffer for gas estimation variance
-    const totalCostWei = parseEther((estimatedCost * 1.05).toFixed(18));
+    const buffered = (totalCost * 105n) / 100n;
     
     writeContract({
       address: CONTRACT,
       abi: CLAWS_ABI,
       functionName: 'buyClaws',
       args: [cleanHandle, BigInt(buyAmount)],
-      value: totalCostWei,
+      value: buffered,
     });
-  }, [handleValidate, cleanHandle, buyAmount, estimatedCost, priceETH, writeContract]);
+  }, [handleValidate, cleanHandle, buyAmount, totalCost, writeContract]);
   
   const tweetText = encodeURIComponent(
     `just created a @claws_tech market for @${cleanHandle} 🦞\n\ntrade their claws → claws.tech/agent/${cleanHandle}`
@@ -249,13 +250,13 @@ export default function CreateMarketPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
               <span style={{ color: 'var(--grey-400)', fontSize: '0.875rem' }}>Curve Price</span>
               <span style={{ fontSize: '0.875rem' }}>
-                {priceLoading ? '...' : `${formatETH(priceETH || 0)} ETH`}
+                {priceLoading ? '...' : `${formatETH(priceETH)} ETH`}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
               <span style={{ color: 'var(--grey-400)', fontSize: '0.875rem' }}>Fees (10%)</span>
               <span style={{ fontSize: '0.875rem' }}>
-                {priceLoading ? '...' : `${formatETH((priceETH || 0) * 0.1)} ETH`}
+                {priceLoading ? '...' : `${formatETH(feesETH)} ETH`}
               </span>
             </div>
             <div style={{ 
@@ -265,7 +266,7 @@ export default function CreateMarketPage() {
               <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Total</span>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                  {priceLoading ? '...' : `~${formatETH(estimatedCost)} ETH`}
+                  {priceLoading ? '...' : `~${formatETH(totalCostETH)} ETH`}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)' }}>
                   {priceLoading ? '' : `~$${estimatedUSD.toFixed(2)}`}

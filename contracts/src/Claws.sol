@@ -11,15 +11,16 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
  * @title Claws
  * @notice Bonding curve speculation market for AI agents
  * @dev Handle-based markets using bonding curve pricing
- * 
+ *
  * Formula: price = supply² / 16000 ETH (Claws bonding curve)
- * - 1st claw: FREE (viral onboarding hook)
+ * - 1st claw: FREE for whitelisted handles only (bonus claw on first buy)
+ * - Non-whitelisted: no free claw, minimum 2 claws on first buy
  * - 10th claw: 0.00625 ETH (~$19)
  * - 100th claw: 0.625 ETH (~$1,875)
  * - Gets expensive FAST — creates early buyer advantage
- * 
+ *
  * WHOLE CLAWS ONLY: Minimum 1 claw per trade. No fractional purchases.
- * 
+ *
  * VERIFIED AGENTS: Earn 5% of all trade fees. No free claws on verification.
  */
 contract Claws is ReentrancyGuard, Ownable, Pausable {
@@ -72,6 +73,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     /// @notice Used nonces for verification (prevent replay)
     mapping(bytes32 => bool) public usedNonces;
     
+    /// @notice Whitelisted handles that get free first claw (tier system)
+    mapping(bytes32 => bool) public whitelisted;
+    
     // ============ Events ============
     
     event MarketCreated(bytes32 indexed handleHash, string handle, address creator);
@@ -91,6 +95,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     event TreasuryUpdated(address oldTreasury, address newTreasury);
     event AgentWalletUpdated(bytes32 indexed handleHash, string handle, address oldWallet, address newWallet);
     event VerificationRevoked(bytes32 indexed handleHash, string handle);
+    event WhitelistUpdated(bytes32 indexed handleHash, string handle, bool status);
     
     // ============ Errors ============
     
@@ -164,16 +169,15 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
      * @notice Buy claws for a handle
      * @param handle The X handle
      * @param amount Number of whole claws to buy (minimum 1, no fractions)
+     * @dev Whitelisted handles get 1 bonus claw on first buy (supply == 0)
+     * @dev Non-whitelisted handles must buy >= 2 claws on first buy
      */
-    function buyClaws(
-        string calldata handle,
-        uint256 amount
-    ) external payable nonReentrant whenNotPaused {
+    function buyClaws(string calldata handle, uint256 amount) external payable nonReentrant whenNotPaused {
         if (amount == 0) revert InvalidAmount();
-        
+
         bytes32 handleHash = _hashHandle(handle);
         Market storage market = markets[handleHash];
-        
+
         // Auto-create market if doesn't exist
         if (market.createdAt == 0) {
             if (bytes(handle).length == 0 || bytes(handle).length > 32) {
@@ -183,43 +187,48 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
             handleStrings[handleHash] = handle;
             emit MarketCreated(handleHash, handle, msg.sender);
         }
-        
+
+        // Check whitelist status for first buy
+        bool isWhitelist = whitelisted[handleHash];
+        uint256 mintAmount = amount;
+
+        if (market.supply == 0) {
+            if (isWhitelist) {
+                // Whitelisted: bonus claw on first buy
+                mintAmount = amount + 1;
+            } else {
+                // Non-whitelisted: must buy at least 2 claws
+                if (amount < 2) revert InvalidAmount();
+            }
+        }
+
         uint256 price = getBuyPrice(handleHash, amount);
         uint256 protocolFee = (price * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
         uint256 agentFee = (price * AGENT_FEE_BPS) / BPS_DENOMINATOR;
         uint256 totalCost = price + protocolFee + agentFee;
-        
+
         if (msg.value < totalCost) revert InsufficientPayment();
-        
+
         // Send protocol fee to treasury
-        (bool sent, ) = treasury.call{value: protocolFee}("");
+        (bool sent,) = treasury.call{value: protocolFee}("");
         if (!sent) revert TransferFailed();
-        
+
         // Accumulate agent fee (claimable after verification)
         market.pendingFees += agentFee;
         market.lifetimeFees += agentFee;
         market.lifetimeVolume += price;
-        
-        // Update balances
-        market.supply += amount;
-        clawsBalance[handleHash][msg.sender] += amount;
-        
+
+        // Update balances (use mintAmount for actual claw issuance)
+        market.supply += mintAmount;
+        clawsBalance[handleHash][msg.sender] += mintAmount;
+
         // Refund excess ETH
         if (msg.value > totalCost) {
-            (bool refunded, ) = msg.sender.call{value: msg.value - totalCost}("");
+            (bool refunded,) = msg.sender.call{value: msg.value - totalCost}("");
             if (!refunded) revert TransferFailed();
         }
-        
-        emit Trade(
-            handleHash,
-            msg.sender,
-            true,
-            amount,
-            price,
-            protocolFee,
-            agentFee,
-            market.supply
-        );
+
+        emit Trade(handleHash, msg.sender, true, mintAmount, price, protocolFee, agentFee, market.supply);
     }
     
     /**
@@ -398,35 +407,37 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     }
     
     /**
-     * @notice Calculate price using bonding curve (exact bonding curve formula)
-     * @dev First claw is FREE. Price = sum of squares from supply to supply+amount-1
-     *      Sum of squares bonding curve
+     * @notice Calculate price using bonding curve (pure bonding curve math)
+     * @dev Price = sum of squares from supply to supply+amount-1
+     *      Sum of squares bonding curve: sum(n²) from supply to supply+amount-1
+     *      No free claws - pure math only
      */
     function _getPrice(uint256 supply, uint256 amount) internal pure returns (uint256) {
         // bonding curve formula: sum squares from supply to (supply + amount - 1)
         // Using sum of squares: n(n+1)(2n+1)/6 for 1 to n
-        
+
         // sum1 = sum of squares from 1 to (supply - 1), or 0 if supply is 0
         uint256 sum1 = supply == 0 ? 0 : (supply - 1) * supply * (2 * (supply - 1) + 1) / 6;
-        
-        // sum2 = sum of squares from 1 to (supply + amount - 1), or 0 if first claw
-        uint256 sum2 = (supply == 0 && amount == 1) ? 0 : 
+
+        // sum2 = sum of squares from 1 to (supply + amount - 1)
+        uint256 sum2 =
             (supply + amount - 1) * (supply + amount) * (2 * (supply + amount - 1) + 1) / 6;
-        
+
         uint256 summation = sum2 - sum1;
-        
+
         // Convert to ETH
         return (summation * 1 ether) / PRICE_DIVISOR;
     }
     
     /**
      * @notice Get current price for 1 claw (next buy price)
-     * @dev First claw is FREE 
+     * @dev Price = supply² / PRICE_DIVISOR
+     *      No special first claw pricing - bonding curve math only
      */
     function getCurrentPrice(string calldata handle) external view returns (uint256) {
         bytes32 handleHash = _hashHandle(handle);
         uint256 supply = markets[handleHash].supply;
-        // Price of the next claw = supply² / PRICE_DIVISOR (first claw = 0² = FREE)
+        // Price of the next claw = supply² / PRICE_DIVISOR
         return (supply * supply * 1 ether) / PRICE_DIVISOR;
     }
     
@@ -494,7 +505,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         isVerified = market.isVerified;
         createdAt = market.createdAt;
         
-        // Current price to buy 1 claw (first claw = FREE)
+        // Current price to buy 1 claw
         currentPrice = (supply * supply * 1 ether) / PRICE_DIVISOR;
     }
     
@@ -573,6 +584,42 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         market.verifiedWallet = address(0);
 
         emit VerificationRevoked(handleHash, handle);
+    }
+
+    // ============ Whitelist Functions ============
+
+    /**
+     * @notice Set whitelist status for a single handle (owner only)
+     * @param handle The X handle to whitelist
+     * @param status True to whitelist, false to remove
+     * @dev Whitelisted handles get 1 bonus claw on first buy
+     */
+    function setWhitelisted(string calldata handle, bool status) external onlyOwner {
+        bytes32 handleHash = _hashHandle(handle);
+        whitelisted[handleHash] = status;
+        emit WhitelistUpdated(handleHash, handle, status);
+    }
+
+    /**
+     * @notice Batch set whitelist status for multiple handles (owner only)
+     * @param handles Array of X handles to whitelist
+     * @param status True to whitelist, false to remove
+     */
+    function setWhitelistedBatch(string[] calldata handles, bool status) external onlyOwner {
+        for (uint256 i = 0; i < handles.length; i++) {
+            bytes32 handleHash = _hashHandle(handles[i]);
+            whitelisted[handleHash] = status;
+            emit WhitelistUpdated(handleHash, handles[i], status);
+        }
+    }
+
+    /**
+     * @notice Check if a handle is whitelisted
+     * @param handle The X handle to check
+     * @return True if whitelisted
+     */
+    function isWhitelisted(string calldata handle) external view returns (bool) {
+        return whitelisted[_hashHandle(handle)];
     }
 
     // ============ Internal ============
