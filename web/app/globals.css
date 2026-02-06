@@ -698,6 +698,12 @@ body {
   color: var(--grey-500);
 }
 
+/* Homepage leaderboard — 4 columns, no fees */
+.home-leaderboard .leaderboard-header,
+.home-leaderboard .leaderboard-item {
+  grid-template-columns: 32px 1fr 90px 60px;
+}
+
 .leaderboard-verified-ring {
   border: 2px solid var(--red);
 }

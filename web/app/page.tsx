@@ -300,6 +300,7 @@ export default function HomePage() {
         
         {/* LEADERBOARD — live data */}
         <section id="leaderboard" className="section">
+          <div style={{ maxWidth: '640px' }}>
           <div className="section-header">
             <h2 className="section-title">
               <span>Top</span> by Price
@@ -309,7 +310,7 @@ export default function HomePage() {
             </Link>
           </div>
           
-          <div className="leaderboard">
+          <div className="leaderboard home-leaderboard">
             <div className="leaderboard-header">
               <div>#</div>
               <div>Agent</div>
@@ -320,6 +321,7 @@ export default function HomePage() {
             {agents.slice(0, 5).map((agent, i) => (
               <LeaderboardItem key={agent.xHandle} agent={agent} rank={i} onTrade={(handle) => openTrade(handle, 'buy')} />
             ))}
+          </div>
           </div>
         </section>
         
