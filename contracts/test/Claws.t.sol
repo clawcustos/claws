@@ -120,11 +120,13 @@ contract ClawsTest is Test {
     // ============ Buy Claws ============
     
     function test_BuyClaws() public {
-        // Whitelist handle for free first claw (legacy behavior)
+        // Whitelist handle for free first claw
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        uint256 price = claws.getBuyPriceByHandle(HANDLE, 1);
+        // For whitelisted first buy: price is calculated from supply 1, not 0
+        // Price for 1 claw at supply 1 = 1^2 / 16000 = 0.0000625 ETH
+        uint256 price = 0.0000625 ether;
         uint256 protocolFee = price * 500 / 10000;
         uint256 agentFee = price * 500 / 10000;
         uint256 totalCost = price + protocolFee + agentFee;
@@ -156,11 +158,16 @@ contract ClawsTest is Test {
     }
     
     function test_BuyClawsRefundsExcess() public {
-        // Whitelist handle for free first claw (legacy behavior)
+        // Whitelist handle for free first claw
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        (,,,uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // For whitelisted first buy: price is from supply 1, not 0
+        // Price = 1^2 / 16000 = 0.0000625 ETH
+        uint256 price = 0.0000625 ether;
+        uint256 protocolFee = price * 500 / 10000;
+        uint256 agentFee = price * 500 / 10000;
+        uint256 totalCost = price + protocolFee + agentFee;
         uint256 excess = 1 ether;
 
         uint256 balanceBefore = trader1.balance;
@@ -212,7 +219,9 @@ contract ClawsTest is Test {
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // Price from supply 1 for 1 claw = 1^2/16000 = 0.0000625 ETH
+        uint256 buyPrice = 0.0000625 ether;
+        uint256 buyCost = buyPrice + (buyPrice * 1000 / 10000);
         vm.prank(trader1);
         claws.buyClaws{value: buyCost}(HANDLE, 1, 0);
 
@@ -276,9 +285,12 @@ contract ClawsTest is Test {
         // At supply=0, next claw price = 0^2/16000 = 0
         assertEq(claws.getCurrentPrice(HANDLE), 0);
 
-        // Buy 1 claw (free for whitelisted, gets bonus)
+        // Buy 1 claw (whitelisted: free bonus + 1 paid from supply 1)
+        // Price from supply 1 = 1^2/16000 = 0.0000625 ETH + fees
+        uint256 price = 0.0000625 ether;
+        uint256 totalCost = price + (price * 1000 / 10000);
         vm.prank(trader1);
-        claws.buyClaws{value: 0}(HANDLE, 1, 0);
+        claws.buyClaws{value: totalCost}(HANDLE, 1, 0);
 
         // At supply=2 (1 + 1 bonus), next claw price = 2^2/16000 = 0.00025 ETH
         assertEq(claws.getCurrentPrice(HANDLE), 0.00025 ether);
@@ -366,8 +378,9 @@ contract ClawsTest is Test {
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        // First verify
-        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // First buy - price from supply 1 for 1 claw = 1^2/16000 = 0.0000625 ETH
+        uint256 buyPrice = 0.0000625 ether;
+        uint256 buyCost = buyPrice + (buyPrice * 1000 / 10000);
         vm.prank(trader1);
         claws.buyClaws{value: buyCost}(HANDLE, 1, 0);
 
@@ -1130,8 +1143,11 @@ contract ClawsTest is Test {
         assertFalse(claws.paused());
 
         // Can trade again (whitelisted gets bonus)
+        // Price from supply 1 for 1 claw = 1^2/16000 = 0.0000625 ETH
+        uint256 price = 0.0000625 ether;
+        uint256 totalCost = price + (price * 1000 / 10000);
         vm.prank(trader1);
-        claws.buyClaws{value: 0}(HANDLE, 1, 0);
+        claws.buyClaws{value: totalCost}(HANDLE, 1, 0);
         assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
     }
     
@@ -1245,17 +1261,17 @@ contract ClawsTest is Test {
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        // First buy: pay for 1 claw, receive 2 (bonus)
-        (uint256 price, uint256 protocolFee, uint256 agentFee, uint256 totalCost) =
-            claws.getBuyCostBreakdown(HANDLE, 1);
-
-        // Price for 1 claw at supply 0
-        assertEq(price, 0); // Still 0 at supply 0
+        // For whitelisted first buy: price is calculated from supply 1
+        // Price for 1 claw from supply 1 = 1^2/16000 = 0.0000625 ETH
+        uint256 price = 0.0000625 ether;
+        uint256 protocolFee = price * 500 / 10000;
+        uint256 agentFee = price * 500 / 10000;
+        uint256 totalCost = price + protocolFee + agentFee;
 
         vm.prank(trader1);
         claws.buyClaws{value: totalCost}(HANDLE, 1, 0);
 
-        // Should have 2 claws (1 paid + 1 bonus)
+        // Should have 2 claws (1 paid + 1 bonus at supply 0)
         assertEq(claws.getBalance(HANDLE, trader1), 2);
 
         // Supply should be 2
@@ -1268,8 +1284,13 @@ contract ClawsTest is Test {
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        // Buy 3 claws: pay for 3, receive 4 (1 bonus)
-        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 3);
+        // Buy 3 claws: pay for 3 priced from supply 1, receive 4 (1 bonus at supply 0)
+        // Price = sum of i^2 from 1 to 3 = 1^2 + 2^2 + 3^2 = 1 + 4 + 9 = 14
+        // Price in ETH = 14 / 16000 = 0.000875 ETH
+        uint256 price = 0.000875 ether;
+        uint256 protocolFee = price * 500 / 10000;
+        uint256 agentFee = price * 500 / 10000;
+        uint256 totalCost = price + protocolFee + agentFee;
 
         vm.prank(trader1);
         claws.buyClaws{value: totalCost}(HANDLE, 3, 0);
@@ -1330,7 +1351,9 @@ contract ClawsTest is Test {
         claws.setWhitelisted(HANDLE, true);
 
         // First buy on whitelisted market (gets bonus)
-        (,,, uint256 whitelistedCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // Price from supply 1 for 1 claw = 1^2/16000 = 0.0000625 ETH
+        uint256 whitelistedPrice = 0.0000625 ether;
+        uint256 whitelistedCost = whitelistedPrice + (whitelistedPrice * 1000 / 10000);
         vm.prank(trader1);
         claws.buyClaws{value: whitelistedCost}(HANDLE, 1, 0);
         assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
@@ -1385,7 +1408,9 @@ contract ClawsTest is Test {
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // Price from supply 1 for 1 claw = 1^2/16000 = 0.0000625 ETH
+        uint256 price = 0.0000625 ether;
+        uint256 totalCost = price + (price * 1000 / 10000);
         vm.prank(trader1);
         claws.buyClaws{value: totalCost}(HANDLE, 1, 0);
 
@@ -1432,7 +1457,9 @@ contract ClawsTest is Test {
         // Set up whitelisted market
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
-        (,,, uint256 wCost1) = claws.getBuyCostBreakdown(HANDLE, 1);
+        // Price from supply 1 for 1 claw = 1^2/16000 = 0.0000625 ETH
+        uint256 wPrice1 = 0.0000625 ether;
+        uint256 wCost1 = wPrice1 + (wPrice1 * 1000 / 10000);
         vm.prank(trader1);
         claws.buyClaws{value: wCost1}(HANDLE, 1, 0);
 
@@ -1480,16 +1507,22 @@ contract ClawsTest is Test {
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        // First claw should cost 0 (whitelisted)
+        // getBuyCostBreakdown returns price from supply 0 (0 ETH)
+        // But actual buy prices from supply 1 when whitelisted
         (uint256 price,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
-        assertEq(price, 0);
+        assertEq(price, 0); // View function still returns 0 from supply 0
         assertEq(totalCost, 0); // 0 + 0 fees = 0
 
-        // Can buy with 0 ETH and get bonus claw
-        vm.prank(trader1);
-        claws.buyClaws{value: 0}(HANDLE, 1, 0);
+        // Actual cost for whitelisted first buy is from supply 1
+        // Price for 1 claw at supply 1 = 1^2 / 16000 = 0.0000625 ETH
+        uint256 actualPrice = 0.0000625 ether;
+        uint256 actualTotalCost = actualPrice + (actualPrice * 1000 / 10000); // + 10% fees
 
-        assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 + 1 bonus
+        // Must pay for the claw priced from supply 1 (free claw is at supply 0)
+        vm.prank(trader1);
+        claws.buyClaws{value: actualTotalCost}(HANDLE, 1, 0);
+
+        assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 paid + 1 bonus (free at supply 0)
     }
 
     function test_FirstClawNotFreeForNonWhitelisted() public {
