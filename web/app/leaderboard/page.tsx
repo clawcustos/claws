@@ -8,7 +8,6 @@ import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { TradeModal } from '@/components/trade-modal';
 
-// Single leaderboard row
 function LeaderboardRow({ agent, rank, onTrade, ethUsd }: { 
   agent: ReturnType<typeof getAgentList>[0]; 
   rank: number;
@@ -24,112 +23,72 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
   const feesETH = market?.pendingFees ? parseFloat(formatEther(market.pendingFees)) : 0;
   const feesUsd = feesETH * ethUsd;
   
+  const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+  
   return (
-    <div 
-      onClick={() => onTrade(agent.xHandle)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0.875rem 1rem',
-        borderBottom: '1px solid var(--grey-800)',
-        gap: '0.75rem',
-        cursor: 'pointer',
-        transition: 'background 0.15s',
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--black-hover)'}
-      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-    >
+    <div className="leaderboard-item" onClick={() => onTrade(agent.xHandle)}>
       {/* Rank */}
-      <div style={{ 
-        color: rank <= 3 ? 'var(--red)' : 'var(--grey-500)',
-        fontWeight: 700,
-        fontSize: '0.875rem',
-        width: '24px',
-        textAlign: 'center',
-        flexShrink: 0,
-      }}>
-        {rank}
-      </div>
+      <div className={`leaderboard-rank ${rankClass}`}>{rank}</div>
       
-      {/* Avatar + Name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flex: 1, minWidth: 0 }}>
+      {/* Agent */}
+      <div className="leaderboard-agent">
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <img 
             src={agent.xProfileImage || `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`}
             alt={agent.name}
             width={36}
             height={36}
-            style={{ 
-              borderRadius: '50%',
-              border: isVerified ? '2px solid var(--red)' : '2px solid transparent',
-            }}
+            className={`leaderboard-avatar ${isVerified ? 'leaderboard-verified-ring' : ''}`}
+            style={{ borderRadius: '50%' }}
             onError={(e) => {
               (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${agent.name}&background=dc2626&color=fff`;
             }}
           />
           {isVerified && (
-            <div style={{
-              position: 'absolute',
-              bottom: '-1px',
-              right: '-1px',
-              width: '14px',
-              height: '14px',
-              borderRadius: '50%',
-              background: 'var(--red)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.5rem',
-              border: '2px solid var(--black)',
-            }}>
-              ✓
-            </div>
+            <div className="leaderboard-verified-badge">✓</div>
           )}
         </div>
         <div style={{ minWidth: 0 }}>
           <Link 
             href={`/agent/${agent.xHandle}`}
+            className="leaderboard-name"
             style={{ 
-              fontWeight: 600, 
-              fontSize: '0.875rem', 
               color: 'inherit', 
               textDecoration: 'none',
               overflow: 'hidden', 
               textOverflow: 'ellipsis', 
               whiteSpace: 'nowrap',
               display: 'block',
+              fontSize: '0.875rem',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {agent.name}
           </Link>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)' }}>@{agent.xHandle}</div>
+          <div className="leaderboard-handle" style={{ fontSize: '0.6875rem' }}>@{agent.xHandle}</div>
         </div>
       </div>
       
       {/* Price */}
-      <div style={{ textAlign: 'right', fontSize: '0.8125rem', flexShrink: 0 }}>
+      <div className="leaderboard-price" style={{ fontSize: '0.8125rem' }}>
         {isLoading ? '...' : supply === 0 ? (
-          <span style={{ 
-            color: 'var(--red)', background: 'rgba(220,38,38,0.15)', 
-            padding: '0.125rem 0.5rem', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: 700,
-          }}>FREE</span>
+          <span className="badge-free">FREE</span>
         ) : (
           <span className="mono">{price < 0.0001 ? '<0.0001' : formatETH(price)} ETH</span>
         )}
       </div>
       
-      {/* Fees Earned */}
-      <div style={{ textAlign: 'right', fontSize: '0.8125rem', flexShrink: 0, minWidth: '54px' }}>
+      {/* Fees */}
+      <div className="leaderboard-fees">
         {isLoading ? '...' : feesETH === 0 ? (
           <span style={{ color: 'var(--grey-600)' }}>—</span>
         ) : (
           <div>
-            <span className="mono" style={{ color: 'var(--green, #22c55e)' }}>
+            <span className="leaderboard-fees-value">
               {feesETH < 0.0001 ? '<0.0001' : formatETH(feesETH)}
             </span>
             {feesUsd > 0.01 && (
-              <div style={{ fontSize: '0.625rem', color: 'var(--grey-500)' }}>
+              <div className="leaderboard-fees-usd">
                 ${feesUsd < 1 ? feesUsd.toFixed(2) : feesUsd.toFixed(0)}
               </div>
             )}
@@ -138,7 +97,7 @@ function LeaderboardRow({ agent, rank, onTrade, ethUsd }: {
       </div>
       
       {/* Supply */}
-      <div style={{ textAlign: 'right', color: 'var(--grey-400)', fontSize: '0.8125rem', width: '40px', flexShrink: 0 }}>
+      <div className="leaderboard-supply" style={{ fontSize: '0.8125rem' }}>
         {isLoading ? '...' : supply}
       </div>
     </div>
@@ -158,11 +117,11 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      <main style={{ padding: 'calc(var(--header-height) + 1rem) 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '700px', margin: '0 auto' }}>
+      <main style={{ padding: 'calc(var(--header-height) + var(--ticker-height, 32px) + 1rem) 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '700px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-          <span style={{ color: 'var(--red)' }}>Top</span> Agents
+          <span className="text-red">Top</span> Agents
         </h1>
-        <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+        <p className="text-grey" style={{ marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Live from the Claws contract on Base
         </p>
 
@@ -184,31 +143,15 @@ export default function LeaderboardPage() {
         </div>
         
         {/* Table */}
-        <div style={{ 
-          background: 'var(--black-surface)', 
-          borderRadius: '12px',
-          border: '1px solid var(--grey-800)',
-          overflow: 'hidden',
-        }}>
-          {/* Header */}
-          <div style={{
-            display: 'flex',
-            padding: '0.625rem 1rem',
-            borderBottom: '1px solid var(--grey-700)',
-            fontSize: '0.625rem',
-            color: 'var(--grey-500)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            gap: '0.75rem',
-          }}>
-            <div style={{ width: '24px', textAlign: 'center' }}>#</div>
-            <div style={{ flex: 1 }}>Agent</div>
+        <div className="leaderboard">
+          <div className="leaderboard-header">
+            <div style={{ textAlign: 'center' }}>#</div>
+            <div>Agent</div>
             <div style={{ textAlign: 'right' }}>Price</div>
-            <div style={{ textAlign: 'right', minWidth: '54px' }}>Fees</div>
-            <div style={{ textAlign: 'right', width: '40px' }}>Supply</div>
+            <div style={{ textAlign: 'right' }}>Fees</div>
+            <div style={{ textAlign: 'right' }}>Supply</div>
           </div>
           
-          {/* Rows */}
           {agents.map((agent, i) => (
             <LeaderboardRow 
               key={agent.xHandle} 
@@ -221,7 +164,6 @@ export default function LeaderboardPage() {
         </div>
       </main>
       
-      {/* Trade Modal */}
       {selectedAgent && (
         <TradeModal
           isOpen={tradeModal.isOpen}

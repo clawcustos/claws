@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AGENTS } from '@/lib/agents';
 
 interface Props {
   params: Promise<{ handle: string }>;
@@ -7,36 +8,33 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
+  const normalizedHandle = handle.toLowerCase();
+  const agent = AGENTS[normalizedHandle];
   
+  if (!agent) {
+    return {
+      title: 'Agent Not Found',
+      description: 'This agent does not exist or has not been added yet.',
+    };
+  }
+
+  const title = `@${agent.xHandle}`;
+  const displayTitle = `@${agent.xHandle} | Claws.tech`;
+  const description = agent.description || `Trade ${agent.name}'s claws on Claws. Bonding curve pricing, instant liquidity, and verified agent markets.`;
+
   return {
-    title: `@${handle}`,
-    description: `Trade claws on @${handle}. Buy and sell using bonding curves on Base.`,
+    title,
+    description,
     openGraph: {
-      title: `@${handle} | Claws.tech`,
-      description: `Trade claws on @${handle}. Buy and sell using bonding curves on Base.`,
-      images: [`/api/og?handle=${handle}`],
+      title: displayTitle,
+      description,
+      images: [`/api/og/agent?handle=${agent.xHandle}`],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `@${handle} | Claws.tech`,
-      description: `Trade claws on @${handle}. Buy and sell using bonding curves on Base.`,
-      images: [`/api/og?handle=${handle}`],
-    },
-    other: {
-      'fc:miniapp': JSON.stringify({
-        version: '1',
-        imageUrl: `https://claws.tech/api/og?handle=${handle}`,
-        button: {
-          title: `Trade @${handle}`,
-          action: {
-            type: 'launch_frame',
-            name: 'Claws',
-            url: `https://claws.tech/agent/${handle}`,
-            splashImageUrl: 'https://claws.tech/logo.jpg',
-            splashBackgroundColor: '#0a0a0a',
-          },
-        },
-      }),
+      title: displayTitle,
+      description,
+      images: [`/api/og/agent?handle=${agent.xHandle}`],
     },
   };
 }

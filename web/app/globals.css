@@ -599,26 +599,29 @@ body {
 
 .leaderboard-header {
   display: grid;
-  grid-template-columns: 60px 1fr 100px 80px;
-  padding: 1rem 1.5rem;
+  grid-template-columns: 36px 1fr auto auto auto;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
   background: var(--black);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 600;
   color: var(--grey-500);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  border-bottom: 1px solid var(--grey-800);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--grey-700);
 }
 
 .leaderboard-item {
   display: grid;
-  grid-template-columns: 60px 1fr 100px 80px;
+  grid-template-columns: 36px 1fr auto auto auto;
+  gap: 0.75rem;
   align-items: center;
-  padding: 1rem 1.5rem;
+  padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--grey-800);
   transition: background 0.15s;
   text-decoration: none;
   color: inherit;
+  cursor: pointer;
 }
 
 .leaderboard-item:last-child {
@@ -678,6 +681,49 @@ body {
   font-family: var(--font-mono);
   color: var(--grey-400);
   text-align: right;
+}
+
+.leaderboard-fees {
+  font-family: var(--font-mono);
+  text-align: right;
+  min-width: 54px;
+}
+
+.leaderboard-fees-value {
+  color: var(--green, #22c55e);
+}
+
+.leaderboard-fees-usd {
+  font-size: 0.625rem;
+  color: var(--grey-500);
+}
+
+.leaderboard-verified-ring {
+  border: 2px solid var(--red);
+}
+
+.leaderboard-verified-badge {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  border: 2px solid var(--black);
+}
+
+.badge-free {
+  color: var(--red);
+  background: rgba(220, 38, 38, 0.15);
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
 }
 
 /* ============================================
@@ -943,7 +989,9 @@ body {
   
   .leaderboard-header,
   .leaderboard-item {
-    grid-template-columns: 50px 1fr 80px;
+    grid-template-columns: 24px 1fr auto auto;
+    gap: 0.5rem;
+    padding: 0.75rem 0.75rem;
   }
   
   .leaderboard-supply {
