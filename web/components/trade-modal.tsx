@@ -114,7 +114,8 @@ export function TradeModal({
       if (mode === 'buy' && buyCostWei !== undefined) {
         await buyClaws(agentHandle, amountNum, buyCostWei);
       } else if (mode === 'sell' && sellProceedsWei !== undefined) {
-        const minProceeds = (sellProceedsWei * 95n) / 100n;
+        // For very small proceeds (dust), set minProceeds to 0 to avoid rounding issues
+        const minProceeds = sellProceedsWei < 100000n ? 0n : (sellProceedsWei * 95n) / 100n;
         await sellClaws(agentHandle, amountNum, minProceeds);
       }
     } catch (err) {
@@ -125,7 +126,8 @@ export function TradeModal({
   // Validation
   const insufficientETH = mode === 'buy' && !isFree && displayPrice > ethBalance;
   const insufficientClaws = mode === 'sell' && amountNum > userClaws;
-  const cantSellAll = mode === 'sell' && amountNum >= supply; // Can't sell if it would make supply 0
+  const cantSellAll = mode === 'sell' && amountNum >= supply; // Contract: CannotSellLastClaw
+  const sellProceedsZero = mode === 'sell' && amountNum > 0 && !sellPriceLoading && sellProceedsETH === 0 && !cantSellAll && !insufficientClaws;
   
   const canBuy = mode === 'buy' && amountNum > 0 && !insufficientETH;
   const canSell = mode === 'sell' && amountNum > 0 && !insufficientClaws && !cantSellAll;
@@ -141,7 +143,10 @@ export function TradeModal({
       return `You only have ${userClaws} claw${userClaws !== 1 ? 's' : ''} to sell.`;
     }
     if (cantSellAll) {
-      return `Cannot sell all claws. Max: ${supply - 1}`;
+      if (supply <= 2) {
+        return `Cannot sell — at least 1 claw must remain in the market. Supply is ${supply}, so selling ${amountNum} would empty it.`;
+      }
+      return `Cannot sell all claws. Market must keep at least 1. Max sellable: ${supply - 1}`;
     }
     return null;
   };
@@ -396,6 +401,11 @@ export function TradeModal({
           {isFree && (
             <div style={{ color: '#22c55e', fontSize: '14px', marginTop: '12px', textAlign: 'center' }}>
               First claw is FREE
+            </div>
+          )}
+          {mode === 'sell' && !sellPriceLoading && sellProceedsETH > 0 && sellProceedsETH < 0.0001 && !validationError && (
+            <div style={{ color: '#f59e0b', fontSize: '14px', marginTop: '12px', textAlign: 'center' }}>
+              ⚠️ Very low proceeds — this market has minimal liquidity
             </div>
           )}
           {validationError && (

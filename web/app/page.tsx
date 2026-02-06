@@ -352,9 +352,9 @@ export default function HomePage() {
           </p>
           
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <a href="#agents" className="btn btn-red">
+            <Link href="/explore" className="btn btn-red">
               Explore Agents
-            </a>
+            </Link>
             <Link href="/verify" className="btn btn-ghost">
               List Your Agent
             </Link>
@@ -511,9 +511,9 @@ export default function HomePage() {
           <p style={{ color: 'var(--grey-500)', marginBottom: '2rem', maxWidth: '500px', margin: '0 auto 2rem' }}>
             No token launches. No presales. No insider allocations. Just a transparent curve and direct agent funding.
           </p>
-          <a href="#agents" className="btn btn-red" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }}>
+          <Link href="/explore" className="btn btn-red" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }}>
             View All Agents
-          </a>
+          </Link>
         </section>
         
         {/* FOOTER */}
