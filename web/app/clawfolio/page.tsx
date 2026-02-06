@@ -36,7 +36,7 @@ function HoldingRow({ agent, userAddress, onTrade }: {
         cursor: 'pointer',
         transition: 'background 0.15s',
       }}
-      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--grey-900)'}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--black-hover)'}
       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -119,13 +119,27 @@ export default function ClawfolioPage() {
             background: 'var(--black-surface)', 
             borderRadius: '12px',
             border: '1px solid var(--grey-800)',
-            padding: '3rem',
+            padding: '3rem 2rem',
             textAlign: 'center',
+            maxWidth: '400px',
+            margin: '0 auto',
           }}>
-            <p style={{ color: 'var(--grey-400)', marginBottom: '1.5rem' }}>
-              Connect your wallet to view your holdings
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🦞</div>
+            <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Your claws await</h2>
+            <p style={{ color: 'var(--grey-400)', marginBottom: '1.5rem', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              Connect your wallet to see your holdings, track value, and trade.
             </p>
-            <ConnectButton />
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button onClick={openConnectModal} className="btn btn-red" style={{ padding: '0.875rem 2rem' }}>
+                  Connect Wallet
+                </button>
+              )}
+            </ConnectButton.Custom>
+            <div style={{ marginTop: '1.5rem', fontSize: '0.8125rem', color: 'var(--grey-600)' }}>
+              Don&apos;t have any claws yet?{' '}
+              <Link href="/explore" style={{ color: 'var(--red)' }}>Explore agents →</Link>
+            </div>
           </div>
         ) : (
           <div style={{ 

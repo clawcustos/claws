@@ -12,6 +12,7 @@ import {
 import { TradeModal } from '@/components/trade-modal';
 import { AgentCard } from '@/components/agent-card';
 import { BondingCurveChart } from '@/components/bonding-curve-chart';
+import { ActivityTicker } from '@/components/activity-ticker';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useProtocolStats } from '@/hooks/useProtocolStats';
 import { useETHPrice } from '@/hooks/useETHPrice';
@@ -92,6 +93,9 @@ export default function HomePage() {
   return (
     <>
       <main className="main">
+        {/* LIVE ACTIVITY TICKER */}
+        <ActivityTicker />
+        
         {/* HERO */}
         <section className="hero">
           <img 
