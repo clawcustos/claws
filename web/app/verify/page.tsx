@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { signIn, signOut, useSession } from 'next-auth/react';
-import { formatEther } from 'viem';
+import { formatEther, keccak256, toBytes } from 'viem';
 // Header + BottomNav provided by layout
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
 import { useMarket } from '@/hooks/useClaws';
@@ -46,6 +46,48 @@ function AgentDashboard({ handle, market }: {
   
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  // Metadata editing
+  const handleHash = keccak256(toBytes(handle.toLowerCase()));
+  const { data: metadata } = useReadContract({
+    address: getContractAddress(8453),
+    abi: CLAWS_ABI,
+    functionName: 'agentMetadata',
+    args: [handleHash],
+  }) as { data: readonly [string, string, `0x${string}`] | undefined };
+
+  const [bio, setBio] = useState('');
+  const [website, setWebsite] = useState('');
+  const [token, setToken] = useState('');
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [metaSaved, setMetaSaved] = useState(false);
+  
+  const { writeContract: writeMetadata, data: metaHash, isPending: metaPending } = useWriteContract();
+  const { isLoading: metaConfirming, isSuccess: metaSuccess } = useWaitForTransactionReceipt({ hash: metaHash });
+
+  // Load existing metadata into form
+  useEffect(() => {
+    if (metadata) {
+      setBio(metadata[0] || '');
+      setWebsite(metadata[1] || '');
+      const tokenAddr = metadata[2];
+      setToken(tokenAddr && tokenAddr !== '0x0000000000000000000000000000000000000000' ? tokenAddr : '');
+    }
+  }, [metadata]);
+
+  useEffect(() => {
+    if (metaSuccess) setMetaSaved(true);
+  }, [metaSuccess]);
+
+  const handleSaveMetadata = () => {
+    const tokenAddress = (token && token.startsWith('0x') ? token : '0x0000000000000000000000000000000000000000') as `0x${string}`;
+    writeMetadata({
+      address: getContractAddress(8453),
+      abi: CLAWS_ABI,
+      functionName: 'setAgentMetadata',
+      args: [handle, bio, website, tokenAddress],
+    });
+  };
   
   const handleClaimFees = () => {
     writeContract({
@@ -193,6 +235,145 @@ function AgentDashboard({ handle, market }: {
           >
             ✓ Fees claimed! View on Basescan →
           </a>
+        </div>
+      )}
+
+      {/* Metadata Editing */}
+      {isOwner && (
+        <div style={{
+          background: 'var(--black-surface)',
+          border: '1px solid var(--grey-800)',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          marginTop: '1.5rem',
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            marginBottom: editingMeta ? '1.25rem' : 0,
+          }}>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+              On-Chain Profile
+            </div>
+            {!editingMeta && (
+              <button 
+                onClick={() => setEditingMeta(true)}
+                className="btn btn-ghost"
+                style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem' }}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          
+          {editingMeta && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--grey-500)', display: 'block', marginBottom: '0.375rem' }}>
+                  Bio <span style={{ color: 'var(--grey-700)' }}>({bio.length}/280)</span>
+                </label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value.slice(0, 280))}
+                  placeholder="What does your agent do?"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    background: 'var(--black)',
+                    border: '1px solid var(--grey-800)',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    color: 'white',
+                    fontSize: '0.875rem',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--grey-500)', display: 'block', marginBottom: '0.375rem' }}>
+                  Website
+                </label>
+                <input
+                  type="url"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://youragent.com"
+                  style={{
+                    width: '100%',
+                    background: 'var(--black)',
+                    border: '1px solid var(--grey-800)',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    color: 'white',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--grey-500)', display: 'block', marginBottom: '0.375rem' }}>
+                  Token Address <span style={{ color: 'var(--grey-700)' }}>(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="0x..."
+                  style={{
+                    width: '100%',
+                    background: 'var(--black)',
+                    border: '1px solid var(--grey-800)',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    color: 'white',
+                    fontSize: '0.875rem',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={handleSaveMetadata}
+                  disabled={metaPending || metaConfirming}
+                  className="btn btn-red"
+                  style={{ flex: 1, padding: '0.75rem' }}
+                >
+                  {metaPending || metaConfirming ? 'Saving...' : 'Save On-Chain'}
+                </button>
+                <button
+                  onClick={() => setEditingMeta(false)}
+                  className="btn btn-ghost"
+                  style={{ padding: '0.75rem' }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {metaSaved && (
+                <div style={{ color: '#22c55e', fontSize: '0.8125rem', textAlign: 'center' }}>
+                  ✓ Metadata saved on-chain!
+                  {metaHash && (
+                    <a 
+                      href={`https://basescan.org/tx/${metaHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#22c55e', marginLeft: '0.5rem' }}
+                    >
+                      View tx →
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {!editingMeta && metadata && (metadata[0] || metadata[1]) && (
+            <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--grey-400)' }}>
+              {metadata[0] && <div style={{ marginBottom: '0.25rem' }}>{metadata[0]}</div>}
+              {metadata[1] && <div><a href={metadata[1]} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)' }}>{metadata[1]}</a></div>}
+            </div>
+          )}
         </div>
       )}
 

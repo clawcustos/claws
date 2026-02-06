@@ -109,6 +109,17 @@ export const CLAWS_ABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  {
+    inputs: [{ name: 'handleHash', type: 'bytes32' }],
+    name: 'agentMetadata',
+    outputs: [
+      { name: 'bio', type: 'string' },
+      { name: 'website', type: 'string' },
+      { name: 'token', type: 'address' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
   // Write functions
   {
     inputs: [{ name: 'handle', type: 'string' }],
@@ -148,6 +159,18 @@ export const CLAWS_ABI = [
       { name: 'signature', type: 'bytes' },
     ],
     name: 'verifyAndClaim',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { name: 'handle', type: 'string' },
+      { name: 'bio', type: 'string' },
+      { name: 'website', type: 'string' },
+      { name: 'token', type: 'address' },
+    ],
+    name: 'setAgentMetadata',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
