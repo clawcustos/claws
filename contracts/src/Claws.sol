@@ -89,6 +89,8 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     event FeesClaimed(bytes32 indexed handleHash, address wallet, uint256 amount);
     event VerifierUpdated(address oldVerifier, address newVerifier);
     event TreasuryUpdated(address oldTreasury, address newTreasury);
+    event AgentWalletUpdated(bytes32 indexed handleHash, string handle, address oldWallet, address newWallet);
+    event VerificationRevoked(bytes32 indexed handleHash, string handle);
     
     // ============ Errors ============
     
@@ -107,6 +109,8 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     error InvalidHandle();
     error ZeroAddress();
     error CannotSellLastClaw();
+    error MarketNotVerified();
+    error AlreadyRevoked();
     
     // ============ Constructor ============
     
@@ -528,7 +532,46 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
     }
-    
+
+    /**
+     * @notice Update the verified wallet for a market (owner only)
+     * @param handle The X handle
+     * @param newWallet The new wallet address to set
+     */
+    function updateAgentWallet(string calldata handle, address newWallet) external onlyOwner {
+        if (newWallet == address(0)) revert ZeroAddress();
+
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+
+        if (market.createdAt == 0) revert MarketDoesNotExist();
+        if (!market.isVerified) revert MarketNotVerified();
+
+        address oldWallet = market.verifiedWallet;
+        market.verifiedWallet = newWallet;
+
+        emit AgentWalletUpdated(handleHash, handle, oldWallet, newWallet);
+    }
+
+    /**
+     * @notice Revoke verification for a market (owner only)
+     * @dev Sets isVerified to false and verifiedWallet to address(0)
+     * @dev Pending fees remain frozen until re-verification
+     * @param handle The X handle
+     */
+    function revokeVerification(string calldata handle) external onlyOwner {
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+
+        if (market.createdAt == 0) revert MarketDoesNotExist();
+        if (!market.isVerified) revert MarketNotVerified();
+
+        market.isVerified = false;
+        market.verifiedWallet = address(0);
+
+        emit VerificationRevoked(handleHash, handle);
+    }
+
     // ============ Internal ============
     
     function _hashHandle(string memory handle) internal pure returns (bytes32) {
