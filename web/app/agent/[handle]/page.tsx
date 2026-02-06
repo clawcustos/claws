@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { formatEther } from 'viem';
+import { formatEther, keccak256, toBytes } from 'viem';
 import { TradeModal } from '@/components/trade-modal';
 import { getAgent, formatETH } from '@/lib/agents';
 import { useMarket, useCurrentPrice, useClawBalance } from '@/hooks/useClaws';
@@ -175,6 +175,20 @@ export default function AgentPage() {
   const { priceETH: livePriceETH } = useCurrentPrice(handle);
   const { balance: userBalance } = useClawBalance(handle, address);
   const { holders, isLoading: holdersLoading } = useHolders(handle);
+  
+  // Read on-chain metadata
+  const handleHash = keccak256(toBytes(handle));
+  const { data: metadata } = useReadContract({
+    address: getContractAddress(BASE_CHAIN_ID),
+    abi: CLAWS_ABI,
+    functionName: 'agentMetadata',
+    args: [handleHash],
+    query: { staleTime: 60_000 },
+  }) as { data: readonly [string, string, `0x${string}`] | undefined };
+  
+  const onChainBio = metadata?.[0] || '';
+  const onChainWebsite = metadata?.[1] || '';
+  const onChainToken = metadata?.[2] && metadata[2] !== '0x0000000000000000000000000000000000000000' ? metadata[2] : '';
 
   // Use live data
   const isVerified = market?.isVerified || false;
@@ -274,8 +288,32 @@ export default function AgentPage() {
                 @{agent.xHandle}
               </a>
               <p style={{ color: 'var(--grey-400)', marginTop: '0.75rem', fontSize: '0.9375rem' }}>
-                {agent.description}
+                {onChainBio || agent.description}
               </p>
+              {(onChainWebsite || onChainToken) && (
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                  {onChainWebsite && (
+                    <a 
+                      href={onChainWebsite}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--red)', fontSize: '0.8125rem', textDecoration: 'none' }}
+                    >
+                      🌐 {onChainWebsite.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                    </a>
+                  )}
+                  {onChainToken && (
+                    <a 
+                      href={`https://basescan.org/token/${onChainToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--grey-500)', fontSize: '0.8125rem', textDecoration: 'none', fontFamily: 'var(--font-mono)' }}
+                    >
+                      🪙 {onChainToken.slice(0, 6)}...{onChainToken.slice(-4)}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

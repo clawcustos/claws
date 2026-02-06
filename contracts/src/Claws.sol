@@ -195,7 +195,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
      * @param handle The X handle
      * @param amount Number of whole claws to buy (minimum 1, no fractions)
      * @param maxTotalCost Maximum total cost willing to pay (0 = no limit, for backwards compatibility)
-     * @dev Whitelisted handles get 1 bonus claw on first buy (supply == 0)
+     * @dev Whitelisted handles get 1 free claw on first buy (supply == 0).
+     *      The free claw is minted at supply 0 (no ETH cost), then `amount` claws
+     *      are priced from supply 1 onward, ensuring proper liquidity backing.
      * @dev Non-whitelisted handles must buy >= 2 claws on first buy
      */
     function buyClaws(string calldata handle, uint256 amount, uint256 maxTotalCost) external payable nonReentrant whenNotPaused {
@@ -212,12 +214,11 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
         }
 
         // Check whitelist status for first buy
-        bool isWhitelist = whitelisted[handleHash];
         uint256 mintAmount = amount;
 
         if (market.supply == 0) {
-            if (isWhitelist) {
-                // Whitelisted: bonus claw on first buy
+            if (whitelisted[handleHash]) {
+                // Whitelisted: 1 free claw, then price remaining from supply 1
                 mintAmount = amount + 1;
             } else {
                 // Non-whitelisted: must buy at least 2 claws
@@ -225,7 +226,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
             }
         }
 
-        uint256 price = getBuyPrice(handleHash, amount);
+        // Price calculation: if bonus (mintAmount > amount), price `amount` claws from supply 1
+        // This ensures proper liquidity backing — free claw is at supply 0 (costs 0)
+        uint256 price = (mintAmount > amount) ? _getPrice(1, amount) : getBuyPrice(handleHash, amount);
         uint256 protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
         uint256 agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         uint256 totalCost = price + protocolFee + agentFee;
