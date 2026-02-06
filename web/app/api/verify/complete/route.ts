@@ -101,6 +101,21 @@ export async function POST(req: NextRequest) {
       transport: http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL),
     })
 
+    // Check if market exists on-chain
+    const exists = await publicClient.readContract({
+      address: contractAddress,
+      abi: CLAWS_ABI,
+      functionName: 'marketExists',
+      args: [handle],
+    }) as boolean
+
+    if (!exists) {
+      return NextResponse.json(
+        { error: `Market for @${handle} doesn't exist yet. Someone needs to buy claws first to create the market, then you can verify.` },
+        { status: 400 }
+      )
+    }
+
     // Check if already verified on-chain
     const market = await publicClient.readContract({
       address: contractAddress,
