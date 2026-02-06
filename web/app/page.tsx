@@ -323,8 +323,8 @@ export default function HomePage() {
           <div className="home-leaderboards-grid">
             {/* Top by Price */}
             <div className="home-leaderboard-col">
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--grey-300)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--red)' }}>📈</span> Top by Price
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--grey-300)', marginBottom: '0.75rem' }}>
+                Top by Price
               </div>
               <div className="leaderboard home-leaderboard">
                 <div className="leaderboard-header">
@@ -345,8 +345,8 @@ export default function HomePage() {
 
             {/* Top by Volume */}
             <div className="home-leaderboard-col">
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--grey-300)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--red)' }}>🔥</span> Top by Volume
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--grey-300)', marginBottom: '0.75rem' }}>
+                Top by Volume
               </div>
               <div className="leaderboard home-leaderboard">
                 <div className="leaderboard-header">

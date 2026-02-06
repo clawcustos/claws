@@ -705,6 +705,7 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   max-width: 900px;
+  margin: 0 auto;
 }
 
 .home-leaderboard-col {

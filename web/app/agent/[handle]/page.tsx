@@ -65,43 +65,43 @@ function AgentDashboard({ handle, market }: {
       background: 'var(--black-surface)',
       border: `1px solid ${isOwner ? 'var(--red)' : 'var(--grey-800)'}`,
       borderRadius: '12px',
-      padding: '1.5rem',
+      padding: '1.25rem',
       marginBottom: '1.5rem',
+      maxWidth: '480px',
     }}>
       <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '0.5rem', 
-        marginBottom: '1rem',
-        fontSize: '0.875rem',
+        fontSize: '0.75rem',
         color: 'var(--red)',
         fontWeight: 600,
+        marginBottom: '0.75rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
       }}>
         ✓ Verified Agent
       </div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
         <div>
-          <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+          <div className="mono" style={{ fontSize: '1rem', fontWeight: 700 }}>
             {formatETH(pendingFeesETH)} ETH
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)' }}>Pending Fees</div>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)' }}>Pending Fees</div>
         </div>
         <div>
-          <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+          <div className="mono" style={{ fontSize: '1rem', fontWeight: 700 }}>
             {formatETH(lifetimeFeesETH)} ETH
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)' }}>Lifetime Fees</div>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)' }}>Lifetime Fees</div>
         </div>
         <div>
-          <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+          <div className="mono" style={{ fontSize: '1rem', fontWeight: 700 }}>
             {formatETH(lifetimeVolumeETH)} ETH
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)' }}>Trade Volume</div>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)' }}>Trade Volume</div>
         </div>
       </div>
       
-      <div style={{ fontSize: '0.8125rem', color: 'var(--grey-500)', marginBottom: '1rem' }}>
+      <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)', marginBottom: '0.75rem' }}>
         Wallet: <span className="mono" style={{ color: 'var(--grey-400)' }}>
           {market.verifiedWallet.slice(0, 6)}...{market.verifiedWallet.slice(-4)}
         </span>
