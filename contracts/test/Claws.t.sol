@@ -418,7 +418,362 @@ contract ClawsTest is Test {
     }
     
     // ============ Admin Functions ============
-    
+
+    function test_UpdateAgentWallet() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Owner updates wallet
+        address newWallet = address(99);
+        vm.prank(owner);
+        claws.updateAgentWallet(HANDLE, newWallet);
+
+        (,,,,address verifiedWallet, bool isVerified,,) = claws.getMarket(HANDLE);
+        assertEq(verifiedWallet, newWallet);
+        assertTrue(isVerified);
+    }
+
+    function test_UpdateAgentWalletRevertsNotOwner() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Non-owner tries to update
+        address newWallet = address(99);
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.updateAgentWallet(HANDLE, newWallet);
+    }
+
+    function test_UpdateAgentWalletRevertsZeroAddress() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Owner tries to set zero address
+        vm.prank(owner);
+        vm.expectRevert(Claws.ZeroAddress.selector);
+        claws.updateAgentWallet(HANDLE, address(0));
+    }
+
+    function test_UpdateAgentWalletRevertsMarketNotVerified() public {
+        // Create market but don't verify
+        claws.createMarket(HANDLE);
+
+        // Owner tries to update wallet on unverified market
+        vm.prank(owner);
+        vm.expectRevert(Claws.MarketNotVerified.selector);
+        claws.updateAgentWallet(HANDLE, address(99));
+    }
+
+    function test_RevokeVerification() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Owner revokes verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        (,,,,address verifiedWallet, bool isVerified,,) = claws.getMarket(HANDLE);
+        assertEq(verifiedWallet, address(0));
+        assertFalse(isVerified);
+    }
+
+    function test_RevokeVerificationRevertsNotOwner() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Non-owner tries to revoke
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.revokeVerification(HANDLE);
+    }
+
+    function test_RevokeVerificationRevertsMarketNotVerified() public {
+        // Create market but don't verify
+        claws.createMarket(HANDLE);
+
+        // Owner tries to revoke unverified market
+        vm.prank(owner);
+        vm.expectRevert(Claws.MarketNotVerified.selector);
+        claws.revokeVerification(HANDLE);
+    }
+
+    function test_ClaimFeesFailsAfterRevocation() public {
+        // Setup: Buy claws, verify, buy more to generate fees
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Buy more to generate fees
+        (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader2);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+
+        // Revoke verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        // Original wallet should not be able to claim fees anymore
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.NotVerified.selector);
+        claws.claimFees(HANDLE);
+    }
+
+    function test_PendingFeesRemainAfterRevocation() public {
+        // Setup: Buy claws, verify, buy more to generate fees
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Buy more to generate fees
+        (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader2);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+
+        // Check pending fees
+        (,uint256 pendingFeesBefore,,,,,,) = claws.getMarket(HANDLE);
+        assertGt(pendingFeesBefore, 0);
+
+        // Revoke verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        // Pending fees should remain
+        (,uint256 pendingFeesAfter,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(pendingFeesAfter, pendingFeesBefore);
+    }
+
+    function test_SupplyAndBalancesUnchangedAfterRevocation() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        uint256 supplyBefore = claws.getBalance(HANDLE, agentWallet);
+        (uint256 marketSupplyBefore,,,,,,,) = claws.getMarket(HANDLE);
+
+        // Revoke verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        // Agent's balance should remain unchanged
+        assertEq(claws.getBalance(HANDLE, agentWallet), supplyBefore);
+
+        // Market supply should remain unchanged
+        (uint256 marketSupplyAfter,,,,,,,) = claws.getMarket(HANDLE);
+        assertEq(marketSupplyAfter, marketSupplyBefore);
+    }
+
+    function test_AgentCanReverifyAfterRevocation() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Revoke verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        // Re-verify with same wallet
+        uint256 newTimestamp = block.timestamp + 1;
+        uint256 newNonce = 99999;
+        bytes32 newMessageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, newTimestamp, newNonce));
+        bytes32 newEthSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", newMessageHash));
+        (v, r, s) = vm.sign(verifierPk, newEthSignedHash);
+        signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, newTimestamp, newNonce, signature);
+
+        (,,,,address verifiedWallet, bool isVerified,,) = claws.getMarket(HANDLE);
+        assertTrue(isVerified);
+        assertEq(verifiedWallet, agentWallet);
+    }
+
+    function test_AgentCanReverifyWithDifferentWalletAfterRevocation() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Revoke verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        // Re-verify with a different wallet
+        address newWallet = address(99);
+        uint256 newTimestamp = block.timestamp + 1;
+        uint256 newNonce = 99999;
+        bytes32 newMessageHash = keccak256(abi.encodePacked(HANDLE, newWallet, newTimestamp, newNonce));
+        bytes32 newEthSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", newMessageHash));
+        (v, r, s) = vm.sign(verifierPk, newEthSignedHash);
+        signature = abi.encodePacked(r, s, v);
+
+        vm.prank(newWallet);
+        claws.verifyAndClaim(HANDLE, newWallet, newTimestamp, newNonce, signature);
+
+        (,,,,address verifiedWallet, bool isVerified,,) = claws.getMarket(HANDLE);
+        assertTrue(isVerified);
+        assertEq(verifiedWallet, newWallet);
+    }
+
+    function test_PendingFeesClaimableAfterReverification() public {
+        // Setup: Buy claws, verify, buy more to generate fees
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Buy more to generate fees
+        (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader2);
+        claws.buyClaws{value: buyCost2}(HANDLE, 5);
+
+        // Track pending fees before revocation
+        (,uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
+        assertGt(pendingFees, 0);
+
+        // Revoke verification
+        vm.prank(owner);
+        claws.revokeVerification(HANDLE);
+
+        // Re-verify
+        address newWallet = address(99);
+        vm.deal(newWallet, 1 ether);
+        uint256 newTimestamp = block.timestamp + 1;
+        uint256 newNonce = 99999;
+        bytes32 newMessageHash = keccak256(abi.encodePacked(HANDLE, newWallet, newTimestamp, newNonce));
+        bytes32 newEthSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", newMessageHash));
+        (v, r, s) = vm.sign(verifierPk, newEthSignedHash);
+        signature = abi.encodePacked(r, s, v);
+
+        uint256 walletBefore = newWallet.balance;
+
+        vm.prank(newWallet);
+        claws.verifyAndClaim(HANDLE, newWallet, newTimestamp, newNonce, signature);
+
+        // New wallet should receive the pending fees that were frozen during revocation
+        assertEq(newWallet.balance - walletBefore, pendingFees);
+    }
+
     function test_SetVerifier() public {
         address newVerifier = address(99);
         
