@@ -49,8 +49,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
     uint256 public constant PRICE_DIVISOR = 16000;
     
     /// @notice EIP-712 typehash for verification signatures
+    /// @dev Field order: handle, wallet, timestamp, nonce — matches abi.encode in verifyAndClaim
     bytes32 public constant VERIFY_TYPEHASH = keccak256(
-        "Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)"
+        "Verify(string handle,address wallet,uint256 timestamp,uint256 nonce)"
     );
     
     // ============ State ============

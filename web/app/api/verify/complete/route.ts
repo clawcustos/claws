@@ -23,10 +23,9 @@ const WHITELISTED_AGENTS = [
  * 
  * Generate EIP-712 signed verification proof for agent verification.
  * 
- * NOTE: The contract has a field-order mismatch between its TYPEHASH and abi.encode:
- *   TYPEHASH: "Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)"
- *   abi.encode: (TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce)
- * So we must manually construct the digest to match the contract's encoding.
+ * EIP-712 field order (matching contract): handle, wallet, timestamp, nonce
+ * TYPEHASH: "Verify(string handle,address wallet,uint256 timestamp,uint256 nonce)"
+ * abi.encode: (TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -135,13 +134,12 @@ export async function POST(req: NextRequest) {
     const nonce = BigInt(Math.floor(Math.random() * 1000000000))
     
     // Construct the EXACT same digest the contract constructs:
-    // VERIFY_TYPEHASH = keccak256("Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)")
+    // VERIFY_TYPEHASH = keccak256("Verify(string handle,address wallet,uint256 timestamp,uint256 nonce)")
     const VERIFY_TYPEHASH = keccak256(
-      toBytes("Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)")
+      toBytes("Verify(string handle,address wallet,uint256 timestamp,uint256 nonce)")
     )
     
     // structHash = keccak256(abi.encode(VERIFY_TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce))
-    // NOTE: Contract encodes handle BEFORE wallet (doesn't match typehash order)
     const handleHash = keccak256(toBytes(handle))
     
     const structHash = keccak256(
