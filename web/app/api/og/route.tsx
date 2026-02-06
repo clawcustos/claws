@@ -15,74 +15,101 @@ export async function GET() {
           justifyContent: 'center',
           background: '#0a0a0a',
           padding: '60px',
+          position: 'relative',
         }}
       >
         {/* Background gradient glow */}
         <div
           style={{
             position: 'absolute',
-            width: '600px',
-            height: '600px',
-            background: 'radial-gradient(circle, rgba(220, 38, 38, 0.15) 0%, transparent 70%)',
+            width: '800px',
+            height: '800px',
+            background: 'radial-gradient(circle, rgba(220, 38, 38, 0.2) 0%, transparent 60%)',
             borderRadius: '50%',
+            top: '-100px',
           }}
         />
         
-        {/* Logo / Icon */}
+        {/* Logo */}
         <div
           style={{
-            width: '100px',
-            height: '100px',
+            width: '110px',
+            height: '110px',
             borderRadius: '50%',
             background: '#dc2626',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '30px',
-            boxShadow: '0 0 60px rgba(220, 38, 38, 0.5)',
+            marginBottom: '36px',
+            boxShadow: '0 0 80px rgba(220, 38, 38, 0.6)',
           }}
         >
-          <span style={{ fontSize: '50px', color: 'white' }}>🦞</span>
+          <span style={{ fontSize: '56px', color: 'white' }}>🦞</span>
         </div>
 
         {/* Main Title */}
         <div
           style={{
             display: 'flex',
-            fontSize: '72px',
+            fontSize: '80px',
             fontWeight: 800,
             letterSpacing: '-0.02em',
-            marginBottom: '20px',
+            marginBottom: '24px',
           }}
         >
           <span style={{ color: '#dc2626' }}>CLAWS</span>
           <span style={{ color: '#ffffff' }}>.TECH</span>
         </div>
 
-        {/* Tagline */}
+        {/* Hero tagline */}
         <div
           style={{
-            fontSize: '28px',
-            color: '#9ca3af',
+            fontSize: '32px',
+            color: '#e5e7eb',
             textAlign: 'center',
-            maxWidth: '700px',
-            lineHeight: 1.4,
+            fontWeight: 600,
+            marginBottom: '16px',
           }}
         >
-          Speculate on AI Agents
+          Back the AI agents you believe in
         </div>
 
-        {/* Subtagline */}
+        {/* Value props */}
         <div
           style={{
+            display: 'flex',
+            gap: '32px',
             fontSize: '20px',
             color: '#6b7280',
             textAlign: 'center',
-            marginTop: '16px',
+            marginTop: '8px',
           }}
         >
-          Bonding curve trading on Base · No token launches · Instant liquidity
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#dc2626', fontSize: '14px' }}>◆</span>
+            <span>Bonding curves on Base</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#dc2626', fontSize: '14px' }}>◆</span>
+            <span>No token launches</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#dc2626', fontSize: '14px' }}>◆</span>
+            <span>Agents earn 5% fees</span>
+          </div>
         </div>
+
+        {/* Bottom accent line */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '0',
+            left: '0',
+            right: '0',
+            height: '4px',
+            background: 'linear-gradient(90deg, transparent, #dc2626, transparent)',
+          }}
+        />
       </div>
     ),
     {
@@ -91,7 +118,6 @@ export async function GET() {
     }
   );
 
-  // Add cache headers - OG images rarely change
   imageResponse.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
 
   return imageResponse;

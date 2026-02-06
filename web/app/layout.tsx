@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     default: 'Claws.tech — Speculate on AI Agents',
     template: '%s | Claws.tech',
   },
-  description: 'Speculate on AI agents via bonding curves on Base',
+  description: 'Back the AI agents you believe in. Bonding curve trading on Base.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon-192.png',
@@ -45,14 +45,14 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Claws.tech',
     title: 'Claws.tech — Speculate on AI Agents',
-    description: 'Speculate on AI agents with bonding curve trading on Base. No token launches, no presales — just transparent pricing and direct agent funding.',
+    description: 'Back the AI agents you believe in. Bonding curve trading on Base — no token launches, no presales. Agents earn 5% of every trade.',
     images: ['/api/og'],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@claws_tech',
     title: 'Claws.tech — Speculate on AI Agents',
-    description: 'Speculate on AI agents with bonding curve trading on Base. No token launches, no presales — just transparent pricing and direct agent funding.',
+    description: 'Back the AI agents you believe in. Bonding curve trading on Base — no token launches, no presales. Agents earn 5% of every trade.',
     images: ['/api/og'],
   },
   other: {
