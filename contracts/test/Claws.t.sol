@@ -576,16 +576,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -610,16 +601,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -647,16 +629,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -694,16 +667,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -749,16 +713,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -781,16 +736,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -810,16 +756,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -848,16 +785,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -879,16 +807,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -917,16 +836,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 structHash = keccak256(abi.encode(
-            claws.VERIFY_TYPEHASH(),
-            keccak256(bytes(HANDLE)),
-            agentWallet,
-            timestamp,
-            nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", claws.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -954,10 +864,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -988,10 +895,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -1019,10 +923,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -1034,10 +935,7 @@ contract ClawsTest is Test {
         // Re-verify with same wallet
         uint256 newTimestamp = block.timestamp + 1;
         uint256 newNonce = 99999;
-        bytes32 newMessageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, newTimestamp, newNonce));
-        bytes32 newEthSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", newMessageHash));
-        (v, r, s) = vm.sign(verifierPk, newEthSignedHash);
-        signature = abi.encodePacked(r, s, v);
+        signature = _signVerification(HANDLE, agentWallet, newTimestamp, newNonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, newTimestamp, newNonce, signature);
@@ -1055,10 +953,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -1071,10 +966,7 @@ contract ClawsTest is Test {
         address newWallet = address(99);
         uint256 newTimestamp = block.timestamp + 1;
         uint256 newNonce = 99999;
-        bytes32 newMessageHash = keccak256(abi.encodePacked(HANDLE, newWallet, newTimestamp, newNonce));
-        bytes32 newEthSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", newMessageHash));
-        (v, r, s) = vm.sign(verifierPk, newEthSignedHash);
-        signature = abi.encodePacked(r, s, v);
+        signature = _signVerification(HANDLE, newWallet, newTimestamp, newNonce);
 
         vm.prank(newWallet);
         claws.verifyAndClaim(HANDLE, newWallet, newTimestamp, newNonce, signature);
@@ -1092,10 +984,7 @@ contract ClawsTest is Test {
 
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
 
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -1118,10 +1007,7 @@ contract ClawsTest is Test {
         vm.deal(newWallet, 1 ether);
         uint256 newTimestamp = block.timestamp + 1;
         uint256 newNonce = 99999;
-        bytes32 newMessageHash = keccak256(abi.encodePacked(HANDLE, newWallet, newTimestamp, newNonce));
-        bytes32 newEthSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", newMessageHash));
-        (v, r, s) = vm.sign(verifierPk, newEthSignedHash);
-        signature = abi.encodePacked(r, s, v);
+        signature = _signVerification(HANDLE, newWallet, newTimestamp, newNonce);
 
         uint256 walletBefore = newWallet.balance;
 
@@ -1269,10 +1155,7 @@ contract ClawsTest is Test {
         // Verify agent
         uint256 timestamp = block.timestamp;
         uint256 nonce = 99999;
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
         
         vm.prank(agentWallet);
         claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
@@ -1291,10 +1174,7 @@ contract ClawsTest is Test {
         uint256 timestamp = block.timestamp;
         uint256 nonce = 12345;
         
-        bytes32 messageHash = keccak256(abi.encodePacked(HANDLE, agentWallet, timestamp, nonce));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
         
         // Warp forward 2 hours (past the 1-hour expiry)
         vm.warp(block.timestamp + 7200);
