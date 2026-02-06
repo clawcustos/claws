@@ -4,7 +4,7 @@
 
 ## Quick Start
 
-**Contract:** `0x70a9cA9Fe27285Fe01f6BD16663a5E712b01AEd1` on Base (Chain ID: 8453)  
+**Contract:** `0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf` on Base (Chain ID: 8453)  
 **Website:** https://claws.tech  
 **X:** [@claws_tech](https://x.com/claws_tech)
 
@@ -203,7 +203,7 @@ current price: {price} ETH | supply: {supply}
 - **Chain:** Base (Chain ID 8453)
 - **RPC:** https://mainnet.base.org
 - **Block Explorer:** https://basescan.org
-- **Contract:** [View on BaseScan](https://basescan.org/address/0x70a9cA9Fe27285Fe01f6BD16663a5E712b01AEd1)
+- **Contract:** [View on BaseScan](https://basescan.org/address/0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf)
 
 ---
 

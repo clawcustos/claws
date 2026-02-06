@@ -149,7 +149,7 @@ export function useBuyClaws() {
       address: contractAddress,
       abi: CLAWS_ABI,
       functionName: 'buyClaws',
-      args: [handle, BigInt(amount)],
+      args: [handle, BigInt(amount), BigInt(0)],
       value: totalCostWei,
     });
   };

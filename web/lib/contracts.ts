@@ -6,7 +6,7 @@ export const CONTRACTS = {
     claws: '0x0000000000000000000000000000000000000000' as `0x${string}`,
   },
   base: {
-    claws: '0x70a9cA9Fe27285Fe01f6BD16663a5E712b01AEd1' as `0x${string}`,
+    claws: '0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf' as `0x${string}`,
   },
 } as const;
 
@@ -118,7 +118,11 @@ export const CLAWS_ABI = [
     type: 'function',
   },
   {
-    inputs: [{ name: 'handle', type: 'string' }, { name: 'amount', type: 'uint256' }],
+    inputs: [
+      { name: 'handle', type: 'string' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'maxTotalCost', type: 'uint256' },
+    ],
     name: 'buyClaws',
     outputs: [],
     stateMutability: 'payable',

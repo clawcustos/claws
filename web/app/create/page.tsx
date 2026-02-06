@@ -91,7 +91,7 @@ export default function CreateMarketPage() {
       address: CONTRACT,
       abi: CLAWS_ABI,
       functionName: 'buyClaws',
-      args: [cleanHandle, BigInt(buyAmount)],
+      args: [cleanHandle, BigInt(buyAmount), BigInt(0)],
       value: buffered,
     });
   }, [handleValidate, cleanHandle, buyAmount, totalCost, writeContract]);
