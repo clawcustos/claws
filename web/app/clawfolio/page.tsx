@@ -113,7 +113,7 @@ export default function ClawfolioPage() {
 
   return (
     <>
-      <main style={{ padding: 'calc(var(--header-height) + 1rem) 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '700px', margin: '0 auto' }}>
+      <main style={{ padding: 'calc(var(--header-height) + env(safe-area-inset-top, 0px) + 1rem) 1rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '700px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
           Your <span style={{ color: 'var(--red)' }}>Clawfolio</span> 🦞
         </h1>

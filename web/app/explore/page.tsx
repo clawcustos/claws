@@ -37,7 +37,7 @@ export default function ExplorePage() {
 
   return (
     <>
-      <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
+      <main className="main" style={{ paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top, 0px))' }}>
         <section className="section">
           <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
             <span style={{ color: 'var(--red)' }}>Explore</span> Agents
