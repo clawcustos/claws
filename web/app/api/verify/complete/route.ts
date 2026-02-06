@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { isAddress, createPublicClient, http, keccak256, toBytes, encodePacked } from 'viem'
+import { isAddress, createPublicClient, http, keccak256, encodePacked, encodeAbiParameters, toBytes, toHex, concat } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base } from 'viem/chains'
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts'
@@ -18,30 +18,15 @@ const WHITELISTED_AGENTS = [
   'moltlaunch', 'clawmartxyz', 'moltverse_space',
 ];
 
-// EIP-712 domain for the Claws contract
-const CLAWS_DOMAIN = {
-  name: 'Claws',
-  version: '1',
-  chainId: 8453,
-  verifyingContract: getContractAddress(8453),
-} as const;
-
-// EIP-712 types — must match VERIFY_TYPEHASH in contract
-// Note: the contract encodes handle as keccak256(bytes(handle)), 
-// but in signTypedData we pass the raw string and handle encoding manually
-const VERIFY_TYPES = {
-  Verify: [
-    { name: 'wallet', type: 'address' },
-    { name: 'handle', type: 'string' },
-    { name: 'timestamp', type: 'uint256' },
-    { name: 'nonce', type: 'uint256' },
-  ],
-} as const;
-
 /**
  * POST /api/verify/complete
  * 
- * Generate EIP-712 signed verification proof for agent verification
+ * Generate EIP-712 signed verification proof for agent verification.
+ * 
+ * NOTE: The contract has a field-order mismatch between its TYPEHASH and abi.encode:
+ *   TYPEHASH: "Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)"
+ *   abi.encode: (TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce)
+ * So we must manually construct the digest to match the contract's encoding.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -132,24 +117,59 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Generate EIP-712 signature for verifyAndClaim
+    // Read the DOMAIN_SEPARATOR from the contract to ensure exact match
+    const domainSeparator = await publicClient.readContract({
+      address: contractAddress,
+      abi: [{
+        inputs: [],
+        name: 'DOMAIN_SEPARATOR',
+        outputs: [{ name: '', type: 'bytes32' }],
+        stateMutability: 'view',
+        type: 'function',
+      }],
+      functionName: 'DOMAIN_SEPARATOR',
+    }) as `0x${string}`
+
+    // Generate verification params
     const timestamp = BigInt(Math.floor(Date.now() / 1000))
     const nonce = BigInt(Math.floor(Math.random() * 1000000000))
     
-    // Sign using EIP-712 typed data
-    // The contract's VERIFY_TYPEHASH is:
-    //   keccak256("Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)")
-    // And the struct hash uses keccak256(bytes(handle)) for the string
-    const signature = await verifierAccount.signTypedData({
-      domain: CLAWS_DOMAIN,
-      types: VERIFY_TYPES,
-      primaryType: 'Verify',
-      message: {
-        wallet: walletAddress as `0x${string}`,
-        handle: handle,
-        timestamp: timestamp,
-        nonce: nonce,
-      },
+    // Construct the EXACT same digest the contract constructs:
+    // VERIFY_TYPEHASH = keccak256("Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)")
+    const VERIFY_TYPEHASH = keccak256(
+      toBytes("Verify(address wallet,string handle,uint256 timestamp,uint256 nonce)")
+    )
+    
+    // structHash = keccak256(abi.encode(VERIFY_TYPEHASH, keccak256(bytes(handle)), wallet, timestamp, nonce))
+    // NOTE: Contract encodes handle BEFORE wallet (doesn't match typehash order)
+    const handleHash = keccak256(toBytes(handle))
+    
+    const structHash = keccak256(
+      encodeAbiParameters(
+        [
+          { name: 'typehash', type: 'bytes32' },
+          { name: 'handleHash', type: 'bytes32' },
+          { name: 'wallet', type: 'address' },
+          { name: 'timestamp', type: 'uint256' },
+          { name: 'nonce', type: 'uint256' },
+        ],
+        [VERIFY_TYPEHASH, handleHash, walletAddress as `0x${string}`, timestamp, nonce]
+      )
+    )
+    
+    // digest = keccak256("\x19\x01" || DOMAIN_SEPARATOR || structHash)
+    const digest = keccak256(
+      concat([
+        toHex(new Uint8Array([0x19, 0x01])),
+        domainSeparator,
+        structHash,
+      ])
+    )
+    
+    // Sign the raw digest directly (NOT signMessage which adds Ethereum prefix)
+    // The contract uses ECDSA.recover on the EIP-712 digest directly
+    const signature = await verifierAccount.sign({
+      hash: digest,
     })
 
     return NextResponse.json({
