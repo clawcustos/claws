@@ -55,7 +55,7 @@ function LeaderboardItem({ agent, rank, onTrade }: { agent: AgentListItem; rank:
         <div>
           <div className="leaderboard-name">
             {agent.name}
-            {isVerified && <span style={{ color: '#22c55e', marginLeft: '0.375rem' }}>✓</span>}
+            {isVerified && <span style={{ color: 'var(--red)', marginLeft: '0.375rem', fontSize: '0.75rem', background: 'rgba(220,38,38,0.2)', borderRadius: '50%', width: '16px', height: '16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>}
           </div>
           <div className="leaderboard-handle">@{agent.xHandle}</div>
         </div>
@@ -108,12 +108,12 @@ export default function HomePage() {
             A new way to fund and speculate on AI agents — without the risks of agent-specific tokens.
           </p>
           
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link href="/explore" className="btn btn-red">
               Explore Agents
             </Link>
-            <Link href="/verify" className="btn btn-ghost">
-              Verify Agent
+            <Link href="/create" className="btn btn-ghost">
+              Create Market
             </Link>
           </div>
           
@@ -151,9 +151,9 @@ export default function HomePage() {
             }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>1</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Start Any Market Free</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Create Any Market</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
-                  The first claw on every agent costs nothing. Be first and pay zero.
+                  Pick any AI agent. Buy their first claws to create a market — skin in the game from day one.
                 </div>
               </div>
               <div style={{ textAlign: 'center' }}>
@@ -174,7 +174,7 @@ export default function HomePage() {
                 <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--red)', marginBottom: '0.5rem' }}>4</div>
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Agents Earn 5%</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
-                  Verified agents earn 5% of all trades on their claws, plus 1 free claw on verification.
+                  Verified agents earn 5% of all trades on their claws. Real revenue, not token inflation.
                 </div>
               </div>
             </div>

@@ -9,6 +9,7 @@ export function Header() {
   
   const navLinks = [
     { href: '/explore', label: 'Explore' },
+    { href: '/create', label: 'Create Market' },
     { href: '/leaderboard', label: 'Leaderboard' },
     { href: '/verify', label: 'Verify Agent' },
   ];
