@@ -10,6 +10,8 @@ import { formatEther } from 'viem';
 import { TradeModal } from '@/components/trade-modal';
 import { getAgent, formatETH } from '@/lib/agents';
 import { useMarket, useCurrentPrice, useClawBalance } from '@/hooks/useClaws';
+import { useHolders } from '@/hooks/useHolders';
+import { HoldersTable } from '@/components/holders-table';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { CLAWS_ABI, getContractAddress } from '@/lib/contracts';
 import { ERC8004Badge } from '@/components/erc8004-badge';
@@ -172,7 +174,8 @@ export default function AgentPage() {
   const { market, isLoading: marketLoading, refetch } = useMarket(handle);
   const { priceETH: livePriceETH } = useCurrentPrice(handle);
   const { balance: userBalance } = useClawBalance(handle, address);
-  
+  const { holders, isLoading: holdersLoading } = useHolders(handle);
+
   // Use live data
   const isVerified = market?.isVerified || false;
   const liveSupply = market ? Number(market.supply) : 0;
@@ -382,6 +385,15 @@ export default function AgentPage() {
               <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', marginTop: '0.25rem' }}>Lifetime Fees</div>
             </div>
           </div>
+
+          {/* Holders Table */}
+          {holders.length > 0 && (
+            <HoldersTable
+              handle={handle}
+              holders={holders}
+              isLoading={holdersLoading}
+            />
+          )}
         </section>
       </main>
       

@@ -1011,6 +1011,134 @@ body {
 }
 
 /* ============================================
+   HOLDERS TABLE
+   ============================================ */
+
+.holders-table-container {
+  max-width: 480px;
+  margin-top: 2rem;
+}
+
+.holders-table-heading {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--white);
+}
+
+.holders-table-wrapper {
+  background: var(--black-surface);
+  border: 1px solid var(--grey-800);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.holders-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.holders-table-header-row {
+  background: var(--black);
+}
+
+.holders-table-header {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--grey-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--grey-700);
+}
+
+.holders-table-header:last-child {
+  text-align: right;
+}
+
+.holders-table-row {
+  border-bottom: 1px solid var(--grey-800);
+  transition: background 0.15s;
+}
+
+.holders-table-row:last-child {
+  border-bottom: none;
+}
+
+.holders-table-row:hover {
+  background: var(--black-hover);
+}
+
+.holders-table-cell {
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+}
+
+.holders-table-rank {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--red);
+  width: 50px;
+}
+
+.holders-table-balance {
+  text-align: right;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.holders-table-link {
+  color: var(--grey-300);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.holders-table-link:hover {
+  color: var(--red);
+  text-decoration: underline;
+}
+
+.holders-table-empty {
+  background: var(--black-surface);
+  border: 1px solid var(--grey-800);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--grey-500);
+  font-size: 0.9375rem;
+}
+
+.holders-table-loading {
+  background: var(--black-surface);
+  border: 1px solid var(--grey-800);
+  border-radius: 12px;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--grey-400);
+  font-size: 0.9375rem;
+}
+
+.holders-table-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--grey-700);
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
    UTILITY
    ============================================ */
 
