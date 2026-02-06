@@ -3,12 +3,14 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Claws} from "../src/Claws.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ClawsTest is Test {
     Claws public claws;
 
     // Events to test
     event WhitelistUpdated(bytes32 indexed handleHash, string handle, bool status);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
     address public owner = address(1);
     address public verifier = address(2);
@@ -39,8 +41,9 @@ contract ClawsTest is Test {
         assertEq(claws.owner(), owner);
         assertEq(claws.verifier(), verifier);
         assertEq(claws.treasury(), treasury);
-        assertEq(claws.PROTOCOL_FEE_BPS(), 500);
-        assertEq(claws.AGENT_FEE_BPS(), 500);
+        assertEq(claws.protocolFeeBps(), 500);
+        assertEq(claws.agentFeeBps(), 500);
+        assertEq(claws.MAX_FEE_BPS(), 1000);
         assertEq(claws.PRICE_DIVISOR(), 16000);
     }
     
@@ -1558,5 +1561,377 @@ contract ClawsTest is Test {
         // Must buy at least 2
         (uint256 price,,,) = claws.getBuyCostBreakdown(HANDLE, 2);
         assertGt(price, 0);
+    }
+
+    // ============ Adjustable Fee Tests ============
+
+    function test_SetProtocolFeeBps() public {
+        // Owner can set protocol fee
+        vm.prank(owner);
+        claws.setProtocolFeeBps(300); // 3%
+
+        assertEq(claws.protocolFeeBps(), 300);
+    }
+
+    function test_SetProtocolFeeBpsEmitsEvent() public {
+        vm.prank(owner);
+        vm.expectEmit(true, true, false, true);
+        emit Claws.ProtocolFeeUpdated(500, 300);
+        claws.setProtocolFeeBps(300);
+    }
+
+    function test_SetProtocolFeeBpsRevertsNotOwner() public {
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.setProtocolFeeBps(300);
+    }
+
+    function test_SetProtocolFeeBpsRevertsAboveMax() public {
+        // 1001 bps > 1000 max
+        vm.prank(owner);
+        vm.expectRevert(Claws.InvalidAmount.selector);
+        claws.setProtocolFeeBps(1001);
+    }
+
+    function test_SetProtocolFeeBpsMaxBoundary() public {
+        // 1000 bps is exactly at max (10%)
+        vm.prank(owner);
+        claws.setProtocolFeeBps(1000);
+        assertEq(claws.protocolFeeBps(), 1000);
+    }
+
+    function test_SetProtocolFeeBpsZeroAllowed() public {
+        // 0 bps is allowed (no fee)
+        vm.prank(owner);
+        claws.setProtocolFeeBps(0);
+        assertEq(claws.protocolFeeBps(), 0);
+    }
+
+    function test_SetAgentFeeBps() public {
+        // Owner can set agent fee
+        vm.prank(owner);
+        claws.setAgentFeeBps(200); // 2%
+
+        assertEq(claws.agentFeeBps(), 200);
+    }
+
+    function test_SetAgentFeeBpsEmitsEvent() public {
+        vm.prank(owner);
+        vm.expectEmit(true, true, false, true);
+        emit Claws.AgentFeeUpdated(500, 200);
+        claws.setAgentFeeBps(200);
+    }
+
+    function test_SetAgentFeeBpsRevertsNotOwner() public {
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.setAgentFeeBps(200);
+    }
+
+    function test_SetAgentFeeBpsRevertsAboveMax() public {
+        // 1001 bps > 1000 max
+        vm.prank(owner);
+        vm.expectRevert(Claws.InvalidAmount.selector);
+        claws.setAgentFeeBps(1001);
+    }
+
+    function test_SetAgentFeeBpsMaxBoundary() public {
+        // 1000 bps is exactly at max (10%)
+        vm.prank(owner);
+        claws.setAgentFeeBps(1000);
+        assertEq(claws.agentFeeBps(), 1000);
+    }
+
+    function test_SetAgentFeeBpsZeroAllowed() public {
+        // 0 bps is allowed (no fee)
+        vm.prank(owner);
+        claws.setAgentFeeBps(0);
+        assertEq(claws.agentFeeBps(), 0);
+    }
+
+    function test_ProtocolFeeAppliedCorrectlyAfterChange() public {
+        // Change protocol fee to 3%
+        vm.prank(owner);
+        claws.setProtocolFeeBps(300);
+
+        // Buy claws and verify fee is 3%
+        uint256 price = claws.getBuyPriceByHandle(HANDLE, 5);
+        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+
+        // Expected: price + 3% protocol fee + 5% agent fee (unchanged)
+        uint256 expectedProtocolFee = (price * 300) / 10000;
+        uint256 expectedAgentFee = (price * 500) / 10000;
+        uint256 expectedTotal = price + expectedProtocolFee + expectedAgentFee;
+
+        assertEq(totalCost, expectedTotal);
+
+        // Execute the trade and verify
+        uint256 treasuryBefore = treasury.balance;
+
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 5);
+
+        // Treasury should receive 3% of price
+        assertEq(treasury.balance - treasuryBefore, expectedProtocolFee);
+    }
+
+    function test_AgentFeeAppliedCorrectlyAfterChange() public {
+        // Change agent fee to 2%
+        vm.prank(owner);
+        claws.setAgentFeeBps(200);
+
+        // Buy claws and verify fee is 2%
+        uint256 price = claws.getBuyPriceByHandle(HANDLE, 5);
+        (,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+
+        // Expected: price + 5% protocol fee (unchanged) + 2% agent fee
+        uint256 expectedProtocolFee = (price * 500) / 10000;
+        uint256 expectedAgentFee = (price * 200) / 10000;
+        uint256 expectedTotal = price + expectedProtocolFee + expectedAgentFee;
+
+        assertEq(totalCost, expectedTotal);
+
+        // Execute the trade and verify
+        vm.prank(trader1);
+        claws.buyClaws{value: totalCost}(HANDLE, 5);
+
+        (, uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
+
+        // Pending fees should be 2% of price
+        assertEq(pendingFees, expectedAgentFee);
+    }
+
+    function test_BothFeesChangedAppliedCorrectly() public {
+        // Change both fees
+        vm.prank(owner);
+        claws.setProtocolFeeBps(1000); // 10%
+        vm.prank(owner);
+        claws.setAgentFeeBps(1000); // 10%
+
+        uint256 price = claws.getBuyPriceByHandle(HANDLE, 5);
+        (uint256 breakdownPrice, uint256 protocolFee, uint256 agentFee, uint256 totalCost) =
+            claws.getBuyCostBreakdown(HANDLE, 5);
+
+        // Verify breakdown
+        assertEq(breakdownPrice, price);
+        assertEq(protocolFee, (price * 1000) / 10000);
+        assertEq(agentFee, (price * 1000) / 10000);
+        assertEq(totalCost, price + protocolFee + agentFee);
+    }
+
+    function test_SellFeesAppliedCorrectlyAfterChange() public {
+        // First buy some claws with default fees
+        (,,, uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5);
+
+        // Change fees
+        vm.prank(owner);
+        claws.setProtocolFeeBps(300); // 3%
+        vm.prank(owner);
+        claws.setAgentFeeBps(200); // 2%
+
+        // Now sell and verify new fees are applied
+        uint256 sellPrice = claws.getSellPriceByHandle(HANDLE, 2);
+        (uint256 price, uint256 protocolFee, uint256 agentFee, uint256 proceeds) =
+            claws.getSellProceedsBreakdown(HANDLE, 2);
+
+        // Verify breakdown uses new fees
+        assertEq(price, sellPrice);
+        assertEq(protocolFee, (sellPrice * 300) / 10000);
+        assertEq(agentFee, (sellPrice * 200) / 10000);
+        assertEq(proceeds, sellPrice - protocolFee - agentFee);
+
+        // Execute the sale and verify
+        uint256 treasuryBefore = treasury.balance;
+        uint256 traderBefore = trader1.balance;
+
+        vm.prank(trader1);
+        claws.sellClaws(HANDLE, 2, 0);
+
+        // Treasury should receive 3% of sell price
+        assertEq(treasury.balance - treasuryBefore, (sellPrice * 300) / 10000);
+        // Trader should receive sell price minus fees
+        assertEq(trader1.balance - traderBefore, proceeds);
+    }
+
+    // ============ Two-Step Ownership Transfer Tests ============
+
+    function test_TransferOwnership() public {
+        address newOwner = address(99);
+
+        // Owner initiates transfer
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+
+        assertEq(claws.pendingOwner(), newOwner);
+        // Owner hasn't changed yet
+        assertEq(claws.owner(), owner);
+    }
+
+    function test_TransferOwnershipRevertsNotOwner() public {
+        address newOwner = address(99);
+
+        vm.prank(trader1);
+        vm.expectRevert();
+        claws.transferOwnership(newOwner);
+    }
+
+    function test_TransferOwnershipRevertsZeroAddress() public {
+        vm.prank(owner);
+        vm.expectRevert(Claws.ZeroAddress.selector);
+        claws.transferOwnership(address(0));
+    }
+
+    function test_AcceptOwnership() public {
+        address newOwner = address(99);
+        vm.deal(newOwner, 1 ether);
+
+        // Owner initiates transfer
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+
+        // New owner accepts
+        vm.prank(newOwner);
+        claws.acceptOwnership();
+
+        // Ownership should be transferred
+        assertEq(claws.owner(), newOwner);
+        assertEq(claws.pendingOwner(), address(0));
+    }
+
+    function test_AcceptOwnershipEmitsEvent() public {
+        address newOwner = address(99);
+        vm.deal(newOwner, 1 ether);
+
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+
+        // Expect OpenZeppelin's OwnershipTransferred event
+        vm.prank(newOwner);
+        vm.expectEmit(true, true, false, false);
+        emit OwnershipTransferred(owner, newOwner);
+        claws.acceptOwnership();
+    }
+
+    function test_AcceptOwnershipRevertsNotPendingOwner() public {
+        address newOwner = address(99);
+
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+
+        // Random address tries to accept
+        vm.prank(trader1);
+        vm.expectRevert(Claws.NotPendingOwner.selector);
+        claws.acceptOwnership();
+    }
+
+    function test_AcceptOwnershipRevertsOwner() public {
+        address newOwner = address(99);
+
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+
+        // Current owner tries to accept (should fail)
+        vm.prank(owner);
+        vm.expectRevert(Claws.NotPendingOwner.selector);
+        claws.acceptOwnership();
+    }
+
+    function test_NewOwnerCanUseOwnerFunctions() public {
+        address newOwner = address(99);
+        vm.deal(newOwner, 1 ether);
+
+        // Transfer ownership
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+
+        vm.prank(newOwner);
+        claws.acceptOwnership();
+
+        // New owner can set fees
+        vm.prank(newOwner);
+        claws.setProtocolFeeBps(300);
+
+        assertEq(claws.protocolFeeBps(), 300);
+    }
+
+    function test_OldOwnerCannotUseOwnerFunctionsAfterTransfer() public {
+        address newOwner = address(99);
+        vm.deal(newOwner, 1 ether);
+
+        // Transfer ownership
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+
+        vm.prank(newOwner);
+        claws.acceptOwnership();
+
+        // Old owner can no longer set fees
+        vm.prank(owner);
+        vm.expectRevert();
+        claws.setProtocolFeeBps(300);
+    }
+
+    function test_TransferOwnershipCanBeChanged() public {
+        address newOwner1 = address(99);
+        address newOwner2 = address(98);
+
+        // Owner sets pending owner 1
+        vm.prank(owner);
+        claws.transferOwnership(newOwner1);
+        assertEq(claws.pendingOwner(), newOwner1);
+
+        // Owner changes to pending owner 2
+        vm.prank(owner);
+        claws.transferOwnership(newOwner2);
+        assertEq(claws.pendingOwner(), newOwner2);
+
+        // First pending owner cannot accept
+        vm.prank(newOwner1);
+        vm.expectRevert(Claws.NotPendingOwner.selector);
+        claws.acceptOwnership();
+
+        // Second pending owner can accept
+        vm.prank(newOwner2);
+        claws.acceptOwnership();
+        assertEq(claws.owner(), newOwner2);
+    }
+
+    function test_TransferOwnershipToSameAddress() public {
+        // Owner can set themselves as pending owner (though pointless)
+        vm.prank(owner);
+        claws.transferOwnership(owner);
+
+        assertEq(claws.pendingOwner(), owner);
+
+        // Owner accepts (no change)
+        vm.prank(owner);
+        claws.acceptOwnership();
+
+        assertEq(claws.owner(), owner);
+    }
+
+    function test_CancelOwnershipTransfer() public {
+        address newOwner = address(99);
+
+        // Owner initiates transfer
+        vm.prank(owner);
+        claws.transferOwnership(newOwner);
+        assertEq(claws.pendingOwner(), newOwner);
+
+        // Owner "cancels" by setting pending owner to address(0) (will revert)
+        vm.prank(owner);
+        vm.expectRevert(Claws.ZeroAddress.selector);
+        claws.transferOwnership(address(0));
+
+        // Or owner can transfer to themselves to effectively cancel
+        vm.prank(owner);
+        claws.transferOwnership(owner);
+
+        // Now newOwner cannot accept
+        vm.prank(newOwner);
+        vm.expectRevert(Claws.NotPendingOwner.selector);
+        claws.acceptOwnership();
     }
 }

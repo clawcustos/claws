@@ -145,8 +145,8 @@ export default function LeaderboardPage() {
           <div className="leaderboard-header">
             <SortHeader label="#" sortKey="rank" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'center' }} />
             <div>Agent</div>
-            <SortHeader label="Price" sortKey="price" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'right' }} />
-            <SortHeader label="Earned" sortKey="fees" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'right' }} />
+            <SortHeader label="Price" sortKey="price" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'center' }} />
+            <SortHeader label="Earned" sortKey="fees" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} style={{ textAlign: 'center' }} />
             <div className="leaderboard-supply">Supply</div>
           </div>
           

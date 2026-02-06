@@ -599,8 +599,8 @@ body {
 
 .leaderboard-header {
   display: grid;
-  grid-template-columns: 36px 1fr auto auto auto;
-  gap: 0.75rem;
+  grid-template-columns: 32px 1fr 90px 70px 50px;
+  gap: 0.5rem;
   padding: 0.625rem 1rem;
   background: var(--black);
   font-size: 0.625rem;
@@ -609,12 +609,13 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--grey-700);
+  align-items: center;
 }
 
 .leaderboard-item {
   display: grid;
-  grid-template-columns: 36px 1fr auto auto auto;
-  gap: 0.75rem;
+  grid-template-columns: 32px 1fr 90px 70px 50px;
+  gap: 0.5rem;
   align-items: center;
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--grey-800);
@@ -674,7 +675,7 @@ body {
 .leaderboard-price {
   font-family: var(--font-mono);
   font-weight: 600;
-  text-align: right;
+  text-align: center;
 }
 
 .leaderboard-supply {
@@ -685,8 +686,7 @@ body {
 
 .leaderboard-fees {
   font-family: var(--font-mono);
-  text-align: right;
-  min-width: 54px;
+  text-align: center;
 }
 
 .leaderboard-fees-value {
@@ -989,8 +989,8 @@ body {
   
   .leaderboard-header,
   .leaderboard-item {
-    grid-template-columns: 24px 1fr auto auto;
-    gap: 0.5rem;
+    grid-template-columns: 24px 1fr 80px 60px;
+    gap: 0.375rem;
     padding: 0.75rem 0.75rem;
   }
   

@@ -117,7 +117,6 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     event MetadataUpdated(bytes32 indexed handleHash, string handle);
     event ProtocolFeeUpdated(uint256 oldBps, uint256 newBps);
     event AgentFeeUpdated(uint256 oldBps, uint256 newBps);
-    event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
     
     // ============ Errors ============
     
@@ -140,6 +139,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
     error AlreadyRevoked();
     error SignatureExpired();
     error BioTooLong();
+    error NotPendingOwner();
     
     // ============ Constructor ============
     
@@ -662,6 +662,46 @@ contract Claws is ReentrancyGuard, Ownable, Pausable {
         market.verifiedWallet = address(0);
 
         emit VerificationRevoked(handleHash, handle);
+    }
+
+    /**
+     * @notice Set protocol fee in basis points (owner only)
+     * @param newBps New fee in basis points (max 1000 = 10%)
+     */
+    function setProtocolFeeBps(uint256 newBps) external onlyOwner {
+        if (newBps > MAX_FEE_BPS) revert InvalidAmount();
+        uint256 oldBps = protocolFeeBps;
+        protocolFeeBps = newBps;
+        emit ProtocolFeeUpdated(oldBps, newBps);
+    }
+
+    /**
+     * @notice Set agent fee in basis points (owner only)
+     * @param newBps New fee in basis points (max 1000 = 10%)
+     */
+    function setAgentFeeBps(uint256 newBps) external onlyOwner {
+        if (newBps > MAX_FEE_BPS) revert InvalidAmount();
+        uint256 oldBps = agentFeeBps;
+        agentFeeBps = newBps;
+        emit AgentFeeUpdated(oldBps, newBps);
+    }
+
+    /**
+     * @notice Initiate two-step ownership transfer (owner only)
+     * @param newOwner Address of the pending owner
+     */
+    function transferOwnership(address newOwner) public override onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        pendingOwner = newOwner;
+    }
+
+    /**
+     * @notice Accept ownership transfer (pending owner only)
+     */
+    function acceptOwnership() external {
+        if (msg.sender != pendingOwner) revert NotPendingOwner();
+        _transferOwnership(pendingOwner);
+        pendingOwner = address(0);
     }
 
     // ============ Whitelist Functions ============
