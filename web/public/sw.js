@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claws-v1';
+const CACHE_NAME = 'claws-v2';
 const PRECACHE_URLS = ['/', '/explore', '/create'];
 
 self.addEventListener('install', (event) => {

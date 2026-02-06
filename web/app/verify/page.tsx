@@ -284,7 +284,7 @@ export default function VerifyPage() {
 
   return (
     <>
-      <main style={{ padding: '6rem 1.5rem calc(var(--nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 2rem)', maxWidth: '500px', margin: '0 auto' }}>
+      <main className="main" style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem', maxWidth: '500px', margin: '0 auto' }}>
         {showDashboard ? (
           <>
             <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>

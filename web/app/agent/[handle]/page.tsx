@@ -180,7 +180,7 @@ export default function AgentPage() {
   
   if (!agent) {
     return (
-      <main className="main" style={{ paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top, 0px))' }}>
+      <main className="main">
         <section className="section" style={{ textAlign: 'center', paddingTop: '6rem' }}>
           <h1 style={{ marginBottom: '1rem' }}>Agent not found</h1>
           <p style={{ color: 'var(--grey-500)', marginBottom: '2rem' }}>
@@ -203,7 +203,7 @@ export default function AgentPage() {
 
   return (
     <>
-      <main className="main" style={{ paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top, 0px))' }}>
+      <main className="main">
         <section className="section">
           {/* Breadcrumb */}
           <div style={{ marginBottom: '2rem', fontSize: '0.875rem' }}>

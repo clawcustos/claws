@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         </div>
       </header>
 
-      <main className="main" style={{ paddingTop: 'var(--header-height)' }}>
+      <main className="main" >
         <section className="section" style={{ maxWidth: '800px', margin: '0 auto' }}>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
             Privacy <span className="text-red">Policy</span>

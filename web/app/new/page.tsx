@@ -12,7 +12,7 @@ import { getAgentList } from '@/lib/agents';
 
 export default function NewMarketsPage() {
   return (
-    <main className="main" style={{ paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top, 0px))' }}>
+    <main className="main">
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
