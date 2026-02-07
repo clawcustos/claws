@@ -1432,14 +1432,15 @@ contract ClawsTest is Test {
 
     function test_WhitelistPriceIsCorrect() public {
         // Price for whitelisted first buy (1 claw)
-        // Should be 0 since supply=0
+        // View now correctly returns price from supply 1 (matching actual buy logic)
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
         uint256 price = claws.getBuyPriceByHandle(HANDLE, 1);
-        assertEq(price, 0);
+        // 1 claw priced from supply 1: 1^2 / 16000 = 0.0000625 ETH
+        assertEq(price, 0.0000625 ether);
 
-        // Current price for next claw
+        // Current price still 0 (market doesn't exist yet, supply=0)
         uint256 currentPrice = claws.getCurrentPrice(HANDLE);
         assertEq(currentPrice, 0);
     }
@@ -1507,20 +1508,16 @@ contract ClawsTest is Test {
         vm.prank(owner);
         claws.setWhitelisted(HANDLE, true);
 
-        // getBuyCostBreakdown returns price from supply 0 (0 ETH)
-        // But actual buy prices from supply 1 when whitelisted
+        // getBuyCostBreakdown now correctly returns price from supply 1 for whitelisted
         (uint256 price,,, uint256 totalCost) = claws.getBuyCostBreakdown(HANDLE, 1);
-        assertEq(price, 0); // View function still returns 0 from supply 0
-        assertEq(totalCost, 0); // 0 + 0 fees = 0
-
-        // Actual cost for whitelisted first buy is from supply 1
         // Price for 1 claw at supply 1 = 1^2 / 16000 = 0.0000625 ETH
-        uint256 actualPrice = 0.0000625 ether;
-        uint256 actualTotalCost = actualPrice + (actualPrice * 1000 / 10000); // + 10% fees
+        assertEq(price, 0.0000625 ether);
+        uint256 expectedTotal = price + (price * 1000 / 10000); // + 10% fees
+        assertEq(totalCost, expectedTotal);
 
-        // Must pay for the claw priced from supply 1 (free claw is at supply 0)
+        // Frontend can now use totalCost directly — no mismatch
         vm.prank(trader1);
-        claws.buyClaws{value: actualTotalCost}(HANDLE, 1, 0);
+        claws.buyClaws{value: totalCost}(HANDLE, 1, 0);
 
         assertEq(claws.getBalance(HANDLE, trader1), 2); // 1 paid + 1 bonus (free at supply 0)
     }

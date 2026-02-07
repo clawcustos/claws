@@ -478,7 +478,13 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
      * @notice Get the price to buy `amount` claws (by handle string)
      */
     function getBuyPriceByHandle(string calldata handle, uint256 amount) external view returns (uint256) {
-        return getBuyPrice(_hashHandle(handle), amount);
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+        // Mirror whitelist bonus logic: first buy on whitelisted market prices from supply 1
+        if (market.supply == 0 && whitelisted[handleHash]) {
+            return _getPrice(1, amount);
+        }
+        return getBuyPrice(handleHash, amount);
     }
     
     /**
@@ -548,7 +554,16 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
         uint256 totalCost
     ) {
         bytes32 handleHash = _hashHandle(handle);
-        price = getBuyPrice(handleHash, amount);
+        Market storage market = markets[handleHash];
+
+        // Mirror the whitelist bonus logic from buyClaws
+        if (market.supply == 0 && whitelisted[handleHash]) {
+            // Whitelisted first buy: bonus claw at supply 0, paid claws priced from supply 1
+            price = _getPrice(1, amount);
+        } else {
+            price = getBuyPrice(handleHash, amount);
+        }
+
         protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
         agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         totalCost = price + protocolFee + agentFee;
