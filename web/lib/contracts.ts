@@ -89,6 +89,13 @@ export const CLAWS_ABI = [
     type: 'function',
   },
   {
+    inputs: [{ name: 'handle', type: 'string' }],
+    name: 'isWhitelisted',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'PRICE_DIVISOR',
     outputs: [{ name: '', type: 'uint256' }],
