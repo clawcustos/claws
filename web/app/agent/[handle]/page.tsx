@@ -404,33 +404,35 @@ export default function AgentPage() {
             <AgentDashboard handle={handle} market={market as any} />
           )}
 
-          {/* Market Stats */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '0.75rem',
-            marginBottom: '1.5rem',
-            maxWidth: '480px',
-          }}>
-            <div style={{ background: 'var(--black-surface)', border: '1px solid var(--grey-800)', borderRadius: '12px', padding: '1rem' }}>
-              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                {marketLoading ? '...' : formatUSD(lifetimeVolumeETH, ethPrice)}
+          {/* Market Stats — only show when dashboard is NOT visible (avoids duplication) */}
+          {!isVerified && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '0.75rem',
+              marginBottom: '1.5rem',
+              maxWidth: '480px',
+            }}>
+              <div style={{ background: 'var(--black-surface)', border: '1px solid var(--grey-800)', borderRadius: '12px', padding: '1rem' }}>
+                <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                  {marketLoading ? '...' : formatUSD(lifetimeVolumeETH, ethPrice)}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)', marginTop: '0.125rem' }}>
+                  {!marketLoading && `${formatETH(lifetimeVolumeETH)} ETH`}
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', marginTop: '0.25rem' }}>Volume</div>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)', marginTop: '0.125rem' }}>
-                {!marketLoading && `${formatETH(lifetimeVolumeETH)} ETH`}
+              <div style={{ background: 'var(--black-surface)', border: '1px solid var(--grey-800)', borderRadius: '12px', padding: '1rem' }}>
+                <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                  {marketLoading ? '...' : formatUSD(lifetimeFeesETH, ethPrice)}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)', marginTop: '0.125rem' }}>
+                  {!marketLoading && `${formatETH(lifetimeFeesETH)} ETH`}
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', marginTop: '0.25rem' }}>Lifetime Fees</div>
               </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', marginTop: '0.25rem' }}>Volume</div>
             </div>
-            <div style={{ background: 'var(--black-surface)', border: '1px solid var(--grey-800)', borderRadius: '12px', padding: '1rem' }}>
-              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                {marketLoading ? '...' : formatUSD(lifetimeFeesETH, ethPrice)}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--grey-500)', marginTop: '0.125rem' }}>
-                {!marketLoading && `${formatETH(lifetimeFeesETH)} ETH`}
-              </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-600)', textTransform: 'uppercase', marginTop: '0.25rem' }}>Lifetime Fees</div>
-            </div>
-          </div>
+          )}
 
           {/* Holders Table */}
           {holders.length > 0 && (
