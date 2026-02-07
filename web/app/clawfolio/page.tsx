@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useAccount, useBalance } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -11,10 +11,11 @@ import { useETHPrice } from '@/hooks/useETHPrice';
 import { TradeModal } from '@/components/trade-modal';
 
 // Single holding row - clickable
-function HoldingRow({ agent, userAddress, onTrade }: { 
+function HoldingRow({ agent, userAddress, onTrade, onValue }: { 
   agent: ReturnType<typeof getAgentList>[0]; 
   userAddress: `0x${string}`;
   onTrade: (handle: string) => void;
+  onValue?: (handle: string, valueETH: number, claws: number) => void;
 }) {
   const { balance, isLoading } = useClawBalance(agent.xHandle, userAddress);
   const { priceETH } = useCurrentPrice(agent.xHandle);
@@ -23,6 +24,13 @@ function HoldingRow({ agent, userAddress, onTrade }: {
   const claws = balance !== undefined ? Number(balance) : 0;
   const value = (priceETH || 0) * claws;
   const isVerified = market?.isVerified || false;
+  
+  // Report value up to parent for portfolio total
+  useMemo(() => {
+    if (!isLoading && onValue) {
+      onValue(agent.xHandle, value, claws);
+    }
+  }, [isLoading, value, claws, agent.xHandle, onValue]);
   
   if (!isLoading && claws === 0) return null;
   
@@ -109,6 +117,21 @@ export default function ClawfolioPage() {
     handle: string;
   }>({ isOpen: false, handle: '' });
   
+  // Track portfolio value from child rows
+  const valuesRef = useRef<Record<string, { eth: number; claws: number }>>({});
+  const [portfolioTotal, setPortfolioTotal] = useState({ eth: 0, claws: 0 });
+  
+  const handleValue = useCallback((handle: string, valueETH: number, claws: number) => {
+    const prev = valuesRef.current[handle];
+    if (prev?.eth === valueETH && prev?.claws === claws) return;
+    valuesRef.current[handle] = { eth: valueETH, claws };
+    const totals = Object.values(valuesRef.current).reduce(
+      (acc, v) => ({ eth: acc.eth + v.eth, claws: acc.claws + v.claws }),
+      { eth: 0, claws: 0 }
+    );
+    setPortfolioTotal(totals);
+  }, []);
+  
   const selectedAgent = agents.find(a => a.xHandle === tradeModal.handle);
 
   return (
@@ -150,6 +173,41 @@ export default function ClawfolioPage() {
           </div>
         )}
         
+        {isConnected && portfolioTotal.claws > 0 && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(220,38,38,0.15), rgba(220,38,38,0.05))',
+            border: '1px solid var(--red)',
+            borderRadius: '12px',
+            padding: '1rem 1.25rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Portfolio Value
+              </div>
+              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                {portfolioTotal.eth < 0.0001 ? '<0.0001' : formatETH(portfolioTotal.eth)} ETH
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--grey-400)' }}>
+                ≈ ${(portfolioTotal.eth * ethPrice) < 1 
+                  ? (portfolioTotal.eth * ethPrice).toFixed(2) 
+                  : (portfolioTotal.eth * ethPrice).toFixed(0)}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--red)' }}>
+                {portfolioTotal.claws}
+              </div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)', textTransform: 'uppercase' }}>
+                Total Claws
+              </div>
+            </div>
+          </div>
+        )}
+
         <p style={{ color: 'var(--grey-500)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Tap any agent to buy or sell
         </p>
@@ -193,6 +251,7 @@ export default function ClawfolioPage() {
                 agent={agent} 
                 userAddress={address!}
                 onTrade={(handle) => setTradeModal({ isOpen: true, handle })}
+                onValue={handleValue}
               />
             ))}
             
