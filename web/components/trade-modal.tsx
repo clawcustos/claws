@@ -428,7 +428,8 @@ export function TradeModal({
               style={inputStyle}
               placeholder="1"
             />
-            <span style={{ color: '#666', fontSize: '14px' }}>CLAWS</span>
+            <img src="/claw-red-32.png" alt="" style={{ width: '14px', height: '14px', opacity: 0.6 }} />
+            <span style={{ color: '#666', fontSize: '14px', marginLeft: '4px' }}>CLAWS</span>
           </div>
           <div style={quickAmountsStyle}>
             {[1, 2, 5, 10].map(val => (

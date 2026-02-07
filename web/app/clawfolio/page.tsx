@@ -6,7 +6,7 @@ import { useAccount, useBalance } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { formatEther } from 'viem';
 import { getAgentList, AGENTS, formatETH } from '@/lib/agents';
-import { useClawBalance, useCurrentPrice, useMarket } from '@/hooks/useClaws';
+import { useClawBalance, useCurrentPrice, useMarket, useSellPrice } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { TradeModal } from '@/components/trade-modal';
 
@@ -22,7 +22,9 @@ function HoldingRow({ agent, userAddress, onTrade, onValue }: {
   const { market } = useMarket(agent.xHandle);
   
   const claws = balance !== undefined ? Number(balance) : 0;
-  const value = (priceETH || 0) * claws;
+  // Use actual sell proceeds for accurate portfolio value (bonding curve)
+  const { proceedsETH: sellValue } = useSellPrice(agent.xHandle, claws);
+  const value = sellValue || 0;
   const isVerified = market?.isVerified || false;
   
   // Report value up to parent for portfolio total
@@ -93,7 +95,7 @@ function HoldingRow({ agent, userAddress, onTrade, onValue }: {
       
       <div style={{ textAlign: 'right' }}>
         <div style={{ fontWeight: 600 }}>
-          {isLoading ? '...' : `${claws} claw${claws !== 1 ? 's' : ''}`}
+          {isLoading ? '...' : <><img src="/claw-red-32.png" alt="" style={{ width: '12px', height: '12px', display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />{claws} claw{claws !== 1 ? 's' : ''}</>}
         </div>
         <div style={{ fontSize: '0.875rem', color: 'var(--grey-400)' }}>
           ≈ {isLoading ? '...' : value < 0.0001 ? '<0.0001' : formatETH(value)} ETH
@@ -202,7 +204,7 @@ export default function ClawfolioPage() {
                 {portfolioTotal.claws}
               </div>
               <div style={{ fontSize: '0.6875rem', color: 'var(--grey-500)', textTransform: 'uppercase' }}>
-                Total Claws
+                Total <img src="/claw-red-32.png" alt="" style={{ width: '11px', height: '11px', display: 'inline', verticalAlign: 'middle' }} />
               </div>
             </div>
           </div>

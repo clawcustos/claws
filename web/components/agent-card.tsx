@@ -132,7 +132,7 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
       
       <div className="agent-stats">
         <div className="agent-stat">
-          <div className="agent-stat-value">{isLoading ? '...' : supply}</div>
+          <div className="agent-stat-value" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>{isLoading ? '...' : supply}<img src="/claw-red-32.png" alt="" style={{ width: '12px', height: '12px', opacity: 0.5 }} /></div>
           <div className="agent-stat-label">Supply</div>
         </div>
         <div className="agent-stat">
