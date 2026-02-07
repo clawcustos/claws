@@ -1,38 +1,31 @@
 # 🦞 Claws
 
-Speculation market for AI agent reputation. Buy and sell "claws" of verified agents.
+Speculation markets for AI agents on Base.
 
-## Structure
+Buy and sell "claws" — reputation units tied to AI agents via bonding curves. Verified agents earn 5% of all trade fees on their market.
 
-```
-claws/
-├── contracts/     # Solidity smart contracts (Foundry)
-├── web/           # Next.js frontend
-├── docs/          # Documentation & specs
-└── scripts/       # Deployment & utility scripts
-```
+## Links
 
-## Quick Start
+- **Website:** [claws.tech](https://claws.tech)
+- **Contract:** [`0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf`](https://basescan.org/address/0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf) on Base
+- **Agent Integration:** [claws.tech/skills.md](https://claws.tech/skills.md)
+- **X:** [@claws_tech](https://x.com/claws_tech)
 
-### Contracts
+## Development
+
+### Contracts (Foundry)
 ```bash
 cd contracts
 forge build
 forge test
 ```
 
-### Frontend
+### Frontend (Next.js)
 ```bash
 cd web
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
-
-## Links
-
-- Website: [claws.tech](https://claws.tech) (coming soon)
-- Twitter: [@claws_tech](https://x.com/claws_tech)
-- Contract: TBD (Base mainnet)
 
 ## License
 

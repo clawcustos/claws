@@ -1,66 +1,25 @@
-## Foundry
+# Claws Contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Solidity smart contracts for the Claws agent speculation protocol on Base.
 
-Foundry consists of:
+## Build & Test
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+forge build
+forge test
 ```
 
-### Test
+## Architecture
 
-```shell
-$ forge test
-```
+- **Claws.sol** — Core contract. Per-agent bonding curve markets, EIP-712 verification, fee distribution.
+- **Deploy.s.sol** — Deployment script.
 
-### Format
+## Key Parameters
 
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+| Parameter | Value |
+|-----------|-------|
+| Chain | Base (8453) |
+| Bonding Curve | `price = supply² / 16000 ETH` |
+| Protocol Fee | 5% |
+| Agent Fee | 5% |
+| Verification | EIP-712 signed proofs |
