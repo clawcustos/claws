@@ -214,22 +214,24 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
             emit MarketCreated(handleHash, handle, msg.sender);
         }
 
-        // Check whitelist status for first buy
-        uint256 mintAmount = amount;
-
+        // First buy logic: supply=0 claw is always free
         if (market.supply == 0) {
-            if (whitelisted[handleHash]) {
-                // Whitelisted: 1 free claw, then price remaining from supply 1
-                mintAmount = amount + 1;
-            } else {
-                // Non-whitelisted: must buy at least 2 claws
+            if (!whitelisted[handleHash]) {
+                // Community: must buy at least 2 (free claw + 1 paid)
                 if (amount < 2) revert InvalidAmount();
             }
+            // Whitelisted: min 1 (can grab just the free claw)
         }
 
-        // Price calculation: if bonus (mintAmount > amount), price `amount` claws from supply 1
-        // This ensures proper liquidity backing — free claw is at supply 0 (costs 0)
-        uint256 price = (mintAmount > amount) ? _getPrice(1, amount) : getBuyPrice(handleHash, amount);
+        // Price calculation: first claw (supply=0) is free, charge for remainder from supply 1
+        uint256 price;
+        if (market.supply == 0) {
+            // Buying `amount` claws starting from empty market
+            // First claw is free, pay for (amount - 1) claws priced from supply 1
+            price = (amount > 1) ? _getPrice(1, amount - 1) : 0;
+        } else {
+            price = getBuyPrice(handleHash, amount);
+        }
         uint256 protocolFee = (price * protocolFeeBps) / BPS_DENOMINATOR;
         uint256 agentFee = (price * agentFeeBps) / BPS_DENOMINATOR;
         uint256 totalCost = price + protocolFee + agentFee;
@@ -248,9 +250,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
         market.lifetimeFees += agentFee;
         market.lifetimeVolume += price;
 
-        // Update balances (use mintAmount for actual claw issuance)
-        market.supply += mintAmount;
-        clawsBalance[handleHash][msg.sender] += mintAmount;
+        // Update balances
+        market.supply += amount;
+        clawsBalance[handleHash][msg.sender] += amount;
 
         // Refund excess ETH
         if (msg.value > totalCost) {
@@ -258,7 +260,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
             if (!refunded) revert TransferFailed();
         }
 
-        emit Trade(handleHash, msg.sender, true, mintAmount, price, protocolFee, agentFee, market.supply);
+        emit Trade(handleHash, msg.sender, true, amount, price, protocolFee, agentFee, market.supply);
     }
     
     /**
@@ -480,9 +482,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
     function getBuyPriceByHandle(string calldata handle, uint256 amount) external view returns (uint256) {
         bytes32 handleHash = _hashHandle(handle);
         Market storage market = markets[handleHash];
-        // Mirror whitelist bonus logic: first buy on whitelisted market prices from supply 1
-        if (market.supply == 0 && whitelisted[handleHash]) {
-            return _getPrice(1, amount);
+        // First claw (supply=0) is free for everyone
+        if (market.supply == 0) {
+            return (amount > 1) ? _getPrice(1, amount - 1) : 0;
         }
         return getBuyPrice(handleHash, amount);
     }
@@ -556,10 +558,9 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
         bytes32 handleHash = _hashHandle(handle);
         Market storage market = markets[handleHash];
 
-        // Mirror the whitelist bonus logic from buyClaws
-        if (market.supply == 0 && whitelisted[handleHash]) {
-            // Whitelisted first buy: bonus claw at supply 0, paid claws priced from supply 1
-            price = _getPrice(1, amount);
+        // Mirror first-buy logic: supply=0 claw is free for everyone
+        if (market.supply == 0) {
+            price = (amount > 1) ? _getPrice(1, amount - 1) : 0;
         } else {
             price = getBuyPrice(handleHash, amount);
         }
