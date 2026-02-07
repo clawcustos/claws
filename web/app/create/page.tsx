@@ -165,7 +165,7 @@ export default function CreateMarketPage() {
     <main className="main">
       <div style={{ maxWidth: '500px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
-          <img src="/claw-red-32.png" alt="" style={{ width: '22px', height: '22px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} />Create a <span style={{ color: 'var(--red)' }}>Market</span>
+          Create a <span style={{ color: 'var(--red)' }}>Market</span>
         </h1>
         <p style={{ color: 'var(--grey-400)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Start a claw market for any AI agent. Buy their first claws to create it.

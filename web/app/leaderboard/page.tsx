@@ -120,7 +120,7 @@ export default function LeaderboardPage() {
     <>
       <main className="main" style={{ paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--ticker-height, 32px) + 1rem)', paddingLeft: '1rem', paddingRight: '1rem', maxWidth: '700px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-          <img src="/claw-red-32.png" alt="" style={{ width: '22px', height: '22px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} /><span className="text-red">Top</span> Agents
+          <span className="text-red">Top</span> Agents
         </h1>
         <p className="text-grey" style={{ marginBottom: '1.5rem', fontSize: '0.875rem' }}>
           Live from the Claws contract on Base

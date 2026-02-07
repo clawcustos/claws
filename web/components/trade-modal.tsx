@@ -398,7 +398,7 @@ export function TradeModal({
             <div style={statValueStyle}>{marketLoading ? '...' : supply}</div>
           </div>
           <div style={statStyle}>
-            <div style={statLabelStyle}><img src="/claw-red-32.png" alt="" style={{ width: '10px', height: '10px', display: 'inline-block', verticalAlign: 'middle', marginRight: '2px' }} />Your Claws</div>
+            <div style={statLabelStyle}>Your Claws</div>
             <div style={statValueStyle}>{userClaws}</div>
           </div>
           <div style={statStyle}>
@@ -428,7 +428,6 @@ export function TradeModal({
               style={inputStyle}
               placeholder="1"
             />
-            <img src="/claw-red-32.png" alt="" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
             <span style={{ color: '#666', fontSize: '14px' }}>CLAWS</span>
           </div>
           <div style={quickAmountsStyle}>
@@ -464,7 +463,7 @@ export function TradeModal({
           </div>
           {isFree && (
             <div style={{ color: '#22c55e', fontSize: '14px', marginTop: '12px', textAlign: 'center' }}>
-              <img src="/claw-red-32.png" alt="" style={{ width: '14px', height: '14px', display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />First claw is FREE
+              🦞 First claw is FREE
             </div>
           )}
           {mode === 'sell' && !sellPriceLoading && sellProceedsETH > 0 && sellProceedsETH < 0.0001 && !validationError && (
@@ -492,7 +491,7 @@ export function TradeModal({
           <button style={tradeBtnStyle} onClick={handleTrade} disabled={!canTrade || isTrading}>
             {isTrading 
               ? (isBuyConfirming || isSellConfirming ? 'Confirming...' : 'Processing...') 
-              : <><img src="/claw-red-32.png" alt="" style={{ width: '16px', height: '16px', display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />{`${mode === 'buy' ? 'Buy' : 'Sell'} ${amountNum} Claw${amountNum !== 1 ? 's' : ''}`}</>
+              : `${mode === 'buy' ? 'Buy' : 'Sell'} ${amountNum} Claw${amountNum !== 1 ? 's' : ''}`
 
             }
           </button>

@@ -148,7 +148,7 @@ export default function HomePage() {
             </div>
             <div className="hero-stat">
               <div className="hero-stat-value">{stats ? stats.totalClaws.toLocaleString() : '—'}</div>
-              <div className="hero-stat-label"><img src="/claw-red-32.png" alt="" style={{ width: '14px', height: '14px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.125rem' }} />Claws</div>
+              <div className="hero-stat-label">Claws</div>
             </div>
             <div className="hero-stat">
               <div className="hero-stat-value">
@@ -196,7 +196,6 @@ export default function HomePage() {
               textAlign: 'center',
             }}>
               <span style={{ color: 'white' }}>How </span>
-              <img src="/claw-red-48.png" alt="" style={{ width: '28px', height: '28px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} />
               <span style={{ color: 'var(--red)' }}>Claws</span>
               <span style={{ color: 'white' }}> Works</span>
             </h2>
@@ -279,11 +278,14 @@ export default function HomePage() {
           }
         `}</style>
         
+        {/* Divider */}
+        <div className="claw-divider"><img src="/claw-red-filled.png" alt="" /></div>
+
         {/* FEATURED AGENTS — live data via AgentCard */}
         <section className="section">
           <div className="section-header">
             <h2 className="section-title">
-              Featured <img src="/claw-red-32.png" alt="" style={{ width: '20px', height: '20px', display: 'inline-block', verticalAlign: 'middle', margin: '0 0.125rem' }} /> <span>Agents</span>
+              Featured <span>Agents</span>
             </h2>
             <Link href="/explore" style={{ color: 'var(--red)', textDecoration: 'none', fontSize: '0.875rem' }}>
               View all →
@@ -306,11 +308,14 @@ export default function HomePage() {
           </ConnectButton.Custom>
         </section>
         
+        {/* Divider */}
+        <div className="claw-divider"><img src="/claw-red-filled.png" alt="" /></div>
+
         {/* LEADERBOARDS — side by side on desktop */}
         <section id="leaderboard" className="section">
           <div className="section-header" style={{ marginBottom: '1.5rem' }}>
             <h2 className="section-title">
-              <img src="/claw-red-32.png" alt="" style={{ width: '20px', height: '20px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} /><span>Leaderboards</span>
+              <span>Leaderboards</span>
             </h2>
             <Link href="/leaderboard" style={{ color: 'var(--red)', textDecoration: 'none', fontSize: '0.875rem' }}>
               Full leaderboard →

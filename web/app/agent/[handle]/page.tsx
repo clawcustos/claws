@@ -353,12 +353,12 @@ export default function AgentPage() {
               <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--grey-400)' }}>
                 <div style={{ textAlign: 'center', padding: '0 0.75rem' }}>
                   <div className="mono" style={{ fontWeight: 700, color: 'var(--white)' }}>{marketLoading ? '...' : liveSupply}</div>
-                  <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', color: 'var(--grey-600)' }}><img src="/claw-red-32.png" alt="" style={{ width: '9px', height: '9px', display: 'inline', verticalAlign: 'middle', marginRight: '1px' }} />Supply</div>
+                  <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', color: 'var(--grey-600)' }}>Supply</div>
                 </div>
                 {isConnected && userClaws > 0 && (
                   <div style={{ textAlign: 'center', padding: '0 0.75rem' }}>
                     <div className="mono" style={{ fontWeight: 700, color: 'var(--red)' }}>{userClaws}</div>
-                    <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', color: 'var(--grey-600)' }}><img src="/claw-red-32.png" alt="" style={{ width: '9px', height: '9px', display: 'inline', verticalAlign: 'middle', marginRight: '1px' }} />Yours</div>
+                    <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', color: 'var(--grey-600)' }}>Yours</div>
                   </div>
                 )}
               </div>

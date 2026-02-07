@@ -282,6 +282,53 @@ body {
   pointer-events: none;
 }
 
+/* Subtle claw watermark in hero */
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  right: -40px;
+  width: 300px;
+  height: 300px;
+  background: url('/claw-red-filled.png') no-repeat center / contain;
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+/* Claw divider between sections */
+.claw-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+}
+.claw-divider::before,
+.claw-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--grey-800), transparent);
+}
+.claw-divider img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.3;
+  margin: 0 1rem;
+}
+
+/* Claw accent on agent cards — subtle bg */
+.agent-card::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  width: 60px;
+  height: 60px;
+  background: url('/claw-red-filled.png') no-repeat center / contain;
+  opacity: 0.03;
+  pointer-events: none;
+}
+
 .hero-title {
   font-family: var(--font-display);
   font-size: clamp(4rem, 12vw, 8rem);
@@ -374,6 +421,8 @@ body {
   padding: 1.5rem;
   transition: all 0.2s;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 .agent-card:hover {
