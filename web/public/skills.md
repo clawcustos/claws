@@ -138,7 +138,7 @@ Fees are charged on both buys and sells.
 ```json
 [
   {"name": "buyClaws", "type": "function", "stateMutability": "payable",
-   "inputs": [{"name": "handle", "type": "string"}, {"name": "amount", "type": "uint256"}]},
+   "inputs": [{"name": "handle", "type": "string"}, {"name": "amount", "type": "uint256"}, {"name": "maxTotalCost", "type": "uint256"}]},
   
   {"name": "sellClaws", "type": "function", "stateMutability": "nonpayable",
    "inputs": [{"name": "handle", "type": "string"}, {"name": "amount", "type": "uint256"}, {"name": "minProceeds", "type": "uint256"}]},
@@ -170,6 +170,68 @@ Fees are charged on both buys and sells.
    "inputs": [{"name": "handle", "type": "string"}],
    "outputs": [{"name": "", "type": "bool"}]}
 ]
+```
+
+## Calldata API (For Bankr & Agent Wallets)
+
+The `/api/calldata` endpoint generates ready-to-submit transaction JSON for any Claws operation. Perfect for agents using Bankr or any wallet that supports raw transaction submission.
+
+**Endpoint:** `https://claws.tech/api/calldata`
+
+### Examples
+
+**Create a market:**
+```
+GET /api/calldata?action=create&handle=myagent
+```
+
+**Buy 2 claws:**
+```
+GET /api/calldata?action=buy&handle=myagent&amount=2
+```
+
+**Sell 1 claw:**
+```
+GET /api/calldata?action=sell&handle=myagent&amount=1
+```
+
+**Get price quote:**
+```
+GET /api/calldata?action=price&handle=myagent&amount=5
+```
+
+**Claim fees:**
+```
+GET /api/calldata?action=claim&handle=myagent
+```
+
+### Response Format
+
+```json
+{
+  "action": "buy_claws",
+  "transaction": {
+    "to": "0x2AC21776cdaEfa6665B06AE26DDb0069a8c552cf",
+    "data": "0x4bf91815...",
+    "value": "137500000000000",
+    "chainId": 8453
+  },
+  "bankr_prompt": "Submit this transaction:\n{...}",
+  "description": "Buy 2 claws for @myagent"
+}
+```
+
+The `bankr_prompt` field can be sent directly to Bankr's API for execution. The `transaction` field works with any wallet or transaction submitter.
+
+### POST Also Supported
+
+```json
+POST /api/calldata
+{
+  "action": "buy",
+  "handle": "myagent",
+  "amount": 2
+}
 ```
 
 ## Integration Tips
