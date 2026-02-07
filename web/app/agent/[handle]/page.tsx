@@ -195,7 +195,10 @@ export default function AgentPage() {
   const liveSupply = market ? Number(market.supply) : 0;
   const userClaws = userBalance !== undefined ? Number(userBalance) : 0;
   
-  if (!agent) {
+  // Check if market exists on-chain (for community-created markets not in curated list)
+  const marketExists = market && market.supply > 0n;
+  
+  if (!agent && !marketExists && !marketLoading) {
     return (
       <main className="main">
         <section className="section" style={{ textAlign: 'center', paddingTop: '6rem' }}>
@@ -208,8 +211,13 @@ export default function AgentPage() {
       </main>
     );
   }
+  
+  // For community markets: use on-chain data + X avatar fallback
+  const displayName = agent?.name || handle;
+  const displayImage = agent?.xProfileImage || `https://unavatar.io/x/${handle}`;
+  const displayBio = onChainBio || agent?.description || '';
 
-  const priceETH = livePriceETH || agent.priceETH;
+  const priceETH = livePriceETH || agent?.priceETH || 0;
   const lifetimeVolumeETH = market ? parseFloat(formatEther(market.lifetimeVolume)) : 0;
   const lifetimeFeesETH = market ? parseFloat(formatEther(market.lifetimeFees)) : 0;
 
@@ -226,7 +234,7 @@ export default function AgentPage() {
           <div style={{ marginBottom: '2rem', fontSize: '0.875rem' }}>
             <Link href="/explore" style={{ color: 'var(--grey-500)', textDecoration: 'none' }}>Explore</Link>
             <span style={{ color: 'var(--grey-700)', margin: '0 0.5rem' }}>›</span>
-            <span style={{ color: 'var(--grey-400)' }}>{agent.name}</span>
+            <span style={{ color: 'var(--grey-400)' }}>{displayName}</span>
           </div>
           
           {/* Profile Header */}
@@ -246,8 +254,8 @@ export default function AgentPage() {
               flexShrink: 0,
             }}>
               <Image 
-                src={agent.xProfileImage} 
-                alt={agent.name}
+                src={displayImage} 
+                alt={displayName}
                 width={100}
                 height={100}
                 unoptimized
@@ -262,7 +270,7 @@ export default function AgentPage() {
                 alignItems: 'center',
                 gap: '0.5rem',
               }}>
-                {agent.name}
+                {displayName}
                 {isVerified && (
                   <span style={{
                     width: '22px',
@@ -280,15 +288,15 @@ export default function AgentPage() {
                 {isVerified && <ERC8004Badge walletAddress={market?.verifiedWallet} />}
               </h1>
               <a 
-                href={`https://x.com/${agent.xHandle}`}
+                href={`https://x.com/${handle}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ color: 'var(--grey-500)', textDecoration: 'none', fontSize: '1rem' }}
               >
-                @{agent.xHandle}
+                @{handle}
               </a>
               <p style={{ color: 'var(--grey-400)', marginTop: '0.75rem', fontSize: '0.9375rem' }}>
-                {onChainBio || agent.description}
+                {displayBio}
               </p>
               {(onChainWebsite || onChainToken) && (
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
@@ -438,9 +446,9 @@ export default function AgentPage() {
       <TradeModal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
-        agentName={agent.name}
-        agentHandle={agent.xHandle}
-        agentImage={agent.xProfileImage}
+        agentName={displayName}
+        agentHandle={handle}
+        agentImage={displayImage}
         initialMode={tradeMode}
       />
     </>

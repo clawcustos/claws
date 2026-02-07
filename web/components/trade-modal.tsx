@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useAccount, useWaitForTransactionReceipt } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { 
   useMarket, 
@@ -84,9 +85,17 @@ export function TradeModal({
   const { isLoading: isBuyConfirming, isSuccess: buyConfirmed } = useWaitForTransactionReceipt({ hash: buyHash });
   const { isLoading: isSellConfirming, isSuccess: sellConfirmed } = useWaitForTransactionReceipt({ hash: sellHash });
   
+  const queryClient = useQueryClient();
   const isTrading = isBuying || isSelling || isBuyConfirming || isSellConfirming;
   const isPriceLoading = mode === 'buy' ? buyPriceLoading : sellPriceLoading;
   
+  // Invalidate all contract queries after trade confirmation
+  useEffect(() => {
+    if (buyConfirmed || sellConfirmed) {
+      queryClient.invalidateQueries({ queryKey: ['readContract'] });
+    }
+  }, [buyConfirmed, sellConfirmed, queryClient]);
+
   // Safe price values
   const displayPrice = mode === 'buy' ? (buyCostETH || 0) : (sellProceedsETH || 0);
   const isFree = supply === 0 && mode === 'buy' && amountNum === 1;
