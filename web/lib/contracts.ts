@@ -6,7 +6,7 @@ export const CONTRACTS = {
     claws: '0x0000000000000000000000000000000000000000' as `0x${string}`,
   },
   base: {
-    claws: '0x4f02e2edc913B5053d0f8a6FE6368dE2079481b6' as `0x${string}`,
+    claws: '0xc1707493aD4632c8271a5381DdABfE720f7eef15' as `0x${string}`,
   },
 } as const;
 
