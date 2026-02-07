@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { Header } from '@/components/header';
 import { BottomNav } from '@/components/bottom-nav';
+import { ActivityTicker } from '@/components/activity-ticker';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 
 const inter = Inter({ 
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <Header />
+          <ActivityTicker />
           {children}
           <BottomNav />
         </Providers>

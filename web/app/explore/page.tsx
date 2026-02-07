@@ -76,7 +76,7 @@ export default function ExplorePage() {
         <section className="section">
           <div style={{ marginBottom: '1rem' }}>
             <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
-              <span style={{ color: 'var(--red)' }}>Explore</span> Agents
+              <img src="/claw-red-32.png" alt="" style={{ width: '22px', height: '22px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} /><span style={{ color: 'var(--red)' }}>Explore</span> Agents
             </h1>
             <p style={{ color: 'var(--grey-400)', fontSize: '0.875rem' }}>
               {allAgents.length} curated agents. All data live from the contract.

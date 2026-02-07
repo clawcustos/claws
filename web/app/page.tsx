@@ -12,7 +12,6 @@ import {
 import { TradeModal } from '@/components/trade-modal';
 import { AgentCard } from '@/components/agent-card';
 import { BondingCurveChart } from '@/components/bonding-curve-chart';
-import { ActivityTicker } from '@/components/activity-ticker';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useProtocolStats } from '@/hooks/useProtocolStats';
 import { useETHPrice } from '@/hooks/useETHPrice';
@@ -112,9 +111,6 @@ export default function HomePage() {
   return (
     <>
       <main className="main">
-        {/* LIVE ACTIVITY TICKER */}
-        <ActivityTicker />
-        
         {/* HERO */}
         <section className="hero">
           <img 
@@ -152,7 +148,7 @@ export default function HomePage() {
             </div>
             <div className="hero-stat">
               <div className="hero-stat-value">{stats ? stats.totalClaws.toLocaleString() : '—'}</div>
-              <div className="hero-stat-label">Claws</div>
+              <div className="hero-stat-label"><img src="/claw-red-32.png" alt="" style={{ width: '14px', height: '14px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.125rem' }} />Claws</div>
             </div>
             <div className="hero-stat">
               <div className="hero-stat-value">
@@ -200,6 +196,7 @@ export default function HomePage() {
               textAlign: 'center',
             }}>
               <span style={{ color: 'white' }}>How </span>
+              <img src="/claw-red-48.png" alt="" style={{ width: '28px', height: '28px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} />
               <span style={{ color: 'var(--red)' }}>Claws</span>
               <span style={{ color: 'white' }}> Works</span>
             </h2>
@@ -286,7 +283,7 @@ export default function HomePage() {
         <section className="section">
           <div className="section-header">
             <h2 className="section-title">
-              Featured <span>Agents</span>
+              Featured <img src="/claw-red-32.png" alt="" style={{ width: '20px', height: '20px', display: 'inline-block', verticalAlign: 'middle', margin: '0 0.125rem' }} /> <span>Agents</span>
             </h2>
             <Link href="/explore" style={{ color: 'var(--red)', textDecoration: 'none', fontSize: '0.875rem' }}>
               View all →
@@ -313,7 +310,7 @@ export default function HomePage() {
         <section id="leaderboard" className="section">
           <div className="section-header" style={{ marginBottom: '1.5rem' }}>
             <h2 className="section-title">
-              <span>Leaderboards</span>
+              <img src="/claw-red-32.png" alt="" style={{ width: '20px', height: '20px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} /><span>Leaderboards</span>
             </h2>
             <Link href="/leaderboard" style={{ color: 'var(--red)', textDecoration: 'none', fontSize: '0.875rem' }}>
               Full leaderboard →

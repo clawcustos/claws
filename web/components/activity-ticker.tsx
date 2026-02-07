@@ -133,11 +133,7 @@ export function ActivityTicker() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           gap: '0.5rem', fontSize: '0.75rem', color: 'var(--grey-500)', padding: '0.5rem 0',
         }}>
-          <span style={{ 
-            width: '6px', height: '6px', borderRadius: '50%', 
-            background: 'var(--red)', display: 'inline-block',
-            animation: 'pulse 2s infinite',
-          }} />
+          <img src="/claw-red-32.png" alt="" style={{ width: '14px', height: '14px', animation: 'pulse 2s infinite' }} />
           Watching for trades...
         </div>
         <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }`}</style>
@@ -153,7 +149,7 @@ export function ActivityTicker() {
         ref={tickerRef}
         style={{
           display: 'flex', gap: '2rem', padding: '0.5rem 1rem',
-          animation: 'scroll-left 30s linear infinite',
+          animation: 'scroll-left 20s linear infinite',
           whiteSpace: 'nowrap', width: 'max-content',
         }}
       >
