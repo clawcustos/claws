@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react';
-import { createPublicClient, http, parseAbiItem } from 'viem';
+import { createPublicClient, http, parseAbiItem, formatEther } from 'viem';
 import { base } from 'viem/chains';
-import { getContractAddress } from '@/lib/contracts';
+import { getContractAddress, CLAWS_ABI } from '@/lib/contracts';
 import { AGENTS } from '@/lib/agents';
 
 const BASE_CHAIN_ID = 8453;
 
-interface CommunityMarket {
+export interface CommunityMarket {
   handle: string;
   creator: string;
-  blockNumber: bigint;
+  supply: number;
+  priceETH: number;
+  volumeETH: number;
+  isVerified: boolean;
+  createdAt: number;
 }
 
 // Get all curated handles (lowercase) for filtering
@@ -32,6 +36,7 @@ export function useCommunityMarkets() {
 
     async function fetchMarkets() {
       try {
+        // Get all MarketCreated events
         const logs = await client.getLogs({
           address: contractAddress,
           event: parseAbiItem('event MarketCreated(bytes32 indexed handleHash, string handle, address creator)'),
@@ -39,16 +44,61 @@ export function useCommunityMarkets() {
           toBlock: 'latest',
         });
 
-        const communityMarkets = logs
-          .filter(log => !curatedHandles.has((log.args.handle || '').toLowerCase()))
-          .map(log => ({
-            handle: log.args.handle || '',
-            creator: log.args.creator || '',
-            blockNumber: log.blockNumber,
-          }))
-          .reverse(); // newest first
+        // Filter to community-only (not in curated list)
+        const communityLogs = logs.filter(
+          log => !curatedHandles.has((log.args.handle || '').toLowerCase())
+        );
 
-        setMarkets(communityMarkets);
+        if (communityLogs.length === 0) {
+          setMarkets([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Batch read market data for all community handles
+        const handles = communityLogs.map(l => l.args.handle || '');
+        
+        const marketCalls = handles.map(handle => ({
+          address: contractAddress,
+          abi: CLAWS_ABI,
+          functionName: 'getMarket' as const,
+          args: [handle],
+        }));
+
+        const priceCalls = handles.map(handle => ({
+          address: contractAddress,
+          abi: CLAWS_ABI,
+          functionName: 'getCurrentPrice' as const,
+          args: [handle],
+        }));
+
+        const [marketResults, priceResults] = await Promise.all([
+          client.multicall({ contracts: marketCalls }),
+          client.multicall({ contracts: priceCalls }),
+        ]);
+
+        const enriched: CommunityMarket[] = handles.map((handle, i) => {
+          const m = marketResults[i];
+          const p = priceResults[i];
+          
+          if (m.status !== 'success' || !m.result) {
+            return { handle, creator: communityLogs[i].args.creator || '', supply: 0, priceETH: 0, volumeETH: 0, isVerified: false, createdAt: 0 };
+          }
+
+          const result = m.result as readonly [bigint, bigint, bigint, bigint, string, boolean, bigint, bigint];
+          
+          return {
+            handle,
+            creator: communityLogs[i].args.creator || '',
+            supply: Number(result[0]),
+            priceETH: p.status === 'success' ? parseFloat(formatEther(p.result as bigint)) : 0,
+            volumeETH: parseFloat(formatEther(result[3])),
+            isVerified: result[5] as boolean,
+            createdAt: Number(result[6]),
+          };
+        });
+
+        setMarkets(enriched);
       } catch (err) {
         console.error('Failed to fetch community markets:', err);
       } finally {
