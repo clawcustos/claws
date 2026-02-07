@@ -136,7 +136,7 @@ export default function NewMarketsPage() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '1rem' }}>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
-            New <span style={{ color: 'var(--red)' }}>Markets</span>
+            <img src="/claw-red-32.png" alt="" style={{ width: '22px', height: '22px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} />New <span style={{ color: 'var(--red)' }}>Markets</span>
           </h1>
           <p style={{ color: 'var(--grey-400)', fontSize: '0.875rem' }}>
             Community-created markets — DYOR.

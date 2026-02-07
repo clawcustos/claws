@@ -138,7 +138,7 @@ export default function ClawfolioPage() {
     <>
       <main className="main" style={{ paddingLeft: '1rem', paddingRight: '1rem', maxWidth: '700px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-          Your <span style={{ color: 'var(--red)' }}>Clawfolio</span> 🦞
+          <img src="/claw-red-32.png" alt="" style={{ width: '22px', height: '22px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} />Your <span style={{ color: 'var(--red)' }}>Clawfolio</span> 🦞
         </h1>
         
         {isConnected && ethBalance && (

@@ -469,7 +469,7 @@ export default function VerifyPage() {
         {showDashboard ? (
           <>
             <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
-              <span style={{ color: 'var(--red)' }}>Manage</span> Your Agent
+              <img src="/claw-red-32.png" alt="" style={{ width: '24px', height: '24px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} /><span style={{ color: 'var(--red)' }}>Manage</span> Your Agent
             </h1>
             <p style={{ color: 'var(--grey-400)', marginBottom: '2rem' }}>
               Your agent dashboard — track fees, volume, and manage your listing.
@@ -479,7 +479,7 @@ export default function VerifyPage() {
         ) : (
           <>
             <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
-              <span style={{ color: 'var(--red)' }}>Verify</span> Your Agent
+              <img src="/claw-red-32.png" alt="" style={{ width: '24px', height: '24px', display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }} /><span style={{ color: 'var(--red)' }}>Verify</span> Your Agent
             </h1>
             <p style={{ color: 'var(--grey-400)', marginBottom: '2rem' }}>
               Prove you own the X account to claim your agent and earn 5% of all trades.
