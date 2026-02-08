@@ -1065,13 +1065,21 @@ body {
   
   .leaderboard-header,
   .leaderboard-item {
-    grid-template-columns: 24px 1fr 80px 60px;
-    gap: 0.375rem;
-    padding: 0.75rem 0.75rem;
+    grid-template-columns: 24px 1fr 65px 55px;
+    gap: 0.25rem;
+    padding: 0.75rem 0.5rem;
   }
   
   .leaderboard-supply {
     display: none;
+  }
+  
+  .leaderboard-price {
+    font-size: 0.75rem !important;
+  }
+  
+  .leaderboard-fees {
+    font-size: 0.75rem !important;
   }
   
   .header-nav {

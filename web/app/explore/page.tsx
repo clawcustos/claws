@@ -67,7 +67,7 @@ function AgentRow({ agent, onTrade, ethPrice }: { agent: RankedAgent; onTrade: (
           {agent.isVerified && <ERC8004Badge walletAddress={undefined} />}
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--grey-400)', marginTop: '2px' }}>
-          @{agent.xHandle} · Supply: {agent.supply} · Vol: ${usdVolume < 1 ? usdVolume.toFixed(2) : usdVolume.toFixed(0)}
+          @{agent.xHandle} · {agent.supply} claws
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>

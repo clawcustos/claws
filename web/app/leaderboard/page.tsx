@@ -184,11 +184,18 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
                   
-                  <div className="leaderboard-price" style={{ fontSize: '0.8125rem' }}>
+                  <div className="leaderboard-price">
                     {data.isLoading ? '...' : data.supply === 0 ? (
                       <span className="badge-free">FREE</span>
                     ) : (
-                      <span className="mono">{data.price < 0.0001 ? '<0.0001' : formatETH(data.price)} ETH</span>
+                      <span className="mono" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+                        {(() => {
+                          const usd = data.price * ethUsd;
+                          if (usd < 0.01) return '<$0.01';
+                          if (usd < 1) return `$${usd.toFixed(2)}`;
+                          return `$${usd.toFixed(0)}`;
+                        })()}
+                      </span>
                     )}
                   </div>
                   
