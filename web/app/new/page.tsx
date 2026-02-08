@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useCommunityMarkets, CommunityMarket } from '@/hooks/useCommunityMarkets';
 import { useETHPrice } from '@/hooks/useETHPrice';
-import { formatETH, formatUSD } from '@/lib/agents';
+import { formatETH } from '@/lib/agents';
+import { formatUSD } from '@/lib/format';
 
 type Filter = 'all' | 'verified' | 'trending' | 'new';
 type Sort = 'newest' | 'price' | 'supply' | 'volume';
@@ -53,15 +54,19 @@ function MarketRow({ market, ethPrice }: { market: CommunityMarket; ethPrice: nu
             )}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--grey-400)', marginTop: '2px' }}>
-            Supply: {market.supply} · Vol: ${usdVolume < 1 ? usdVolume.toFixed(2) : usdVolume.toFixed(0)}
+            @{market.handle} · {market.supply} claws
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-            {market.priceETH > 0 ? formatETH(market.priceETH) : '0'} ETH
+            {market.supply === 0 ? (
+              <span style={{ color: '#22c55e' }}>FREE</span>
+            ) : (
+              `${formatETH(market.priceETH)} ETH`
+            )}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--grey-400)' }}>
-            ${usdPrice < 0.01 ? '<0.01' : usdPrice < 1 ? usdPrice.toFixed(2) : usdPrice.toFixed(0)}
+            {market.supply === 0 ? 'First claw free' : formatUSD(market.priceETH, ethPrice)}
           </div>
         </div>
       </div>

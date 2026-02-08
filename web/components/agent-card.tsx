@@ -8,6 +8,7 @@ import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { ERC8004Badge } from '@/components/erc8004-badge';
 import type { AgentListItem } from '@/lib/agents';
+import { formatUSD as formatUSDShared } from '@/lib/format';
 
 // Generate initials avatar
 function getInitialsAvatar(name: string): string {
@@ -72,14 +73,7 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
     return eth.toFixed(2);
   };
   
-  const formatUSD = (eth: number): string => {
-    const usd = eth * ethPrice;
-    if (usd === 0) return '$0';
-    if (usd < 0.01) return '<$0.01';
-    if (usd < 1) return `$${usd.toFixed(2)}`;
-    if (usd < 1000) return `$${usd.toFixed(0)}`;
-    return `$${(usd / 1000).toFixed(1)}K`;
-  };
+  const formatUSDLocal = (eth: number): string => formatUSDShared(eth, ethPrice);
   
   return (
     <div className={`agent-card ${isVerified ? 'verified' : ''}`}>
@@ -124,7 +118,7 @@ export function AgentCard({ agent, onTrade, onConnect, verifiedFilter = 'all' }:
               )}
             </div>
             <div className="agent-price-usd">
-              {supply === 0 ? 'First claw free!' : formatUSD(currentPriceETH)}
+              {supply === 0 ? 'First claw free!' : formatUSDLocal(currentPriceETH)}
             </div>
           </>
         )}

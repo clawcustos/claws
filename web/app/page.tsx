@@ -17,14 +17,7 @@ import { useProtocolStats } from '@/hooks/useProtocolStats';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { useAgentRankingsAPI, type RankedAgent } from '@/hooks/useAgentRankingsAPI';
 
-function formatUSD(eth: number, ethPriceUsd: number = 2500): string {
-  const usd = eth * ethPriceUsd;
-  if (usd === 0 || eth === 0) return '$0';
-  if (usd < 0.01) return '<$0.01';
-  if (usd < 1) return `$${usd.toFixed(2)}`;
-  if (usd < 1000) return `$${usd.toFixed(0)}`;
-  return `$${(usd / 1000).toFixed(1)}K`;
-}
+import { formatUSD } from '@/lib/format';
 
 // Generate avatar from initials
 function getInitialsAvatar(name: string): string {
