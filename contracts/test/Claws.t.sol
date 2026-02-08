@@ -780,6 +780,110 @@ contract ClawsTest is Test {
         claws.updateAgentWallet(HANDLE, address(99));
     }
 
+    // ============================================
+    // Self-Service Wallet Update (updateMyWallet)
+    // ============================================
+
+    function test_UpdateMyWallet() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Agent updates their own wallet
+        address newWallet = address(0xBEEF);
+        vm.prank(agentWallet);
+        claws.updateMyWallet(HANDLE, newWallet);
+
+        (,,,,address verifiedWallet, bool isVerified,,) = claws.getMarket(HANDLE);
+        assertEq(verifiedWallet, newWallet);
+        assertTrue(isVerified);
+    }
+
+    function test_UpdateMyWalletRevertsNotVerifiedWallet() public {
+        // Setup: Buy claws and verify
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Random address tries to update — should revert
+        vm.prank(trader1);
+        vm.expectRevert(Claws.NotVerifiedAgent.selector);
+        claws.updateMyWallet(HANDLE, address(0xBEEF));
+    }
+
+    function test_UpdateMyWalletRevertsZeroAddress() public {
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        vm.prank(agentWallet);
+        vm.expectRevert(Claws.ZeroAddress.selector);
+        claws.updateMyWallet(HANDLE, address(0));
+    }
+
+    function test_UpdateMyWalletRevertsMarketNotVerified() public {
+        claws.createMarket(HANDLE);
+
+        vm.prank(trader1);
+        vm.expectRevert(Claws.MarketNotVerified.selector);
+        claws.updateMyWallet(HANDLE, address(0xBEEF));
+    }
+
+    function test_UpdateMyWalletThenClaimFees() public {
+        // Setup: Buy claws, verify, generate fees
+        (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);
+        vm.prank(trader1);
+        claws.buyClaws{value: buyCost}(HANDLE, 5, 0);
+
+        uint256 timestamp = block.timestamp;
+        uint256 nonce = 12345;
+        bytes memory signature = _signVerification(HANDLE, agentWallet, timestamp, nonce);
+
+        vm.prank(agentWallet);
+        claws.verifyAndClaim(HANDLE, agentWallet, timestamp, nonce, signature);
+
+        // Generate some fees with another trade
+        (,,,uint256 buyCost2) = claws.getBuyCostBreakdown(HANDLE, 3);
+        vm.prank(trader2);
+        claws.buyClaws{value: buyCost2}(HANDLE, 3, 0);
+
+        // Agent updates wallet
+        address newWallet = address(0xBEEF);
+        vm.prank(agentWallet);
+        claws.updateMyWallet(HANDLE, newWallet);
+
+        // New wallet can claim fees
+        (,uint256 pendingFees,,,,,,) = claws.getMarket(HANDLE);
+        assertGt(pendingFees, 0);
+
+        uint256 balBefore = newWallet.balance;
+        vm.prank(newWallet);
+        claws.claimFees(HANDLE);
+        assertGt(newWallet.balance, balBefore);
+    }
+
     function test_RevokeVerification() public {
         // Setup: Buy claws and verify
         (,,,uint256 buyCost) = claws.getBuyCostBreakdown(HANDLE, 5);

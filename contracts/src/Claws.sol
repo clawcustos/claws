@@ -137,6 +137,7 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
     error InvalidSignature();
     error NonceAlreadyUsed();
     error NotVerified();
+    error NotVerifiedAgent();
     error NoFeesPending();
     error TransferFailed();
     error InvalidHandle();
@@ -670,6 +671,29 @@ contract Claws is ReentrancyGuard, Ownable, Pausable, EIP712 {
 
         if (market.createdAt == 0) revert MarketDoesNotExist();
         if (!market.isVerified) revert MarketNotVerified();
+
+        address oldWallet = market.verifiedWallet;
+        market.verifiedWallet = newWallet;
+
+        emit AgentWalletUpdated(handleHash, handle, oldWallet, newWallet);
+    }
+
+    /**
+     * @notice Self-service wallet update for verified agents
+     * @dev Only callable by the currently verified wallet (msg.sender == verifiedWallet)
+     * @dev Pure on-chain auth — no signatures, no backend, immune to social engineering
+     * @param handle The X handle
+     * @param newWallet The new wallet address to bind
+     */
+    function updateMyWallet(string calldata handle, address newWallet) external nonReentrant {
+        if (newWallet == address(0)) revert ZeroAddress();
+
+        bytes32 handleHash = _hashHandle(handle);
+        Market storage market = markets[handleHash];
+
+        if (market.createdAt == 0) revert MarketDoesNotExist();
+        if (!market.isVerified) revert MarketNotVerified();
+        if (msg.sender != market.verifiedWallet) revert NotVerifiedAgent();
 
         address oldWallet = market.verifiedWallet;
         market.verifiedWallet = newWallet;
