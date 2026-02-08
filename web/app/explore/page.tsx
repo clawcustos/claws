@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { getAgentList, AGENTS, formatETH } from '@/lib/agents';
 import { TradeModal } from '@/components/trade-modal';
-import { useAgentRankings, type RankedAgent } from '@/hooks/useAgentRankings';
+import { useAgentRankingsAPI, type RankedAgent } from '@/hooks/useAgentRankingsAPI';
 import { useETHPrice } from '@/hooks/useETHPrice';
 import { ERC8004Badge } from '@/components/erc8004-badge';
 
@@ -98,8 +98,8 @@ export default function ExplorePage() {
     mode: 'buy' | 'sell';
   }>({ isOpen: false, handle: '', mode: 'buy' });
 
-  // Fetch ALL agent data in a single multicall batch
-  const { byPrice, byVolume, isLoading } = useAgentRankings();
+  // Fetch ALL agent data from server-side cached API
+  const { byPrice, byVolume, isLoading } = useAgentRankingsAPI();
   const allAgents = byPrice; // full enriched list
 
   const filtered = useMemo(() => {

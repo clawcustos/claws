@@ -15,7 +15,7 @@ import { BondingCurveChart } from '@/components/bonding-curve-chart';
 import { useMarket, useCurrentPrice } from '@/hooks/useClaws';
 import { useProtocolStats } from '@/hooks/useProtocolStats';
 import { useETHPrice } from '@/hooks/useETHPrice';
-import { useAgentRankings, type RankedAgent } from '@/hooks/useAgentRankings';
+import { useAgentRankingsAPI, type RankedAgent } from '@/hooks/useAgentRankingsAPI';
 
 function formatUSD(eth: number, ethPriceUsd: number = 2500): string {
   const usd = eth * ethPriceUsd;
@@ -94,7 +94,7 @@ export default function HomePage() {
   const agents = useMemo(() => getAgentList(), []);
   const { stats } = useProtocolStats();
   const { ethPrice } = useETHPrice();
-  const { byPrice, byVolume, isLoading: rankingsLoading } = useAgentRankings();
+  const { byPrice, byVolume, isLoading: rankingsLoading } = useAgentRankingsAPI();
   
   const [tradeModal, setTradeModal] = useState<{
     isOpen: boolean;

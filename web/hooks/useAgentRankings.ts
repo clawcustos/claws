@@ -37,8 +37,8 @@ export function useAgentRankings() {
     contracts,
     query: {
       enabled: contracts.length > 0 && contractAddress !== '0x0000000000000000000000000000000000000000',
-      staleTime: 30_000,
-      refetchInterval: 60_000,
+      staleTime: 120_000, // 2 minutes
+      refetchInterval: 300_000, // 5 minutes
     },
   });
 
